@@ -214,7 +214,30 @@ class SimplifyRequest(BaseModel):
     api_key: Optional[str] = None
 
 
+class LearningPathwayStep(BaseModel):
+    step_number: int = Field(..., description="Step index (1, 2, 3, 4)")
+    title: str = Field(..., description="Catchy title of this chapter")
+    description: str = Field(..., description="1-sentence explanation of what you'll learn")
+    subtopic_query: str = Field(..., description="The exact search topic to study this next chapter")
+    is_completed: bool = Field(default=False, description="Whether this is the current completed part")
+
+
 class SimplifyResponse(BaseModel):
+    analogy_title: str
+    warm_greeting: str
+    simplified_text: str
+    key_takeaways: List[str]
+    concept_map_mermaid: str
+    interactive_sim: InteractiveSimData
+    flashcards: List[Flashcard]
+    feynman_challenge: FeynmanChallenge
+    language: str
+    level: str
+    model_used: Optional[str] = None
+    learning_pathway: List[LearningPathwayStep] = Field(
+        default_factory=list,
+        description="Sequential 4-part roadmap to master this entire topic from beginner to expert."
+    )
     analogy_title: str
     warm_greeting: str
     simplified_text: str
@@ -455,6 +478,12 @@ Instructions:
 6. 'interactive_sim': Parameters for a 2-slider simulation widget in {target_language}.
 7. 'flashcards': 3 high-yield active-recall cards with 'question', 'answer', and 'hint' in {target_language}.
 8. 'feynman_challenge': Set up the "Teach Curious Leo" reverse-tutor arena in {target_language}.
+9. 'learning_pathway': Exactly 4 sequential progression chapters to master this whole subject step-by-step:
+   - Part 1 (Current): Foundations & Core Intuition (is_completed: true)
+   - Part 2: Next Logical Mechanism / Deeper Rule (is_completed: false)
+   - Part 3: Advanced Applications / Problem-Solving Techniques (is_completed: false)
+   - Part 4: Real-World Mastery & Edge Cases (is_completed: false)
+   Each step has 'step_number', 'title', 'description', 'subtopic_query' (exact topic query for next prompt), and 'is_completed'.
 
 Return strictly valid JSON matching the schema.
 """

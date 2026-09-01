@@ -724,6 +724,9 @@
     // 3D Flashcards
     renderFlashcards(data.flashcards || []);
 
+    // Sequential Learning Pathway / Next Chapters
+    renderLearningPathway(data.learning_pathway || []);
+
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -2049,3 +2052,88 @@
     initWhiteboard();
   });
 })();
+
+
+  // ------------------------------------------------------------------ Sequential Learning Pathway (Curriculum Progression)
+  function renderLearningPathway(steps) {
+    const grid = document.getElementById("pathwayStepsGrid");
+    if (!grid) return;
+
+    if (!steps || steps.length === 0) {
+      // Default 4-part pathway if empty
+      const currentTopic = (studyTextInput.value || "Topic").trim();
+      steps = [
+        { step_number: 1, title: `Basics of ${currentTopic}`, description: "Core definitions, everyday analogies, and foundational mental models.", subtopic_query: `${currentTopic} basics`, is_completed: true },
+        { step_number: 2, title: `How ${currentTopic} Works`, description: "Step-by-step mechanism, core formulas, and key operating rules.", subtopic_query: `How ${currentTopic} works step by step`, is_completed: false },
+        { step_number: 3, title: `Advanced ${currentTopic} Problems`, description: "Real-world tricky examples, problem solving, and edge cases.", subtopic_query: `Advanced ${currentTopic} problem solving`, is_completed: false },
+        { step_number: 4, title: `Capstone & Mastery`, description: "Cross-disciplinary applications, cutting-edge science, and exam mastery.", subtopic_query: `Real world applications of ${currentTopic}`, is_completed: false },
+      ];
+    }
+
+    grid.innerHTML = steps.map((step, idx) => {
+      const isPart1 = step.step_number === 1 || step.is_completed;
+      const isPart2 = step.step_number === 2;
+
+      let cardBorder = isPart1
+        ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30"
+        : isPart2
+        ? "border-purple-400 dark:border-purple-600 bg-white dark:bg-slate-800 ring-2 ring-purple-500/50 shadow-md shadow-purple-500/10"
+        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80";
+
+      let badge = isPart1
+        ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300">✅ Part 1 • Completed</span>`
+        : isPart2
+        ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-600 to-pink-600 text-white animate-pulse">🔥 Part 2 • UP NEXT</span>`
+        : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Part ${step.step_number || idx + 1}</span>`;
+
+      let btn = isPart1
+        ? `<button class="w-full py-2 px-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-default">
+             <span>✨ Mastered</span>
+           </button>`
+        : isPart2
+        ? `<button data-subtopic="${encodeURIComponent(step.subtopic_query || step.title)}" class="learn-next-step-btn w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-black shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5">
+             <span>🚀 Learn Part 2 ➔</span>
+           </button>`
+        : `<button data-subtopic="${encodeURIComponent(step.subtopic_query || step.title)}" class="learn-next-step-btn w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-purple-100 dark:bg-slate-700 dark:hover:bg-purple-950 text-slate-800 hover:text-purple-700 dark:text-slate-200 dark:hover:text-purple-300 text-xs font-bold border border-slate-200 dark:border-slate-600 transition flex items-center justify-center gap-1.5">
+             <span>Explore Part ${step.step_number || idx + 1} ➔</span>
+           </button>`;
+
+      return `
+        <div class="rounded-2xl p-4 border flex flex-col justify-between space-y-3 transition duration-200 ${cardBorder}">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              ${badge}
+            </div>
+            <h4 class="text-sm font-black text-slate-900 dark:text-white leading-snug">${step.title}</h4>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">${step.description}</p>
+          </div>
+          <div class="pt-2 border-t border-slate-100 dark:border-slate-750">
+            ${btn}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Bind click handlers to "Learn Next Step" buttons
+    grid.querySelectorAll(".learn-next-step-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const subtopic = decodeURIComponent(button.getAttribute("data-subtopic"));
+        if (!subtopic) return;
+
+        // Populate search box
+        studyTextInput.value = subtopic;
+        
+        // Play level up sound
+        playSound("levelUp");
+
+        // Scroll back up to input
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        // Trigger generation
+        showToast(`🚀 Loading Next Chapter: "${subtopic}"...`, "info");
+        setTimeout(() => {
+          generateStudyKit();
+        }, 300);
+      });
+    });
+  }
