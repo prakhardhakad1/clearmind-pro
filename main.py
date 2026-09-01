@@ -451,7 +451,7 @@ Instructions:
 2. 'warm_greeting': A lively, warm human opening expressing excitement to teach.
 3. 'simplified_text': A vivid, intuitive, real-world conversational breakdown using brilliant analogies.
 4. 'key_takeaways': Exactly 3 memorable takeaway bullet points in {target_language}.
-5. 'concept_map_mermaid': Valid Mermaid.js flowchart (graph TD/LR) in {target_language}.
+5. 'concept_map_mermaid': Valid Mermaid.js flowchart (graph TD). Strictly format every node with double quotes, e.g. A["Step 1"] --> B["Step 2"]. Avoid special characters or raw colons inside labels.
 6. 'interactive_sim': Parameters for a 2-slider simulation widget in {target_language}.
 7. 'flashcards': 3 high-yield active-recall cards with 'question', 'answer', and 'hint' in {target_language}.
 8. 'feynman_challenge': Set up the "Teach Curious Leo" reverse-tutor arena in {target_language}.

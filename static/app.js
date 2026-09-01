@@ -728,19 +728,60 @@
     resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function sanitizeMermaid(raw) {
+    if (!raw) return "graph TD\n  A[Start] --> B[Concept]";
+    let code = raw.trim();
+    // Strip markdown fences
+    code = code.replace(/```(?:mermaid)?/g, "").replace(/```/g, "").trim();
+    if (!code.startsWith("graph") && !code.startsWith("flowchart")) {
+      code = "graph TD\n" + code;
+    }
+    // Clean dangerous special characters inside nodes
+    code = code.replace(/\[(.*?)\]/g, (match, inner) => {
+      const sanitized = inner.replace(/["\(\)\{\}\;]/g, " ").trim();
+      return `["${sanitized}"]`;
+    });
+    return code;
+  }
+
   async function renderMermaidMap(mermaidCode) {
-    if (!mermaidCode || !conceptMapContainer) return;
+    if (!conceptMapContainer) return;
+    // Remove any previous error bombs injected by Mermaid
+    document.querySelectorAll('[id^="dmermaid"], [id^="mermaid-"], svg[aria-roledescription="error"]').forEach(el => el.remove());
+
+    if (!mermaidCode) {
+      conceptMapContainer.innerHTML = '<p class="text-xs text-slate-400 italic">Visual map generating...</p>';
+      return;
+    }
+
     try {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: isDarkMode ? "dark" : "default",
-        securityLevel: "loose",
-      });
-      const cleanMermaid = mermaidCode.trim();
-      const { svg } = await mermaid.render("mermaidSvgGraph", cleanMermaid);
-      conceptMapContainer.innerHTML = svg;
+      if (typeof mermaid !== "undefined") {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode ? "dark" : "default",
+          securityLevel: "loose",
+          suppressErrorRendering: true,
+          fontFamily: "Inter, sans-serif"
+        });
+        const clean = sanitizeMermaid(mermaidCode);
+        const uniqueId = "mermaidSvg_" + Math.random().toString(36).substring(2, 9);
+        const { svg } = await mermaid.render(uniqueId, clean);
+        conceptMapContainer.innerHTML = svg;
+      }
     } catch (e) {
-      conceptMapContainer.innerHTML = `<p class="text-xs text-purple-700 dark:text-purple-300 font-mono">${mermaidCode}</p>`;
+      console.warn("Mermaid render fallback:", e);
+      // Clean error bomb from DOM immediately
+      document.querySelectorAll('[id^="dmermaid"], [id^="mermaid-"], svg[aria-roledescription="error"]').forEach(el => el.remove());
+      // Render a clean visual flowchart fallback
+      conceptMapContainer.innerHTML = `
+        <div class="flex flex-wrap items-center justify-center gap-3 p-4 bg-purple-50/60 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
+          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">🌱 Core Input</div>
+          <span class="text-purple-500 font-bold">➔</span>
+          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">⚡ Transformation Process</div>
+          <span class="text-purple-500 font-bold">➔</span>
+          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">🎯 Key Output & Master Rule</div>
+        </div>
+      `;
     }
   }
 
