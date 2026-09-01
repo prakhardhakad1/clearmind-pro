@@ -637,8 +637,20 @@
     resultsSection.classList.add('hidden');
     resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    btnLabel.textContent = "🌸 Luna is Teaching...";
-    statusMsg.textContent = "Synthesizing metaphors, knowledge map & active-recall kit...";
+    btnLabel.textContent = "🧠 Luna is Thinking...";
+    const thinkingSteps = [
+      "🧠 Luna is analyzing core concepts & intuition...",
+      "💡 Crafting vivid real-world analogies & mental models...",
+      "🗺️ Building step-by-step visual concept hierarchy...",
+      "🃏 Synthesizing active-recall 3D flashcards...",
+      "📍 Mapping 4-part sequential mastery pathway..."
+    ];
+    let stepIdx = 0;
+    statusMsg.textContent = thinkingSteps[0];
+    const thinkingInterval = setInterval(() => {
+      stepIdx = (stepIdx + 1) % thinkingSteps.length;
+      statusMsg.textContent = thinkingSteps[stepIdx];
+    }, 1800);
 
     try {
       const res = await fetch("/api/simplify", {
@@ -668,6 +680,7 @@
       console.error("Study Kit Generation Error:", err);
       showError("Something went wrong generating your study kit — please try again.");
     } finally {
+      if (typeof thinkingInterval !== "undefined") clearInterval(thinkingInterval);
       submitBtn.disabled = false;
       if (demoBtn) demoBtn.disabled = false;
       spinner.classList.add("hidden");
