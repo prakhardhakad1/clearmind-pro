@@ -19,8 +19,8 @@ echo.
 :: Automatically open browser after 2 seconds
 start "" powershell -WindowStyle Hidden -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8000'"
 
-:: Start Uvicorn FastAPI Server
-python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+:: Start Uvicorn FastAPI Server (0.0.0.0 allows mobile & local network access)
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 if %errorlevel% neq 0 (
     echo.
