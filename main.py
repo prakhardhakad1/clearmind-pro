@@ -1,7 +1,7 @@
 """
 ClearMind Pro — Multi-Modal AI Educational Ecosystem
 Backend Entrypoint (FastAPI)
-Powered by Google Gemini 3.6 Flash + Microsoft Edge Neural Voice
+Powered by Google Gemini 3.6 Flash + Zhipu GLM-4 Failover + Microsoft Edge Neural Voice
 """
 
 import sys
@@ -179,6 +179,33 @@ def get_gemini_client(custom_key: Optional[str] = None):
         logger.error(f"Failed to create Gemini client: {e}")
         return None
 
+
+async def call_glm_completion(user_prompt: str, sys_prompt: str = "") -> Optional[str]:
+    """Zhipu AI GLM-4 Zero-Downtime Failover API."""
+    glm_key = os.getenv("GLM_API_KEY")
+    if not glm_key:
+        return None
+    url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    headers = {"Authorization": f"Bearer {glm_key}", "Content-Type": "application/json"}
+    payload = {
+        "model": "glm-4-flash",
+        "messages": [
+            {"role": "system", "content": sys_prompt or "You are an expert AI educator."},
+            {"role": "user", "content": user_prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 1500
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, headers=headers, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.error(f"GLM failover request error: {e}")
+    return None
+
 async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") -> Optional[str]:
     """Synthesizes high-fidelity neural voice using Microsoft Edge TTS and returns base64 MP3."""
     if not text or not text.strip():
@@ -265,7 +292,9 @@ async def get_status():
     return {
         "status": "online",
         "gemini_active": bool(os.getenv("GEMINI_API_KEY")),
-        "engine": "Google Gemini 3.6 Flash",
+        "gemini_active": bool(os.getenv("GEMINI_API_KEY")),
+        "glm4_active": bool(os.getenv("GLM_API_KEY")),
+        "engine": "Google Gemini 3.6 Flash + GLM-4 Zero-Downtime Failover" if os.getenv("GLM_API_KEY") else "Google Gemini 3.6 Flash",
         "voice": "Microsoft Edge Neural Voice"
     }
 
@@ -339,6 +368,10 @@ You MUST respond strictly with a valid JSON object matching this schema:
         s_client = get_gemini_client(None)
         if s_client:
             raw_json = call_gemini_with_fallback(s_client, content_items, sys_prompt, is_json=True)
+
+    # GLM-4 Failover Safety Net
+    if not raw_json and os.getenv("GLM_API_KEY"):
+        raw_json = await call_glm_completion(user_prompt, sys_prompt)
 
 
     if raw_json:

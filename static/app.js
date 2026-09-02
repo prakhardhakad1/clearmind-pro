@@ -1403,7 +1403,6 @@
       const nInp = document.getElementById("inputStudentName");
       const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
-      const kInp = document.getElementById("inputApiKey");
       const closeBtn = document.getElementById("closeProfileModal");
       const titleEl = document.getElementById("profileModalTitle");
       const subtitleEl = document.getElementById("profileModalSubtitle");
@@ -1411,15 +1410,14 @@
       if (nInp) nInp.value = studentProfile.name || "Prakhar";
       if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
       if (tInp) tInp.value = activeTopic || "";
-      if (kInp) kInp.value = localStorage.getItem("clearmind_gemini_key") || "";
 
       if (isFirstTime) {
         if (titleEl) titleEl.innerHTML = `<span>✨ Welcome to ClearMind Pro</span>`;
-        if (subtitleEl) subtitleEl.textContent = "Please enter your name, topic, and Gemini API key to begin";
+        if (subtitleEl) subtitleEl.textContent = "Please enter your name and topic to enter the classroom";
         if (closeBtn) closeBtn.classList.add("hidden");
       } else {
         if (titleEl) titleEl.innerHTML = `<span>⚙️ Student Profile & Settings</span>`;
-        if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or API key anytime";
+        if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or grade level anytime";
         if (closeBtn) closeBtn.classList.remove("hidden");
       }
 
@@ -1442,17 +1440,8 @@
       const nInp = document.getElementById("inputStudentName");
       const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
-      const kInp = document.getElementById("inputApiKey");
       const enteredName = nInp?.value.trim() || "Student";
       const chosenTopic = tInp?.value.trim() || "General Science & Problem Solving";
-      if (kInp) {
-        const enteredKey = kInp.value.trim();
-        if (enteredKey) {
-          localStorage.setItem("clearmind_gemini_key", enteredKey);
-        } else {
-          localStorage.removeItem("clearmind_gemini_key");
-        }
-      }
 
       const finalName = (enteredName && enteredName.toLowerCase() !== "student") ? enteredName : "Prakhar";
 
@@ -1616,9 +1605,8 @@
     // Mandatory Setup Check: If user has never completed setup or requested via URL
     const urlParams = new URLSearchParams(window.location.search);
     const hasCompletedSetup = localStorage.getItem("clearmind_setup_completed");
-    const hasSavedKey = localStorage.getItem("clearmind_gemini_key");
 
-    if (!hasCompletedSetup || !hasSavedKey || urlParams.has("settings")) {
+    if (!hasCompletedSetup || urlParams.has("settings")) {
       setTimeout(() => {
         openProfile(!hasCompletedSetup);
       }, 400);
