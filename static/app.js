@@ -1459,31 +1459,24 @@
       playSound("fanfare");
       showToast("Welcome " + finalName + "! Classroom ready for " + activeTopic, "success");
 
-      // Reset chat and give greeting asking what they want to learn
+      // Reset chat and give clean welcoming greeting
       const box = document.getElementById("chatMessagesContainer");
       if (box) box.innerHTML = "";
       conversationHistory = [];
       saveHistory();
 
-      if (tInp && tInp.value.trim()) {
-        sendChatMessage(`Hi Luna! I am ${enteredName}. I am studying at ${studentProfile.level} level and I want to learn ${activeTopic}. Please give me an exciting breakdown with a real-world analogy!`);
-      } else {
-        appendLunaMessage({
-          reply_text: `Hello **${enteredName}**! 🌸 Wonderful to meet you!\n\nI have calibrated your tutoring session for **${studentProfile.level}**.\n\n**What would you like to learn today?**\n\nType any topic, paste your homework question, or tap a suggestion chip below!`,
-          speech_text: `Hello ${enteredName}! What would you like to learn today?`,
-          analogy_card: {
-            title: "🎯 Calibrated for Your Level",
-            description: `Ready for ${studentProfile.level}. Ask anything or click a subject below!`
-          }
-        });
-        renderSuggestedChips([
-          "⚛️ Physics: Newton's Laws of Motion",
-          "📐 Math: Differentiation & Calculus",
-          "🌿 Biology: Photosynthesis & Plants",
-          "🧪 Chemistry: Organic Reactions",
-          "💻 Computer Science & Programming"
-        ]);
-      }
+      appendLunaMessage({
+        reply_text: `Hey **${finalName}**! 🌸 Welcome to ClearMind Pro!\n\nI have calibrated your personal session for **${studentProfile.level}** on **${activeTopic}**.\n\n**What would you like to explore or conquer first?** Ask me any question, paste a problem, or tap a suggestion below!`,
+        speech_text: `Hey ${finalName}! Welcome to ClearMind Pro. What would you like to learn today?`,
+        analogy_card: null
+      });
+
+      renderSuggestedChips([
+        `Explain ${activeTopic} in simple terms`,
+        "Show a vivid real-world analogy 💡",
+        "Give me the #1 Examiner Trap ⚠️",
+        "Test me with 60s Blitz Quiz ⏱️"
+      ]);
     });
 
     // Avatar Picker Buttons

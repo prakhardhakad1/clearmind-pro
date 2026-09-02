@@ -386,10 +386,14 @@ You MUST respond strictly with a valid JSON object matching this schema:
             if not r_steps or not isinstance(r_steps, list) or len(r_steps) == 0:
                 r_steps = extract_roadmap_steps_from_text(reply)
 
+            # Do NOT attach an analogy card for simple greetings or pleasantries!
+            is_greeting = any(user_msg.lower().strip().startswith(g) for g in ["hello", "hi", "hey", "hola", "namaste", "kaise ho", "sup", "yo", "good morning", "good evening"])
+            card = None if is_greeting else d.get("analogy_card")
+
             return ChatTeachResponse(
                 reply_text=reply,
                 speech_text=speech,
-                analogy_card=d.get("analogy_card") or {"title": f"💡 {det_topic} Insight", "description": "Core physical and mathematical model."},
+                analogy_card=card,
                 suggested_replies=d.get("suggested_replies") or ["Tell me more!", "Give an everyday analogy 💡", "Next concept ➔"],
                 canvas_node_title=d.get("canvas_node_title") or det_topic,
                 canvas_node_summary=d.get("canvas_node_summary") or "Core concept analyzed.",
