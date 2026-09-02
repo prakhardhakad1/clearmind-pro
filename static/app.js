@@ -1399,15 +1399,30 @@
 
     // Profile / Settings Modal Controller
     const pModal = document.getElementById("profileModal");
-    const openProfile = () => {
+    const openProfile = (isFirstTime = false) => {
       const nInp = document.getElementById("inputStudentName");
       const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
       const kInp = document.getElementById("inputApiKey");
+      const closeBtn = document.getElementById("closeProfileModal");
+      const titleEl = document.getElementById("profileModalTitle");
+      const subtitleEl = document.getElementById("profileModalSubtitle");
+
       if (nInp) nInp.value = studentProfile.name || "";
       if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
       if (tInp) tInp.value = activeTopic || "";
       if (kInp) kInp.value = localStorage.getItem("clearmind_gemini_key") || "";
+
+      if (isFirstTime) {
+        if (titleEl) titleEl.innerHTML = `<span>✨ Welcome to ClearMind Pro</span>`;
+        if (subtitleEl) subtitleEl.textContent = "Please enter your name, topic, and Gemini API key to begin";
+        if (closeBtn) closeBtn.classList.add("hidden");
+      } else {
+        if (titleEl) titleEl.innerHTML = `<span>⚙️ Student Profile & Settings</span>`;
+        if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or API key anytime";
+        if (closeBtn) closeBtn.classList.remove("hidden");
+      }
+
       pModal?.classList.remove("hidden");
     };
 
@@ -1439,11 +1454,18 @@
         }
       }
 
+      if (!enteredName || enteredName.toLowerCase() === "student") {
+        showToast("Please enter your name to continue!", "warning");
+        nInp?.focus();
+        return;
+      }
+
       studentProfile.name = enteredName;
       studentProfile.level = lInp?.value || "College / University";
       activeTopic = chosenTopic;
       localStorage.setItem("clearmind_profile", JSON.stringify(studentProfile));
       localStorage.setItem("clearmind_active_topic", activeTopic);
+      localStorage.setItem("clearmind_setup_completed", "true");
 
       updateHUD();
       updateActiveTopicUI();
@@ -1595,12 +1617,15 @@
       }
     }
 
-    // Auto-open settings if requested via URL or for new users
+    // Mandatory Setup Check: If user has never completed setup or requested via URL
     const urlParams = new URLSearchParams(window.location.search);
-    if (!studentProfile.name || urlParams.has("settings")) {
+    const hasCompletedSetup = localStorage.getItem("clearmind_setup_completed");
+    const hasSavedKey = localStorage.getItem("clearmind_gemini_key");
+
+    if (!hasCompletedSetup || !hasSavedKey || urlParams.has("settings")) {
       setTimeout(() => {
-        openProfile();
-      }, 300);
+        openProfile(!hasCompletedSetup);
+      }, 400);
     }
 
     console.log("🌸 ClearMind Pro v17.0 — High-Yield Educational Engine Ready.");

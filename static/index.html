@@ -64,7 +64,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/style.css?v=22.0" />
+  <link rel="stylesheet" href="/style.css?v=23.0" />
   <!-- KaTeX for Scientific & Mathematical Formula Typography -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -722,11 +722,16 @@
   <!-- ========================================================================= -->
   <!-- STUDENT PROFILE MODAL                                                     -->
   <!-- ========================================================================= -->
-  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-obsidian-900 border border-obsidian-750 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-obsidian-900 border border-purple-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl shadow-purple-950/50 space-y-4 ring-1 ring-purple-500/20">
       <div class="flex items-center justify-between border-b border-obsidian-800 pb-3">
-        <h3 class="text-sm font-extrabold text-white">Student Profile Settings</h3>
-        <button id="closeProfileModal" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+        <div>
+          <h3 id="profileModalTitle" class="text-sm font-extrabold text-white flex items-center gap-2">
+            <span>✨ Welcome to ClearMind Pro</span>
+          </h3>
+          <p id="profileModalSubtitle" class="text-[11px] text-purple-300/80 mt-0.5">Please configure your learning profile & AI key to begin</p>
+        </div>
+        <button id="closeProfileModal" class="text-slate-400 hover:text-white font-bold text-lg p-1 rounded-lg hover:bg-obsidian-800 transition">✕</button>
       </div>
 
       <div class="space-y-3">
@@ -772,18 +777,19 @@
           </select>
         </div>
 
-        <div>
-          <label for="inputApiKey" class="text-xs font-bold text-slate-300 flex items-center justify-between">
-            <span>🔑 Gemini API Key (Optional):</span>
-            <span class="text-[10px] text-purple-400 font-normal">Paste demo key or leave blank for .env</span>
+        <div class="bg-purple-950/20 border border-purple-800/40 rounded-2xl p-3 space-y-1.5">
+          <label for="inputApiKey" class="text-xs font-bold text-purple-200 flex items-center justify-between">
+            <span class="flex items-center gap-1.5">🔑 Gemini API Key:</span>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-[10px] text-cyan-400 hover:text-cyan-300 underline font-normal">Get Free Key (₹0) ↗</a>
           </label>
-          <input type="password" id="inputApiKey" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs font-mono focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="AIzaSy... (paste your Gemini API key here)" />
+          <input type="password" id="inputApiKey" class="w-full bg-obsidian-900 border border-purple-700/50 text-slate-100 rounded-xl p-2.5 text-xs font-mono focus:ring-2 focus:ring-purple-400 focus:outline-none placeholder-slate-500" placeholder="AIzaSy... (paste your free or demo Gemini key here)" />
+          <p class="text-[10px] text-slate-400 leading-tight">Paste your free Google AI Studio key (starts with <code class="text-purple-300 font-mono">AIzaSy</code>). If running locally with <code class="text-purple-300 font-mono">.env</code>, you can leave it blank.</p>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-800">
         <button id="saveProfileBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition">
-          Save Profile
+          🚀 Save & Enter Classroom
         </button>
       </div>
     </div>
@@ -793,6 +799,6 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- App Core JS -->
-  <script src="/app.js?v=22.0"></script>
+  <script src="/app.js?v=23.0"></script>
 </body>
 </html>
