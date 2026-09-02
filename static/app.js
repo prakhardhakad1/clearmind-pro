@@ -1,2152 +1,1596 @@
 /**
- * ClearMind Pro v4.0 — Unified Educational Master Controller
- * Socratic Voice Mode, AI Smart Whiteboard, Generative Labs, 3D Flashcards & Anki Export
+ * ClearMind Pro v17.0 — Obsidian Glass Live Knowledge Canvas
+ * 100% Complete, High-Yield Educational Engine
  */
-
 (function () {
   "use strict";
 
-  // ------------------------------------------------------------------ State
-  let currentLanguage = "hinglish";
-  let currentLevel = "10yo";
-  let currentImageBase64 = null;
-  let currentImageMime = "image/jpeg";
-  let activeStudyData = null;
+  // =========================================================================
+  // APP STATE & PROFILE
+  // =========================================================================
+  let activeTopic = localStorage.getItem("clearmind_active_topic") || "";
+  let activeLanguage = localStorage.getItem("clearmind_lang") || "hinglish";
+  let soundEnabled = localStorage.getItem("clearmind_sound") !== "false";
+  let isVoiceCallActive = false;
+  let voiceRecognition = null;
+  let activeAudio = null;
+  let cachedCheatSheets = {};
+  let awardedCheatSheetTopics = new Set();
 
-
-  let totalXP = parseInt(localStorage.getItem('clearmind_xp') || '0');
-  let studentProfile = JSON.parse(localStorage.getItem('clearmind_profile') || '{"name":"Alex","avatar":"🧠","grade":"High School","goal":"Master Core Concepts"}');
-
-  let studyHistory = JSON.parse(localStorage.getItem('clearmind_history') || '[]');
-  let currentStreak = parseInt(localStorage.getItem('clearmind_streak') || '1');
-  let lastStudyDate = localStorage.getItem('clearmind_last_study_date');
-
-  let allFlipped = false;
-  let isDarkMode = false;
-  let isSfxEnabled = true;
-
-  // Studio Neural Audio State
-  let neuralAudio = null;
-  let isAudioPlaying = false;
-  let highlightInterval = null;
-
-  // Socratic Voice State
-  let socraticHistory = [];
-  let socraticRecognition = null;
-  let isSocraticListening = false;
-  let socraticAudio = null;
-
-  // Quick Test State
-  let selectedQuizCount = 5;
-  let selectedQuizDiff = "easy";
-  let quizQuestions = [];
-  let currentQuizIndex = 0;
-  let currentQuizScore = 0;
-
-  // Whiteboard Canvas State
-  let wbCanvas = null;
-  let wbCtx = null;
-  let wbIsDrawing = false;
-  let wbTool = "pen"; // "pen" | "eraser"
-  let wbColor = "#4f46e5";
-  let wbLineWidth = 3;
-
-  // Dynamic Sandbox State
-  let customLabAnimId = null;
-  let customLabState = {
-    _particles: [],
-    mouseX: 0,
-    mouseY: 0,
-    isMouseDown: false,
-  };
-  let customLabRenderFn = null;
-
-  // ------------------------------------------------------------------ Audio Synthesizer (SFX)
-  let audioCtx = null;
-  function getAudioContext() {
-    if (!audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) audioCtx = new AudioContextClass();
-    }
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume();
-    }
-    return audioCtx;
+  // v19 clean greeting migration: clear old default Python conversation
+  if (!localStorage.getItem("clearmind_v19_ask_greeting")) {
+    localStorage.removeItem("clearmind_conv_history");
+    localStorage.removeItem("clearmind_active_topic");
+    localStorage.setItem("clearmind_v19_ask_greeting", "true");
   }
 
-  function playSfx(type) {
-    if (!isSfxEnabled) return;
+  let totalXP = parseInt(localStorage.getItem("clearmind_xp") || "0", 10);
+  let currentStreak = parseInt(localStorage.getItem("clearmind_streak") || "1", 10);
+
+  let studentProfile = JSON.parse(
+    localStorage.getItem("clearmind_profile") ||
+      JSON.stringify({
+        name: "",
+        avatar: "🎓",
+        level: "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)"
+      })
+  );
+
+  let conversationHistory = JSON.parse(
+    localStorage.getItem("clearmind_conv_history") || "[]"
+  );
+  function saveHistory() {
+    conversationHistory = conversationHistory.slice(-12);
+    localStorage.setItem("clearmind_conv_history", JSON.stringify(conversationHistory));
+  }
+
+  // 60s Blitz Battle State
+  let blitzState = {
+    timerInterval: null,
+    timeLeft: 60,
+    score: 0,
+    combo: 1,
+    currentQuestionIdx: 0,
+    questions: [],
+    isRunning: false
+  };
+
+  // =========================================================================
+  // WEB AUDIO SYNTHESIZER
+  // =========================================================================
+  const audioCtx =
+    typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext)
+      ? new (window.AudioContext || window.webkitAudioContext)()
+      : null;
+
+  function playSound(type) {
+    if (!soundEnabled || !audioCtx) return;
     try {
-      const ctx = getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
 
       if (type === "click") {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
-        gain.gain.setValueAtTime(0.12, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
         osc.start(now);
         osc.stop(now + 0.05);
-      } else if (type === "flip") {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(320, now);
-        osc.frequency.exponentialRampToValueAtTime(180, now + 0.08);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.08);
       } else if (type === "correct") {
-        [523.25, 659.25, 783.99].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(freq, now + i * 0.06);
-          gain.gain.setValueAtTime(0.15, now + i * 0.06);
-          gain.gain.linearRampToValueAtTime(0.01, now + i * 0.06 + 0.25);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now + i * 0.06);
-          osc.stop(now + i * 0.06 + 0.25);
-        });
-      } else if (type === "wrong") {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.setValueAtTime(120, now + 0.1);
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        osc.frequency.setValueAtTime(783.99, now + 0.16);
         gain.gain.setValueAtTime(0.15, now);
-        gain.gain.linearRampToValueAtTime(0.01, now + 0.22);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         osc.start(now);
-        osc.stop(now + 0.22);
-      } else if (type === "level_up") {
-        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(freq, now + i * 0.08);
-          gain.gain.setValueAtTime(0.2, now + i * 0.08);
-          gain.gain.linearRampToValueAtTime(0.01, now + i * 0.08 + 0.35);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now + i * 0.08);
-          osc.stop(now + i * 0.08 + 0.35);
+        osc.stop(now + 0.3);
+      } else if (type === "wrong") {
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(160, now + 0.2);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === "combo") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === "tick") {
+        osc.frequency.setValueAtTime(1000, now);
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        osc.start(now);
+        osc.stop(now + 0.03);
+      } else if (type === "fanfare") {
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.connect(g);
+          g.connect(audioCtx.destination);
+          o.frequency.setValueAtTime(f, now + i * 0.1);
+          g.gain.setValueAtTime(0.15, now + i * 0.1);
+          g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.25);
+          o.start(now + i * 0.1);
+          o.stop(now + i * 0.1 + 0.25);
         });
       }
     } catch (e) {
-      console.warn("SFX synthesis error:", e);
+      console.warn("Audio error:", e);
     }
   }
 
+  // =========================================================================
+  // TOAST NOTIFICATIONS
+  // =========================================================================
+  function showToast(msg, type) {
+    type = type || "info";
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+    const toast = document.createElement("div");
+    const bg =
+      type === "success"
+        ? "bg-emerald-950/90 border-emerald-600 text-emerald-200"
+        : type === "error"
+        ? "bg-rose-950/90 border-rose-600 text-rose-200"
+        : "bg-obsidian-850/90 border-obsidian-700 text-slate-200";
+
+    toast.className =
+      "px-4 py-2.5 rounded-2xl border text-xs font-bold shadow-xl backdrop-blur-md transition transform duration-300 translate-y-2 opacity-0 pointer-events-auto " +
+      bg;
+    toast.textContent = msg;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.remove("translate-y-2", "opacity-0"), 20);
+    setTimeout(() => {
+      toast.classList.add("opacity-0", "translate-y-2");
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // =========================================================================
+  // GAMIFICATION: XP & DAILY STREAK
+  // =========================================================================
   function addXP(amount) {
     totalXP += amount;
-    localStorage.setItem('clearmind_xp', totalXP);
-    const xpEl = document.getElementById("xpScore");
-    if (xpEl) xpEl.textContent = totalXP;
-    updateDashboard();
-    initProfileModal();
-  }
-
-  function checkStreak() {
-    const today = new Date().toISOString().split('T')[0];
-    if (lastStudyDate === today) return; // Already studied today
-    
-    if (lastStudyDate) {
-      const lastDate = new Date(lastStudyDate);
-      const todayDate = new Date(today);
-      const diffTime = Math.abs(todayDate - lastDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-      
-      if (diffDays === 1) {
-        currentStreak++;
-      } else if (diffDays > 1) {
-        currentStreak = 1;
-      }
-    } else {
-      currentStreak = 1;
-    }
-    
-    lastStudyDate = today;
-    localStorage.setItem('clearmind_streak', currentStreak);
-    localStorage.setItem('clearmind_last_study_date', lastStudyDate);
-    
-    const streakEl = document.getElementById("streakCount");
-    if (streakEl) streakEl.textContent = currentStreak;
-    updateDashboard();
-    initProfileModal();
-  }
-
-  function recordStudySession(topic) {
-    checkStreak();
-    const existing = studyHistory.find(h => h.topic === topic);
-    if (!existing) {
-      studyHistory.push({ topic: topic, date: new Date().toISOString(), mastery: 0 });
-      localStorage.setItem('clearmind_history', JSON.stringify(studyHistory));
-      updateDashboard();
-    initProfileModal();
+    localStorage.setItem("clearmind_xp", String(totalXP));
+    updateHUD();
+    const disp = document.getElementById("totalXPDisplay");
+    if (disp) {
+      disp.classList.add("scale-125", "text-purple-300");
+      setTimeout(() => disp.classList.remove("scale-125", "text-purple-300"), 400);
     }
   }
 
-  function updateStudyMastery(topic, scorePercent) {
-    const session = studyHistory.find(h => h.topic === topic);
-    if (session) {
-      session.mastery = Math.max(session.mastery, scorePercent);
-      localStorage.setItem('clearmind_history', JSON.stringify(studyHistory));
-      updateDashboard();
-    initProfileModal();
+  function bumpStreak() {
+    const today = new Date().toISOString().slice(0, 10);
+    const lastDate = localStorage.getItem("clearmind_last_streak_date") || "";
+    if (lastDate === today) return;
+
+    currentStreak += 1;
+    localStorage.setItem("clearmind_streak", String(currentStreak));
+    localStorage.setItem("clearmind_last_streak_date", today);
+    updateHUD();
+    showToast("🔥 Daily Streak Extended: " + currentStreak + " Days!", "success");
+  }
+
+  function updateHUD() {
+    const sName = document.getElementById("profileNameHeader");
+    const sAvatar = document.getElementById("profileAvatarHeader");
+    const sXP = document.getElementById("totalXPDisplay");
+    const sStreak = document.getElementById("streakCount");
+
+    const jName = document.getElementById("journeyStudentName");
+    const jAvatar = document.getElementById("journeyAvatar");
+    const jLevel = document.getElementById("journeyStudyLevel");
+    const jProgress = document.getElementById("journeyXPProgress");
+    const jBar = document.getElementById("journeyXPBar");
+
+    const displayName = studentProfile.name || "Student";
+    const displayAvatar = studentProfile.avatar || "🎓";
+
+    // Update Header HUD
+    if (sName) sName.textContent = displayName;
+    if (sAvatar) sAvatar.textContent = displayAvatar;
+    if (sXP) sXP.textContent = totalXP;
+    if (sStreak) sStreak.textContent = currentStreak;
+
+    // Update Student Journey View
+    if (jName) jName.textContent = displayName;
+    if (jAvatar) jAvatar.textContent = displayAvatar;
+    if (jLevel) jLevel.textContent = studentProfile.level || "College / University";
+    if (jProgress) jProgress.textContent = `${totalXP} / 4000 XP`;
+    if (jBar) {
+      const pct = Math.min(100, Math.max(3, Math.round((totalXP / 4000) * 100)));
+      jBar.style.width = `${pct}%`;
     }
   }
 
-  function updateDashboard() {
-    const dashXP = document.getElementById('dashTotalXP');
-    const dashStreak = document.getElementById('dashStreak');
-    const dashTopics = document.getElementById('dashTopicsCount');
-    const dashList = document.getElementById('dashHistoryList');
-    
-    if (dashXP) dashXP.textContent = totalXP;
-    if (dashStreak) dashStreak.textContent = currentStreak;
-    if (dashTopics) dashTopics.textContent = studyHistory.length;
-    
-    if (dashList && studyHistory.length > 0) {
-      dashList.innerHTML = studyHistory.slice().reverse().map(h => `
-        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-          <div>
-            <p class="text-sm font-bold text-slate-800 dark:text-slate-200">${h.topic}</p>
-            <p class="text-[10px] text-slate-500">${new Date(h.date).toLocaleDateString()}</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-20 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-emerald-500" style="width: ${h.mastery}%"></div>
-            </div>
-            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${h.mastery}%</span>
-          </div>
-        </div>
-      `).join('');
-    }
+  // =========================================================================
+  // UTILITIES: HTML ESCAPING, MARKDOWN & LATEX KATEX RENDERING
+  // =========================================================================
+  function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
+  function formatMarkdown(raw) {
+    if (!raw) return "";
 
-  // ------------------------------------------------------------------ DOM Elements
-  const languageSelect      = document.getElementById("languageSelect");
-  const sfxToggleBtn        = document.getElementById("sfxToggleBtn");
-  const sfxIcon             = document.getElementById("sfxIcon");
-  const themeToggleBtn      = document.getElementById("themeToggleBtn");
-  const themeIcon           = document.getElementById("themeIcon");
-  const navTabs             = document.querySelectorAll(".nav-tab");
-  const tabPanes            = document.querySelectorAll(".tab-pane");
-
-  // Study Studio
-  const levelPills          = document.querySelectorAll(".level-pill");
-  const sampleButtons       = document.querySelectorAll(".sample-btn");
-  const inputText           = document.getElementById("inputText");
-  const submitBtn           = document.getElementById("submitBtn");
-  const demoBtn             = document.getElementById("demoBtn");
-  const btnLabel            = document.getElementById("btnLabel");
-  const spinner             = document.getElementById("spinner");
-  const statusMsg           = document.getElementById("statusMsg");
-  const errorBox            = document.getElementById("errorBox");
-  const errorMsgText        = document.getElementById("errorMsgText");
-
-  // Vision
-  const dropzone            = document.getElementById("dropzone");
-  const imageInput          = document.getElementById("imageInput");
-  const dropzonePrompt      = document.getElementById("dropzonePrompt");
-  const imagePreviewContainer = document.getElementById("imagePreviewContainer");
-  const imagePreview        = document.getElementById("imagePreview");
-  const clearImageBtn       = document.getElementById("clearImageBtn");
-
-  // Results
-  const resultsSection      = document.getElementById("results");
-  const analogyTitle        = document.getElementById("analogyTitle");
-  const levelBadge          = document.getElementById("levelBadge");
-  const lunaGreetingText    = document.getElementById("lunaGreetingText");
-  const simplifiedText      = document.getElementById("simplifiedText");
-  const keyTakeawaysList    = document.getElementById("keyTakeawaysList");
-  const conceptMapContainer = document.getElementById("conceptMapContainer");
-  const flashcardsGrid      = document.getElementById("flashcardsGrid");
-  const flipAllBtn          = document.getElementById("flipAllBtn");
-  const copyBtn             = document.getElementById("copyBtn");
-  const copyBtnText         = document.getElementById("copyBtnText");
-
-  // Studio Voice Player
-  const speakBtn            = document.getElementById("speakBtn");
-  const speakBtnText        = document.getElementById("speakBtnText");
-  const speakIcon           = document.getElementById("speakIcon");
-  const soundWave           = document.getElementById("soundWave");
-  const stopVoiceBtn        = document.getElementById("stopVoiceBtn");
-
-  // Doubt Solver Modal
-  const openDoubtBtn        = document.getElementById("openDoubtBtn");
-  const doubtModal          = document.getElementById("doubtModal");
-  const closeDoubtModal     = document.getElementById("closeDoubtModal");
-  const doubtInput          = document.getElementById("doubtInput");
-  const doubtMicBtn         = document.getElementById("doubtMicBtn");
-  const doubtMicLabel       = document.getElementById("doubtMicLabel");
-  const submitDoubtBtn      = document.getElementById("submitDoubtBtn");
-  const doubtBtnText        = document.getElementById("doubtBtnText");
-  const doubtSpinner        = document.getElementById("doubtSpinner");
-  const doubtAnswerContainer= document.getElementById("doubtAnswerContainer");
-  const doubtAnswerText     = document.getElementById("doubtAnswerText");
-  const doubtAnalogyText    = document.getElementById("doubtAnalogyText");
-
-  // API Key Modal
-  const apiKeyBtn           = document.getElementById("apiKeyBtn");
-  const apiKeyBtnLabel      = document.getElementById("apiKeyBtnLabel");
-  const apiStatusDot        = document.getElementById("apiStatusDot");
-  const apiKeyModal         = document.getElementById("apiKeyModal");
-  const closeKeyModal       = document.getElementById("closeKeyModal");
-  const cancelKeyBtn        = document.getElementById("cancelKeyBtn");
-  const saveKeyBtn          = document.getElementById("saveKeyBtn");
-  const apiKeyInput         = document.getElementById("apiKeyInput");
-  const keySaveStatus       = document.getElementById("keySaveStatus");
-
-  // Quick Test Arena
-  const quizCountBtns       = document.querySelectorAll(".quiz-count-btn");
-  const quizDiffBtns        = document.querySelectorAll(".quiz-diff-btn");
-  const startQuizBtn        = document.getElementById("startQuizBtn");
-  const startQuizBtnText    = document.getElementById("startQuizBtnText");
-  const quizSpinner         = document.getElementById("quizSpinner");
-  const quizConfigBox       = document.getElementById("quizConfigBox");
-  const liveQuizContainer   = document.getElementById("liveQuizContainer");
-  const currentQNum         = document.getElementById("currentQNum");
-  const totalQNum           = document.getElementById("totalQNum");
-  const quizScoreTracker    = document.getElementById("quizScoreTracker");
-  const quizProgressBar     = document.getElementById("quizProgressBar");
-  const quizQuestionText    = document.getElementById("quizQuestionText");
-  const quizOptionsGrid     = document.getElementById("quizOptionsGrid");
-  const quizInstantFeedback = document.getElementById("quizInstantFeedback");
-  const nextQuizQBtn        = document.getElementById("nextQuizQBtn");
-  const quizScoreCard       = document.getElementById("quizScoreCard");
-  const finalScoreNum       = document.getElementById("finalScoreNum");
-  const finalPercentNum     = document.getElementById("finalPercentNum");
-  const finalBadge          = document.getElementById("finalBadge");
-  const finalComment        = document.getElementById("finalComment");
-  const retakeQuizBtn       = document.getElementById("retakeQuizBtn");
-
-  // Feynman Arena
-  const leoAvatarReaction   = document.getElementById("leoAvatarReaction");
-  const leoQuestionText     = document.getElementById("leoQuestionText");
-  const feynmanTeachingInput= document.getElementById("feynmanTeachingInput");
-  const feynmanMicBtn       = document.getElementById("feynmanMicBtn");
-  const feynmanMicLabel     = document.getElementById("feynmanMicLabel");
-  const submitFeynmanBtn    = document.getElementById("submitFeynmanBtn");
-  const feynmanBtnText      = document.getElementById("feynmanBtnText");
-  const feynmanSpinner      = document.getElementById("feynmanSpinner");
-  const feynmanResultContainer = document.getElementById("feynmanResultContainer");
-  const feynmanGradeTitle   = document.getElementById("feynmanGradeTitle");
-  const feynmanScoreNum     = document.getElementById("feynmanScoreNum");
-  const leoSpeechText       = document.getElementById("leoSpeechText");
-  const feynmanTipsBox      = document.getElementById("feynmanTipsBox");
-  const feynmanTipsList     = document.getElementById("feynmanTipsList");
-
-  // Export Toolbar
-  const exportAnkiBtn       = document.getElementById("exportAnkiBtn");
-  const exportMarkdownBtn   = document.getElementById("exportMarkdownBtn");
-  const printSheetBtn       = document.getElementById("printSheetBtn");
-
-  // Socratic Voice Tab Elements
-  const socraticListenBtn   = document.getElementById("socraticListenBtn");
-  const socraticListenBtnLabel = document.getElementById("socraticListenBtnLabel");
-  const socraticClearHistoryBtn = document.getElementById("socraticClearHistoryBtn");
-  const socraticSoundWave   = document.getElementById("socraticSoundWave");
-  const socraticChatHistory = document.getElementById("socraticChatHistory");
-  const socraticCoachCard   = document.getElementById("socraticCoachCard");
-  const socraticFollowupText = document.getElementById("socraticFollowupText");
-  const socraticHintBox     = document.getElementById("socraticHintBox");
-  const socraticHintText    = document.getElementById("socraticHintText");
-  const socraticUnderstandingMeter = document.getElementById("socraticUnderstandingMeter");
-  const socraticTextInput   = document.getElementById("socraticTextInput");
-  const socraticTextSubmitBtn = document.getElementById("socraticTextSubmitBtn");
-  const socraticOrbBtn      = document.getElementById("socraticOrbBtn");
-  const socraticOrbStatus   = document.getElementById("socraticOrbStatus");
-
-  // Whiteboard Diagnostics Elements
-  const whiteboardCanvas    = document.getElementById("whiteboardCanvas");
-  const whiteboardClearBtn  = document.getElementById("whiteboardClearBtn");
-  const wbToolPen           = document.getElementById("wbToolPen");
-  const wbToolEraser        = document.getElementById("wbToolEraser");
-  const wbColorPicker       = document.getElementById("wbColorPicker");
-  const diagProblemInput    = document.getElementById("diagProblemInput");
-  const diagTextSteps       = document.getElementById("diagTextSteps");
-  const runDiagnosticBtn    = document.getElementById("runDiagnosticBtn");
-  const diagBtnLabel        = document.getElementById("diagBtnLabel");
-  const diagSpinner         = document.getElementById("diagSpinner");
-  const diagnosticResultsContainer = document.getElementById("diagnosticResultsContainer");
-  const diagProblemTitle    = document.getElementById("diagProblemTitle");
-  const diagGradeBadge      = document.getElementById("diagGradeBadge");
-  const diagRootMisconception = document.getElementById("diagRootMisconception");
-  const diagStepsList       = document.getElementById("diagStepsList");
-  const diagCorrectFlowList = document.getElementById("diagCorrectFlowList");
-  const diagRuleText        = document.getElementById("diagRuleText");
-
-  // Generative Dynamic Labs Elements
-  const customLabTopicInput = document.getElementById("customLabTopicInput");
-  const generateCustomLabBtn= document.getElementById("generateCustomLabBtn");
-  const genSimCanvas        = document.getElementById("genSimCanvas");
-  const genControlsContainer= document.getElementById("genControlsContainer");
-  const genExperimentPrompts= document.getElementById("genExperimentPrompts");
-  const dynamicLabTitle     = document.getElementById("dynamicLabTitle");
-  const genCanvasStatus     = document.getElementById("genCanvasStatus");
-  const labPresetBtns       = document.querySelectorAll(".lab-preset-btn");
-
-  // ------------------------------------------------------------------ Tab Switcher
-  function switchTab(targetId) {
-    playSfx("click");
-    navTabs.forEach((tab) => {
-      if (tab.dataset.tab === targetId) {
-        tab.classList.add("active");
-        tab.classList.remove("text-slate-600", "dark:text-slate-400");
-      } else {
-        tab.classList.remove("active");
-        tab.classList.add("text-slate-600", "dark:text-slate-400");
-      }
+    const mathTokens = [];
+    // Protect display math $$...$$
+    let text = raw.replace(/\$\$([\s\S]*?)\$\$/g, (m, expr) => {
+      const idx = mathTokens.length;
+      mathTokens.push({ expr: expr.trim(), display: true });
+      return `___MATH_TOKEN_${idx}___`;
     });
 
-    tabPanes.forEach((pane) => {
-      if (pane.id === targetId) {
-        pane.classList.remove("hidden");
-        pane.classList.add("animate-fade-in");
-      } else {
-        pane.classList.add("hidden");
-      }
+    // Protect inline math $...$
+    text = text.replace(/\$([^$\n]+)\$/g, (m, expr) => {
+      const idx = mathTokens.length;
+      mathTokens.push({ expr: expr.trim(), display: false });
+      return `___MATH_TOKEN_${idx}___`;
     });
 
-    if (targetId === "tab-whiteboard") {
-      initWhiteboard();
-    } else if (targetId === "tab-sandbox") {
-      initDefaultLab();
-    }
-  }
-
-  navTabs.forEach((tab) => {
-    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
-  });
-
-  // ------------------------------------------------------------------ Theme & SFX Toggles
-  function initTheme() {
-    const saved = localStorage.getItem("clearmind_theme");
-    if (saved === "dark" || (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-      isDarkMode = true;
-      document.documentElement.classList.add("dark");
-      if (themeIcon) themeIcon.textContent = "☀️";
-    } else {
-      isDarkMode = false;
-      document.documentElement.classList.remove("dark");
-      if (themeIcon) themeIcon.textContent = "🌙";
-    }
-  }
-
-  if (themeToggleBtn) {
-    if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => {
-      playSfx("click");
-      isDarkMode = !isDarkMode;
-      if (isDarkMode) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("clearmind_theme", "dark");
-        if (themeIcon) themeIcon.textContent = "☀️";
-      } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("clearmind_theme", "light");
-        if (themeIcon) themeIcon.textContent = "🌙";
-      }
-    });
-  }
-
-  if (sfxToggleBtn) {
-    if (sfxToggleBtn) sfxToggleBtn.addEventListener("click", () => {
-      isSfxEnabled = !isSfxEnabled;
-      if (isSfxEnabled) {
-        playSfx("click");
-        if (sfxIcon) sfxIcon.textContent = "🔊";
-      } else {
-        if (sfxIcon) sfxIcon.textContent = "🔇";
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ API Key Management
-  async function checkApiStatus() {
-    try {
-      const res = await fetch("/api/status");
-      const data = await res.json();
-      if (data.has_api_key) {
-        if (apiStatusDot) apiStatusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
-        if (apiKeyBtnLabel) apiKeyBtnLabel.textContent = "Ready";
-      } else {
-        if (apiStatusDot) apiStatusDot.className = "w-2 h-2 rounded-full bg-amber-500";
-        if (apiKeyBtnLabel) apiKeyBtnLabel.textContent = "Set Key";
-      }
-    } catch (e) {
-      console.warn("Status check notice:", e);
-    }
-  }
-
-  if (apiKeyBtn) {
-    if (apiKeyBtn) apiKeyBtn.addEventListener("click", () => {
-      playSfx("click");
-      apiKeyModal.classList.remove("hidden");
-    });
-  }
-  if (closeKeyModal) closeKeyModal.addEventListener("click", () => apiKeyModal.classList.add("hidden"));
-  if (cancelKeyBtn) cancelKeyBtn.addEventListener("click", () => apiKeyModal.classList.add("hidden"));
-
-  if (saveKeyBtn) {
-    if (saveKeyBtn) saveKeyBtn.addEventListener("click", async () => {
-      playSfx("click");
-      const key = apiKeyInput.value.trim();
-      if (!key) return;
-      saveKeyBtn.disabled = true;
-      try {
-        const res = await fetch("/api/save-key", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ api_key: key }),
-        });
-        if (res.ok) {
-          keySaveStatus.textContent = "✅ Key saved successfully!";
-          keySaveStatus.className = "text-xs py-2 px-3 rounded-lg font-medium text-emerald-700 bg-emerald-50";
-          keySaveStatus.classList.remove("hidden");
-          setTimeout(() => {
-            apiKeyModal.classList.add("hidden");
-            checkApiStatus();
-          }, 800);
-        } else {
-          keySaveStatus.textContent = "❌ Failed to save key.";
-          keySaveStatus.className = "text-xs py-2 px-3 rounded-lg font-medium text-red-700 bg-red-50";
-          keySaveStatus.classList.remove("hidden");
-        }
-      } catch (e) {
-        keySaveStatus.textContent = "Error saving key: " + e.message;
-        keySaveStatus.classList.remove("hidden");
-      } finally {
-        saveKeyBtn.disabled = false;
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Language & Audience Selectors
-  if (languageSelect) {
-    if (languageSelect) languageSelect.addEventListener("change", () => {
-      playSfx("click");
-      currentLanguage = languageSelect.value;
-    });
-  }
-
-  levelPills.forEach((pill) => {
-    pill.addEventListener("click", () => {
-      playSfx("click");
-      levelPills.forEach((p) => p.classList.remove("active"));
-      pill.classList.add("active");
-      currentLevel = pill.dataset.level;
-    });
-  });
-
-  // ------------------------------------------------------------------ 1-Click Topic Presets
-  const TOPIC_PRESETS = {
-    photosynthesis: "Photosynthesis process in plants (Light reaction & Calvin cycle in chloroplasts)",
-    quantum: "Quantum Superposition and Schrodinger's wave function collapse",
-    blackholes: "Einstein's General Relativity: Gravitational Time Dilation and Black Hole Event Horizons",
-    mitochondria: "Cellular Respiration: How Mitochondria produce ATP via the Electron Transport Chain",
-  };
-
-  sampleButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      playSfx("click");
-      const sample = btn.dataset.sample;
-      if (TOPIC_PRESETS[sample]) {
-        inputText.value = TOPIC_PRESETS[sample];
-        inputText.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    });
-  });
-
-  // ------------------------------------------------------------------ Image OCR & Vision Upload
-  function handleImageFile(file) {
-    if (!file || !file.type.startsWith("image/")) return;
-    currentImageMime = file.type;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      currentImageBase64 = e.target.result;
-      imagePreview.src = currentImageBase64;
-      dropzonePrompt.classList.add("hidden");
-      imagePreviewContainer.classList.remove("hidden");
-      clearImageBtn.classList.remove("hidden");
-      playSfx("click");
-    };
-    reader.readAsDataURL(file);
-  }
-
-  if (imageInput) {
-    if (imageInput) imageInput.addEventListener("change", (e) => {
-      if (e.target.files && e.target.files[0]) handleImageFile(e.target.files[0]);
-    });
-  }
-
-  if (clearImageBtn) {
-    if (clearImageBtn) clearImageBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      currentImageBase64 = null;
-      imageInput.value = "";
-      imagePreviewContainer.classList.add("hidden");
-      dropzonePrompt.classList.remove("hidden");
-      clearImageBtn.classList.add("hidden");
-      playSfx("click");
-    });
-  }
-
-  if (dropzone) {
-    if (dropzone) dropzone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropzone.classList.add("dragover");
-    });
-    if (dropzone) dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
-    if (dropzone) dropzone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropzone.classList.remove("dragover");
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        handleImageFile(e.dataTransfer.files[0]);
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Study Studio Form Submit
-  async function generateStudyKit(overrideText = null) {
-    const text = overrideText !== null ? overrideText : inputText.value.trim();
-    if (!text && !currentImageBase64) {
-      showError("Please enter study notes or upload a textbook photo.");
-      return;
-    }
-
-    clearError();
-    submitBtn.disabled = true;
-    if (demoBtn) demoBtn.disabled = true;
-    spinner.classList.remove("hidden");
-    const skeleton = document.getElementById('studySkeleton');
-    if (skeleton) skeleton.classList.remove('hidden');
-    resultsSection.classList.add('hidden');
-    resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    btnLabel.textContent = "🧠 Luna is Thinking...";
-    const thinkingSteps = [
-      "🧠 Luna is analyzing core concepts & intuition...",
-      "💡 Crafting vivid real-world analogies & mental models...",
-      "🗺️ Building step-by-step visual concept hierarchy...",
-      "🃏 Synthesizing active-recall 3D flashcards...",
-      "📍 Mapping 4-part sequential mastery pathway..."
-    ];
-    let stepIdx = 0;
-    statusMsg.textContent = thinkingSteps[0];
-    const thinkingInterval = setInterval(() => {
-      stepIdx = (stepIdx + 1) % thinkingSteps.length;
-      statusMsg.textContent = thinkingSteps[stepIdx];
-    }, 1800);
-
-    try {
-      const res = await fetch("/api/simplify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text,
-          image_base64: currentImageBase64,
-          image_mime_type: currentImageMime,
-          level: currentLevel,
-          language: currentLanguage,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Failed to generate study kit.");
-      }
-
-      const data = await res.json();
-      activeStudyData = data;
-      recordStudySession(activeStudyData.analogy_title);
-      renderStudyKit(data);
-      playSfx("correct");
-      addXP(50);
-    } catch (err) {
-      console.error("Study Kit Generation Error:", err);
-      showError("Something went wrong generating your study kit — please try again.");
-    } finally {
-      if (typeof thinkingInterval !== "undefined") clearInterval(thinkingInterval);
-      submitBtn.disabled = false;
-      if (demoBtn) demoBtn.disabled = false;
-      spinner.classList.add("hidden");
-      const skeleton = document.getElementById('studySkeleton');
-      if (skeleton) skeleton.classList.add('hidden');
-      resultsSection.classList.remove('hidden');
-      btnLabel.textContent = "🌸 Teach Me, Luna!";
-      statusMsg.textContent = "";
-    }
-  }
-
-  if (submitBtn) submitBtn.addEventListener("click", () => generateStudyKit());
-  if (demoBtn) {
-    if (demoBtn) demoBtn.addEventListener("click", () => {
-      inputText.value = "How does Quantum Superposition allow quantum computers to calculate exponentially faster?";
-      generateStudyKit();
-    });
-  }
-
-  // ------------------------------------------------------------------ Render Study Results
-  function renderStudyKit(data) {
-    resultsSection.classList.remove("hidden");
-    analogyTitle.textContent = data.analogy_title || "🌿 Concept Breakdown";
-    levelBadge.textContent = data.level ? data.level.toUpperCase() : "LEVEL 10";
-    lunaGreetingText.textContent = `"${data.warm_greeting || "Let's make this crystal clear!"}"`;
-
-    // Render Explanation Text with Karaoke spans
-    const sentences = (data.simplified_text || "").split(/(?<=[.?!])\s+/);
-    simplifiedText.innerHTML = sentences
-      .map((s, idx) => `<span class="speaking-sentence" data-sindex="${idx}">${s}</span>`)
-      .join(" ");
-
-    // Key Takeaways
-    keyTakeawaysList.innerHTML = (data.key_takeaways || [])
-      .map(
-        (t) => `
-        <div class="bg-purple-50/60 dark:bg-slate-800/80 p-3.5 rounded-2xl border border-purple-100 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-start gap-2">
-          <span class="text-purple-600 dark:text-purple-400">✨</span>
-          <span>${t}</span>
-        </div>`
-      )
-      .join("");
-
-    // Mermaid Diagram
-    renderMermaidMap(data.concept_map_mermaid);
-
-    // Feynman Leo Question
-    if (data.feynman_challenge) {
-      leoQuestionText.textContent = `"${data.feynman_challenge.kid_initial_question || "Why does this happen?"}"`;
-      feynmanResultContainer.classList.add("hidden");
-      feynmanTeachingInput.value = "";
-    }
-
-    // 3D Flashcards
-    renderFlashcards(data.flashcards || []);
-
-    // Sequential Learning Pathway / Next Chapters
-    renderLearningPathway(data.learning_pathway || []);
-
-    // Scroll to results
-    resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function sanitizeMermaid(raw) {
-    if (!raw) return "graph TD\n  A[Start] --> B[Concept]";
-    let code = raw.trim();
-    // Strip markdown fences
-    code = code.replace(/```(?:mermaid)?/g, "").replace(/```/g, "").trim();
-    if (!code.startsWith("graph") && !code.startsWith("flowchart")) {
-      code = "graph TD\n" + code;
-    }
-    // Clean dangerous special characters inside nodes
-    code = code.replace(/\[(.*?)\]/g, (match, inner) => {
-      const sanitized = inner.replace(/["\(\)\{\}\;]/g, " ").trim();
-      return `["${sanitized}"]`;
-    });
-    return code;
-  }
-
-  async function renderMermaidMap(mermaidCode) {
-    if (!conceptMapContainer) return;
-    // Remove any previous error bombs injected by Mermaid
-    document.querySelectorAll('[id^="dmermaid"], [id^="mermaid-"], svg[aria-roledescription="error"]').forEach(el => el.remove());
-
-    if (!mermaidCode) {
-      conceptMapContainer.innerHTML = '<p class="text-xs text-slate-400 italic">Visual map generating...</p>';
-      return;
-    }
-
-    try {
-      if (typeof mermaid !== "undefined") {
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: isDarkMode ? "dark" : "default",
-          securityLevel: "loose",
-          suppressErrorRendering: true,
-          fontFamily: "Inter, sans-serif"
-        });
-        const clean = sanitizeMermaid(mermaidCode);
-        const uniqueId = "mermaidSvg_" + Math.random().toString(36).substring(2, 9);
-        const { svg } = await mermaid.render(uniqueId, clean);
-        conceptMapContainer.innerHTML = svg;
-      }
-    } catch (e) {
-      console.warn("Mermaid render fallback:", e);
-      // Clean error bomb from DOM immediately
-      document.querySelectorAll('[id^="dmermaid"], [id^="mermaid-"], svg[aria-roledescription="error"]').forEach(el => el.remove());
-      // Render a clean visual flowchart fallback
-      conceptMapContainer.innerHTML = `
-        <div class="flex flex-wrap items-center justify-center gap-3 p-4 bg-purple-50/60 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
-          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">🌱 Core Input</div>
-          <span class="text-purple-500 font-bold">➔</span>
-          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">⚡ Transformation Process</div>
-          <span class="text-purple-500 font-bold">➔</span>
-          <div class="px-4 py-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-purple-300 dark:border-slate-750 text-xs font-bold text-purple-900 dark:text-purple-200">🎯 Key Output & Master Rule</div>
-        </div>
-      `;
-    }
-  }
-
-  // ------------------------------------------------------------------ 3D Flashcards with Spaced Repetition
-  function renderFlashcards(cards) {
-    if (!flashcardsGrid) return;
-    flashcardsGrid.innerHTML = cards
-      .map(
-        (c, idx) => `
-      <div class="flip-card cursor-pointer" data-card-idx="${idx}" tabindex="0">
-        <div class="flip-card-inner">
-          <!-- Front Face -->
-          <div class="flip-card-front">
-            <div>
-              <span class="card-badge card-badge-q">Card ${idx + 1} • Question</span>
-              <p class="mt-4 text-sm font-bold text-slate-900 dark:text-white leading-relaxed">${c.question}</p>
-            </div>
-            <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-purple-600 dark:text-purple-400 font-bold">
-              <span>👆 Click to Reveal</span>
-              ${c.hint ? `<span title="${c.hint}">💡 Hint</span>` : ""}
-            </div>
-          </div>
-
-          <!-- Back Face -->
-          <div class="flip-card-back">
-            <div>
-              <span class="card-badge card-badge-a">Answer</span>
-              <p class="mt-3 text-xs font-semibold leading-relaxed">${c.answer}</p>
-            </div>
-            <!-- Spaced Repetition Rating Buttons -->
-            <div class="pt-3 border-t border-white/20 flex items-center justify-center gap-1.5" onclick="event.stopPropagation()">
-              <button class="sr-rate-btn px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[10px] font-bold text-white transition" data-rate="hard" data-card="${idx}">🔴 Hard (1d)</button>
-              <button class="sr-rate-btn px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[10px] font-bold text-white transition" data-rate="good" data-card="${idx}">🟡 Good (3d)</button>
-              <button class="sr-rate-btn px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[10px] font-bold text-white transition" data-rate="easy" data-card="${idx}">🟢 Easy (7d)</button>
-            </div>
-          </div>
-        </div>
-      </div>`
-      )
-      .join("");
-
-    // Flip Card Click Handlers
-    document.querySelectorAll(".flip-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        playSfx("flip");
-        card.classList.toggle("flipped");
-      });
+    // Protect code blocks ```...```
+    const codeTokens = [];
+    text = text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (m, lang, code) => {
+      const idx = codeTokens.length;
+      codeTokens.push({ lang: lang || "code", code: code });
+      return `___CODE_TOKEN_${idx}___`;
     });
 
-    // Spaced Repetition Buttons
-    document.querySelectorAll(".sr-rate-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        playSfx("click");
-        const rate = btn.dataset.rate;
-        btn.parentElement.innerHTML = `<span class="text-[11px] font-bold text-emerald-300">✅ Scheduled (+10 XP)</span>`;
-        addXP(10);
-      });
+    // Escape text characters safely
+    let h = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+    // Markdown styling
+    h = h.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    h = h.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    h = h.replace(/`(.*?)`/g, '<code class="bg-obsidian-950 px-1.5 py-0.5 rounded text-purple-300 font-mono text-xs">$1</code>');
+    h = h.replace(/\n/g, "<br/>");
+
+    // Rehydrate code blocks
+    codeTokens.forEach((b, idx) => {
+      const esc = b.code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const block = `<div class="my-2 p-3 rounded-xl bg-obsidian-950 border border-purple-900/60 font-mono text-xs text-purple-200 overflow-x-auto"><div class="text-[9px] uppercase tracking-wider text-purple-400 pb-1 font-bold border-b border-obsidian-800 mb-1.5">${b.lang}</div><pre class="leading-relaxed whitespace-pre"><code>${esc}</code></pre></div>`;
+      h = h.replace(`___CODE_TOKEN_${idx}___`, block);
     });
-  }
 
-  if (flipAllBtn) {
-    if (flipAllBtn) flipAllBtn.addEventListener("click", () => {
-      playSfx("flip");
-      allFlipped = !allFlipped;
-      document.querySelectorAll(".flip-card").forEach((card) => {
-        if (allFlipped) card.classList.add("flipped");
-        else card.classList.remove("flipped");
-      });
-      flipAllBtn.textContent = allFlipped ? "Unflip All Cards" : "Flip All Cards";
-    });
-  }
-
-  // ------------------------------------------------------------------ Studio Neural Voice Audio Player
-  async function playStudioVoice() {
-    if (!activeStudyData || !activeStudyData.simplified_text) return;
-
-    if (isAudioPlaying && neuralAudio) {
-      neuralAudio.pause();
-      isAudioPlaying = false;
-      speakBtnText.textContent = "Resume Neural Voice";
-      soundWave.classList.add("hidden");
-      stopVoiceBtn.classList.add("hidden");
-      return;
-    }
-
-    speakBtnText.textContent = "Connecting Studio Voice...";
-    speakBtn.disabled = true;
-
-    try {
-      const fullSpeech = `${activeStudyData.warm_greeting}. ${activeStudyData.simplified_text}`;
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: fullSpeech,
-          language: currentLanguage,
-        }),
-      });
-
-      if (!res.ok) throw new Error("TTS voice generation failed.");
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (neuralAudio) {
-        neuralAudio.pause();
-        if (neuralAudio._blobUrl) URL.revokeObjectURL(neuralAudio._blobUrl);
-      }
-      neuralAudio = new Audio(url);
-      neuralAudio._blobUrl = url;
-
-      neuralAudio.onplay = () => {
-        isAudioPlaying = true;
-        speakBtnText.textContent = "Pause Luna Voice";
-        speakIcon.textContent = "⏸️";
-        soundWave.classList.remove("hidden");
-        soundWave.classList.add("flex");
-        stopVoiceBtn.classList.remove("hidden");
-      };
-
-      neuralAudio.onended = () => {
-        isAudioPlaying = false;
-        speakBtnText.textContent = "Replay Luna Voice";
-        speakIcon.textContent = "🎧";
-        soundWave.classList.add("hidden");
-        stopVoiceBtn.classList.add("hidden");
-        document.querySelectorAll(".speaking-sentence").forEach((s) => s.classList.remove("active-speaking"));
-      };
-
-      neuralAudio.play();
-    } catch (e) {
-      console.error("Studio TTS Error:", e);
-      showError("Could not play audio explanation — please try again in a moment.");
-      speakBtnText.textContent = "Listen to Luna";
-    } finally {
-      speakBtn.disabled = false;
-    }
-  }
-
-  if (speakBtn) speakBtn.addEventListener("click", () => playStudioVoice());
-  if (stopVoiceBtn) {
-    if (stopVoiceBtn) stopVoiceBtn.addEventListener("click", () => {
-      if (neuralAudio) {
-        neuralAudio.pause();
-        neuralAudio.currentTime = 0;
-      }
-      isAudioPlaying = false;
-      speakBtnText.textContent = "Listen to Luna";
-      speakIcon.textContent = "🎧";
-      soundWave.classList.add("hidden");
-      stopVoiceBtn.classList.add("hidden");
-    });
-  }
-
-  // ------------------------------------------------------------------ "Teach Curious Leo" Feynman Arena
-  if (feynmanMicBtn) {
-    if (feynmanMicBtn) feynmanMicBtn.addEventListener("click", () => {
-      playSfx("click");
-      startSimpleSpeechToText((transcript) => {
-        feynmanTeachingInput.value = transcript;
-      }, feynmanMicLabel);
-    });
-  }
-
-  if (submitFeynmanBtn) {
-    if (submitFeynmanBtn) submitFeynmanBtn.addEventListener("click", async () => {
-      const exp = feynmanTeachingInput.value.trim();
-      if (!exp) return;
-      playSfx("click");
-      submitFeynmanBtn.disabled = true;
-      feynmanSpinner.classList.remove("hidden");
-      feynmanBtnText.textContent = "Leo is thinking...";
-
-      try {
-        const res = await fetch("/api/feynman-evaluate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic: activeStudyData ? activeStudyData.analogy_title : "Study Topic",
-            kid_question: leoQuestionText.textContent,
-            user_explanation: exp,
-            language: currentLanguage,
-          }),
-        });
-
-        const data = await res.json();
-        feynmanResultContainer.classList.remove("hidden");
-        feynmanScoreNum.textContent = data.feynman_score;
-        feynmanGradeTitle.textContent = data.grade_title;
-        feynmanGradeTitle.className = `text-xs font-black px-3 py-1 rounded-full ${
-          data.feynman_score >= 80 ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"
-        }`;
-        leoSpeechText.textContent = `"${data.kid_speech}"`;
-
-        if (data.feynman_score >= 80) {
-          playSfx("level_up");
-          try { confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } }); } catch(_) {}
-          addXP(40);
-        } else {
-          playSfx("correct");
-          addXP(20);
-        }
-
-        feynmanTipsList.innerHTML = (data.coaching_tips || [])
-          .map((tip) => `<li>${tip}</li>`)
-          .join("");
-      } catch (e) {
-        console.error("Feynman Evaluation Error:", e);
-        showError("Unable to evaluate your explanation right now — please try again.");
-      } finally {
-        submitFeynmanBtn.disabled = false;
-        feynmanSpinner.classList.add("hidden");
-        feynmanBtnText.textContent = "👦 Tell Leo";
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Quick Test Arena (5-20 Qs)
-  quizCountBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      playSfx("click");
-      quizCountBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      selectedQuizCount = parseInt(btn.dataset.count);
-    });
-  });
-
-  quizDiffBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      playSfx("click");
-      quizDiffBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      selectedQuizDiff = btn.dataset.diff;
-    });
-  });
-
-  if (startQuizBtn) {
-    if (startQuizBtn) startQuizBtn.addEventListener("click", async () => {
-      const topic = activeStudyData ? activeStudyData.analogy_title : inputText.value.trim() || "Science & Logic";
-      playSfx("click");
-      startQuizBtn.disabled = true;
-      quizSpinner.classList.remove("hidden");
-      startQuizBtnText.textContent = "Generating Exam...";
-
-      try {
-
-        // Adaptive Difficulty Logic
-        let adaptiveDiff = selectedQuizDiff;
-        if (topic) {
-          const session = studyHistory.find(h => h.topic === topic);
-          if (session) {
-            if (session.mastery >= 80) adaptiveDiff = 'hard';
-            else if (session.mastery < 50) adaptiveDiff = 'easy';
-          }
-        }
-        
-        const res = await fetch("/api/generate-quiz", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic: topic,
-            count: selectedQuizCount,
-            difficulty: adaptiveDiff,
-            language: currentLanguage,
-          }),
-        });
-
-        const data = await res.json();
-        quizQuestions = data.questions || [];
-        currentQuizIndex = 0;
-        currentQuizScore = 0;
-
-        quizConfigBox.classList.add("hidden");
-        liveQuizContainer.classList.remove("hidden");
-        quizScoreCard.classList.add("hidden");
-        renderCurrentQuizQuestion();
-      } catch (e) {
-        console.error("Quiz Generation Error:", e);
-        showError("Unable to generate quiz questions — please try again.");
-      } finally {
-        startQuizBtn.disabled = false;
-        quizSpinner.classList.add("hidden");
-        startQuizBtnText.textContent = "🚀 Generate & Start Test";
-      }
-    });
-  }
-
-  function renderCurrentQuizQuestion() {
-    if (currentQuizIndex >= quizQuestions.length) {
-      showQuizFinalScore();
-      return;
-    }
-
-    const q = quizQuestions[currentQuizIndex];
-    currentQNum.textContent = currentQuizIndex + 1;
-    totalQNum.textContent = quizQuestions.length;
-    quizScoreTracker.textContent = `Score: ${currentQuizScore}`;
-    quizProgressBar.style.width = `${((currentQuizIndex + 1) / quizQuestions.length) * 100}%`;
-
-    quizQuestionText.textContent = q.question;
-    quizInstantFeedback.classList.add("hidden");
-    nextQuizQBtn.classList.add("hidden");
-
-    quizOptionsGrid.innerHTML = q.options
-      .map(
-        (opt, idx) => `
-        <button class="quiz-opt-card" data-opt-idx="${idx}">
-          <span class="mr-1 text-purple-600 dark:text-purple-400 font-bold">${String.fromCharCode(65 + idx)}.</span> ${opt}
-        </button>`
-      )
-      .join("");
-
-    quizOptionsGrid.querySelectorAll(".quiz-opt-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const chosen = parseInt(card.dataset.optIdx);
-        evaluateQuizAnswer(chosen, q);
-      });
-    });
-  }
-
-  function evaluateQuizAnswer(chosenIdx, questionObj) {
-    const isCorrect = chosenIdx === questionObj.correct_option_index;
-    const cards = quizOptionsGrid.querySelectorAll(".quiz-opt-card");
-    cards.forEach((c) => (c.disabled = true));
-
-    if (isCorrect) {
-      playSfx("correct");
-      cards[chosenIdx].classList.add("correct");
-      currentQuizScore += 1;
-      addXP(15);
-      quizInstantFeedback.innerHTML = `<span class="text-emerald-700 dark:text-emerald-300 font-bold">✅ Correct!</span> ${questionObj.explanation}`;
-      quizInstantFeedback.className = "text-xs p-3.5 rounded-xl font-medium bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200";
-    } else {
-      playSfx("wrong");
-      cards[chosenIdx].classList.add("incorrect");
-      cards[questionObj.correct_option_index].classList.add("correct");
-      quizInstantFeedback.innerHTML = `<span class="text-red-700 dark:text-red-300 font-bold">❌ Incorrect.</span> ${questionObj.explanation}`;
-      quizInstantFeedback.className = "text-xs p-3.5 rounded-xl font-medium bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-200";
-    }
-
-    quizInstantFeedback.classList.remove("hidden");
-    nextQuizQBtn.classList.remove("hidden");
-    quizScoreTracker.textContent = `Score: ${currentQuizScore}`;
-  }
-
-  if (nextQuizQBtn) {
-    if (nextQuizQBtn) nextQuizQBtn.addEventListener("click", () => {
-      playSfx("click");
-      currentQuizIndex++;
-      renderCurrentQuizQuestion();
-    });
-  }
-
-  function showQuizFinalScore() {
-    liveQuizContainer.classList.add("hidden");
-    quizScoreCard.classList.remove("hidden");
-    finalScoreNum.textContent = `${currentQuizScore}/${quizQuestions.length}`;
-    const pct = Math.round((currentQuizScore / quizQuestions.length) * 100);
-    finalPercentNum.textContent = `${pct}%`;
-
-
-    updateStudyMastery(activeStudyData ? activeStudyData.analogy_title : "Custom Topic", pct);
-    fetchAiRecommendations(pct);
-
-    if (pct >= 80) {
-      playSfx("level_up");
-      try { confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); } catch(_) {}
-      finalBadge.textContent = "🏆 Exam Master";
-      finalBadge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-black bg-emerald-600 text-white shadow-sm";
-      finalComment.textContent = "Outstanding mastery! You have deeply absorbed these concepts.";
-      addXP(50);
-    } else {
-      playSfx("click");
-      finalBadge.textContent = "👍 Good Effort";
-      finalBadge.className = "inline-block px-4 py-1.5 rounded-full text-xs font-black bg-indigo-600 text-white shadow-sm";
-      finalComment.textContent = "Good try! Review the flashcards and retake to lock in 100% recall.";
-      addXP(20);
-    }
-  }
-
-  if (retakeQuizBtn) {
-    if (retakeQuizBtn) retakeQuizBtn.addEventListener("click", () => {
-      playSfx("click");
-      quizScoreCard.classList.add("hidden");
-      quizConfigBox.classList.remove("hidden");
-    });
-  }
-
-  // ------------------------------------------------------------------ Socratic Voice Coach Mode
-
-  async function fetchAiRecommendations(scorePct) {
-    const topic = activeStudyData ? activeStudyData.analogy_title : inputText.value.trim() || "Concept";
-    const aiRecContainer = document.getElementById('aiRecContainer');
-    const msgEl = document.getElementById('aiRecEncouragement');
-    const weakList = document.getElementById('aiRecWeakList');
-    const nextList = document.getElementById('aiRecNextList');
-    
-    if (!aiRecContainer) return;
-    
-    msgEl.textContent = "Luna is analyzing your performance...";
-    weakList.innerHTML = "";
-    nextList.innerHTML = "";
-    aiRecContainer.classList.remove('hidden');
-
-    try {
-      const res = await fetch("/api/ai-recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic,
-          quiz_score_percent: scorePct,
-          language: currentLanguage
-        })
-      });
-      const data = await res.json();
-      
-      msgEl.textContent = data.encouragement;
-      weakList.innerHTML = data.weak_areas.map(w => `<li>${w}</li>`).join('');
-      nextList.innerHTML = data.next_topics.map(t => `<li>${t}</li>`).join('');
-    } catch(e) {
-      msgEl.textContent = "Keep up the great work!";
-    }
-  }
-
-  function initSocraticVoice() {
-    const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognitionClass) {
-      socraticRecognition = new SpeechRecognitionClass();
-      socraticRecognition.continuous = false;
-      socraticRecognition.interimResults = false;
-      socraticRecognition.lang = currentLanguage === "hi" ? "hi-IN" : "en-US";
-
-      socraticRecognition.onstart = () => {
-        isSocraticListening = true;
-        socraticListenBtnLabel.textContent = "Listening...";
-        socraticOrbStatus.textContent = "Listening to you...";
-        socraticSoundWave.classList.remove("hidden");
-        socraticSoundWave.classList.add("flex");
-      };
-
-      socraticRecognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        handleSocraticUtterance(transcript);
-      };
-
-      socraticRecognition.onerror = (event) => {
-        console.warn("Speech recognition error:", event.error);
-        stopSocraticListening();
-      };
-
-      socraticRecognition.onend = () => {
-        stopSocraticListening();
-      };
-    }
-  }
-
-  function toggleSocraticVoice() {
-    playSfx("click");
-    if (isSocraticListening) {
-      if (socraticRecognition) socraticRecognition.stop();
-      stopSocraticListening();
-    } else {
-      if (!socraticRecognition) initSocraticVoice();
-      if (socraticRecognition) {
-        socraticRecognition.lang = currentLanguage === "hi" ? "hi-IN" : "en-US";
+    // Rehydrate math with KaTeX directly into HTML!
+    mathTokens.forEach((m, idx) => {
+      let rendered = "";
+      if (typeof katex !== "undefined") {
         try {
-          socraticRecognition.start();
+          rendered = katex.renderToString(m.expr, { displayMode: m.display, throwOnError: false });
         } catch (e) {
-          console.warn("Speech recognition start notice:", e);
+          rendered = `<code class="text-amber-300 font-mono text-xs">${escapeHtml(m.expr)}</code>`;
         }
       } else {
-        showError("Web Speech Recognition is not supported in this browser. You can type in the box below!");
+        rendered = `<code class="text-amber-300 font-mono text-xs">${escapeHtml(m.expr)}</code>`;
       }
-    }
-  }
-
-  function stopSocraticListening() {
-    isSocraticListening = false;
-    socraticListenBtnLabel.textContent = "Start Speaking";
-    socraticOrbStatus.textContent = "Tap Mic to Talk to Luna";
-    socraticSoundWave.classList.add("hidden");
-  }
-
-  async function handleSocraticUtterance(userText) {
-    if (!userText.trim()) return;
-    playSfx("click");
-
-    // Prevent rapid-fire submissions
-    if (socraticTextSubmitBtn) socraticTextSubmitBtn.disabled = true;
-    if (socraticListenBtn) socraticListenBtn.disabled = true;
-
-    // Append student bubble
-    appendSocraticChat("student", userText);
-    socraticHistory.push({ role: "student", text: userText });
-
-    socraticOrbStatus.textContent = "Luna is thinking...";
-    const topic = activeStudyData ? activeStudyData.analogy_title : inputText.value.trim() || "Concept Exploration";
-
-    try {
-      const res = await fetch("/api/socratic-turn", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic,
-          student_utterance: userText,
-          history: socraticHistory,
-          language: currentLanguage,
-        }),
-      });
-
-      const data = await res.json();
-      appendSocraticChat("tutor", data.tutor_speech + " " + data.followup_question);
-      socraticHistory.push({ role: "tutor", text: data.tutor_speech + " " + data.followup_question });
-
-      // Update Socratic Coach Card
-      socraticCoachCard.classList.remove("hidden");
-      socraticFollowupText.textContent = data.followup_question;
-      if (data.hint) {
-        socraticHintBox.classList.remove("hidden");
-        socraticHintText.textContent = data.hint;
-      } else {
-        socraticHintBox.classList.add("hidden");
-      }
-
-      socraticUnderstandingMeter.textContent = `Progress: ${data.understanding_level.toUpperCase()}`;
-      socraticOrbStatus.textContent = "Luna is speaking...";
-
-      // Play Neural Voice
-      if (data.audio_base64) {
-        playBase64Audio(data.audio_base64, () => {
-          socraticOrbStatus.textContent = "Tap Mic to Reply";
-        });
-      } else {
-        socraticOrbStatus.textContent = "Tap Mic to Reply";
-      }
-
-      addXP(20);
-    } catch (e) {
-      appendSocraticChat("tutor", "That's a very interesting thought! Can you expand on why that happens?");
-      socraticOrbStatus.textContent = "Tap Mic to Reply";
-    } finally {
-      if (socraticTextSubmitBtn) socraticTextSubmitBtn.disabled = false;
-      if (socraticListenBtn) socraticListenBtn.disabled = false;
-    }
-  }
-
-  function appendSocraticChat(role, text) {
-    const isTutor = role === "tutor";
-    const bubble = document.createElement("div");
-    bubble.className = isTutor
-      ? "p-3 bg-purple-100/70 dark:bg-purple-950/70 rounded-2xl text-purple-950 dark:text-purple-200 border border-purple-200 dark:border-purple-800 space-y-0.5"
-      : "p-3 bg-slate-200/80 dark:bg-slate-700/80 rounded-2xl text-slate-900 dark:text-white border border-slate-300 dark:border-slate-600 text-right space-y-0.5";
-    bubble.innerHTML = `<strong>${isTutor ? "🌸 Luna:" : "👤 You:"}</strong> <p class="text-xs mt-0.5">${text}</p>`;
-    socraticChatHistory.appendChild(bubble);
-    socraticChatHistory.scrollTop = socraticChatHistory.scrollHeight;
-  }
-
-  function playBase64Audio(b64, onEndCallback) {
-    try {
-      const audioUrl = "data:audio/mpeg;base64," + b64;
-      if (socraticAudio) {
-        socraticAudio.pause();
-      }
-      socraticAudio = new Audio(audioUrl);
-      
-      const orb = document.getElementById("socraticOrb");
-      const statusEl = document.getElementById("socraticOrbStatus");
-      
-      if (orb) {
-        orb.classList.add("animate-pulse", "scale-110", "ring-4", "ring-pink-400");
-      }
-      if (statusEl) {
-        statusEl.textContent = "🔊 Luna Speaking...";
-      }
-
-      socraticAudio.onended = () => {
-        if (orb) {
-          orb.classList.remove("animate-pulse", "scale-110", "ring-4", "ring-pink-400");
-        }
-        if (statusEl) {
-          statusEl.textContent = "Tap Mic to Reply";
-        }
-        if (onEndCallback) onEndCallback();
-      };
-      socraticAudio.play();
-    } catch (e) {
-      console.warn("Base64 audio playback notice:", e);
-    }
-  }
-
-  if (socraticListenBtn) socraticListenBtn.addEventListener("click", () => toggleSocraticVoice());
-  if (socraticOrbBtn) socraticOrbBtn.addEventListener("click", () => toggleSocraticVoice());
-  if (socraticClearHistoryBtn) {
-    if (socraticClearHistoryBtn) socraticClearHistoryBtn.addEventListener("click", () => {
-      playSfx("click");
-      socraticHistory = [];
-      socraticChatHistory.innerHTML = `<div class="p-3 bg-purple-100/60 dark:bg-purple-950/60 rounded-xl text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
-        <strong>🌸 Luna:</strong> "Dialogue reset! What would you like to explore next?"
-      </div>`;
-      socraticCoachCard.classList.add("hidden");
-    });
-  }
-
-  if (socraticTextSubmitBtn && socraticTextInput) {
-    if (socraticTextSubmitBtn) socraticTextSubmitBtn.addEventListener("click", () => {
-      const val = socraticTextInput.value.trim();
-      if (val) {
-        socraticTextInput.value = "";
-        handleSocraticUtterance(val);
-      }
-    });
-    if (socraticTextInput) socraticTextInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = socraticTextInput.value.trim();
-        if (val) {
-          socraticTextInput.value = "";
-          handleSocraticUtterance(val);
-        }
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ AI Smart Whiteboard & Misconception Diagnostics
-  function initWhiteboard() {
-    if (!whiteboardCanvas) return;
-    wbCanvas = whiteboardCanvas;
-    wbCtx = wbCanvas.getContext("2d");
-    wbCtx.lineCap = "round";
-    wbCtx.lineJoin = "round";
-
-    function startDraw(e) {
-      wbIsDrawing = true;
-      wbCtx.beginPath();
-      const pos = getCanvasPos(e);
-      wbCtx.moveTo(pos.x, pos.y);
-    }
-
-    function draw(e) {
-      if (!wbIsDrawing) return;
-      const pos = getCanvasPos(e);
-      if (wbTool === "eraser") {
-        const eraserSize = 20;
-        wbCtx.clearRect(pos.x - eraserSize / 2, pos.y - eraserSize / 2, eraserSize, eraserSize);
-      } else {
-        wbCtx.strokeStyle = wbColor;
-        wbCtx.lineWidth = wbLineWidth;
-        wbCtx.lineTo(pos.x, pos.y);
-        wbCtx.stroke();
-      }
-    }
-
-    function stopDraw() {
-      wbIsDrawing = false;
-      wbCtx.closePath();
-    }
-
-    function getCanvasPos(e) {
-      const rect = wbCanvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return {
-        x: (clientX - rect.left) * (wbCanvas.width / rect.width),
-        y: (clientY - rect.top) * (wbCanvas.height / rect.height),
-      };
-    }
-
-    wbCanvas.onmousedown = startDraw;
-    wbCanvas.onmousemove = draw;
-    wbCanvas.onmouseup = stopDraw;
-    wbCanvas.onmouseleave = stopDraw;
-
-    wbCanvas.ontouchstart = (e) => { e.preventDefault(); startDraw(e); };
-    wbCanvas.ontouchmove = (e) => { e.preventDefault(); draw(e); };
-    wbCanvas.ontouchend = stopDraw;
-  }
-
-  if (wbToolPen) {
-    if (wbToolPen) wbToolPen.addEventListener("click", () => {
-      playSfx("click");
-      wbTool = "pen";
-      wbToolPen.className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold";
-      wbToolEraser.className = "px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold";
-    });
-  }
-
-  if (wbToolEraser) {
-    if (wbToolEraser) wbToolEraser.addEventListener("click", () => {
-      playSfx("click");
-      wbTool = "eraser";
-      wbToolEraser.className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold";
-      wbToolPen.className = "px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold";
-    });
-  }
-
-  if (wbColorPicker) {
-    if (wbColorPicker) wbColorPicker.addEventListener("input", (e) => {
-      wbColor = e.target.value;
-      wbTool = "pen";
-      wbToolPen.className = "px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold";
-      wbToolEraser.className = "px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold";
-    });
-  }
-
-  if (whiteboardClearBtn) {
-    if (whiteboardClearBtn) whiteboardClearBtn.addEventListener("click", () => {
-      playSfx("click");
-      if (wbCtx && wbCanvas) {
-        wbCtx.clearRect(0, 0, wbCanvas.width, wbCanvas.height);
-      }
-    });
-  }
-
-  if (runDiagnosticBtn) {
-    if (runDiagnosticBtn) runDiagnosticBtn.addEventListener("click", async () => {
-      const prob = diagProblemInput.value.trim();
-      const textSteps = diagTextSteps.value.trim();
-      const canvasB64 = wbCanvas ? wbCanvas.toDataURL("image/png") : null;
-
-      if (!prob && !textSteps) {
-        showError("Please enter a problem statement or write steps to diagnose.");
-        return;
-      }
-
-      playSfx("click");
-      runDiagnosticBtn.disabled = true;
-      diagSpinner.classList.remove("hidden");
-      diagBtnLabel.textContent = "AI Diagnostics Running...";
-
-      try {
-        const res = await fetch("/api/diagnose-solution", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            problem_statement: prob,
-            student_work_text: textSteps,
-            image_base64: canvasB64,
-            language: currentLanguage,
-          }),
-        });
-
-        const data = await res.json();
-        diagnosticResultsContainer.classList.remove("hidden");
-        diagProblemTitle.textContent = data.problem_title || "Diagnostic Breakdown";
-        diagGradeBadge.textContent = data.overall_grade || "Diagnostic Complete";
-        diagRootMisconception.textContent = data.root_misconception || "No fundamental error detected.";
-
-        // Steps List
-        diagStepsList.innerHTML = (data.total_steps || [])
-          .map(
-            (step) => `
-          <div class="p-4 rounded-2xl border ${
-            step.is_correct
-              ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900"
-              : "bg-red-50/70 dark:bg-red-950/40 border-red-200 dark:border-red-900"
-          } space-y-1">
-            <div class="flex items-center justify-between text-xs font-bold">
-              <span class="${step.is_correct ? "text-emerald-800 dark:text-emerald-300" : "text-red-800 dark:text-red-300"}">
-                Step ${step.step_num}: ${step.step_content}
-              </span>
-              <span class="px-2 py-0.5 rounded-md text-[10px] ${
-                step.is_correct ? "bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200" : "bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-200"
-              }">${step.status_label}</span>
-            </div>
-            <p class="text-xs text-slate-700 dark:text-slate-300">${step.annotation}</p>
-            ${step.correction_tip ? `<p class="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 italic pt-0.5">💡 Tip: ${step.correction_tip}</p>` : ""}
-          </div>`
-          )
-          .join("");
-
-        // Correct Step Flow
-        diagCorrectFlowList.innerHTML = (data.step_by_step_correct_flow || [])
-          .map((line) => `<li>${line}</li>`)
-          .join("");
-
-        // Mnemonic Rule
-        diagRuleText.textContent = `"${data.mnemonic_or_rule || "Verify all formula signs and units before resolving."}"`;
-
-        playSfx("correct");
-        addXP(30);
-      } catch (e) {
-        console.error("Diagnostic Solver Error:", e);
-        showError("Unable to diagnose your solution — please check your input and try again.");
-      } finally {
-        runDiagnosticBtn.disabled = false;
-        diagSpinner.classList.add("hidden");
-        diagBtnLabel.textContent = "✨ Diagnose My Solution (Red/Green Pen AI)";
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Generative Dynamic HTML5 Labs
-  function initDefaultLab() {
-    if (!genSimCanvas) return;
-    const ctx = genSimCanvas.getContext("2d");
-
-    // Default Physics Sandbox Function
-    customLabRenderFn = (canvas, ctx, state, time) => {
-      if (!state._particles || state._particles.length === 0) {
-        state._particles = [];
-        for (let i = 0; i < 45; i++) {
-          state._particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            vx: (Math.random() - 0.5) * 4,
-            vy: (Math.random() - 0.5) * 4,
-            radius: 3 + Math.random() * 5,
-            hue: Math.random() * 60 + 260,
-          });
-        }
-      }
-
-      ctx.fillStyle = "rgba(15, 23, 42, 0.25)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const count = Math.min(state._particles.length, Math.floor(state.density || 45));
-      const speedMult = (state.energy || 100) / 50;
-      const drag = 1 - (state.friction || 0.05) * 0.1;
-
-      for (let i = 0; i < count; i++) {
-        let p = state._particles[i];
-        p.vx *= drag;
-        p.vy *= drag;
-        p.x += p.vx * speedMult;
-        p.y += p.vy * speedMult;
-
-        if (p.x < p.radius) { p.x = p.radius; p.vx *= -1; }
-        if (p.x > canvas.width - p.radius) { p.x = canvas.width - p.radius; p.vx *= -1; }
-        if (p.y < p.radius) { p.y = p.radius; p.vy *= -1; }
-        if (p.y > canvas.height - p.radius) { p.y = canvas.height - p.radius; p.vy *= -1; }
-
-        if (state.isMouseDown && state.mouseX && state.mouseY) {
-          let dx = state.mouseX - p.x;
-          let dy = state.mouseY - p.y;
-          let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          if (dist < 120) {
-            p.vx += (dx / dist) * 1.5;
-            p.vy += (dy / dist) * 1.5;
-          }
-        }
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `hsl(${p.hue}, 90%, 65%)`;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = ctx.fillStyle;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-
-      for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) {
-          let p1 = state._particles[i];
-          let p2 = state._particles[j];
-          let dx = p1.x - p2.x;
-          let dy = p1.y - p2.y;
-          let dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 55) {
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(168, 85, 247, ${(1 - dist / 55) * 0.4})`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        }
-      }
-    };
-
-    renderCustomControls([
-      { id: "energy", label: "Energy / Speed", min_val: 10, max_val: 200, default_val: 100, unit: "%" },
-      { id: "density", label: "Particle Density", min_val: 10, max_val: 100, default_val: 45, unit: "nodes" },
-      { id: "friction", label: "Medium Drag", min_val: 0, max_val: 1, default_val: 0.05, unit: "drag" },
-    ]);
-
-    startLabAnimationLoop();
-  }
-
-  function startLabAnimationLoop() {
-    if (customLabAnimId) cancelAnimationFrame(customLabAnimId);
-    const canvas = genSimCanvas;
-    const ctx = canvas.getContext("2d");
-
-    // Mouse interactions
-    canvas.onmousedown = (e) => {
-      customLabState.isMouseDown = true;
-      const rect = canvas.getBoundingClientRect();
-      customLabState.mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-      customLabState.mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
-    };
-    canvas.onmousemove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      customLabState.mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-      customLabState.mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
-    };
-    canvas.onmouseup = () => (customLabState.isMouseDown = false);
-    canvas.onmouseleave = () => (customLabState.isMouseDown = false);
-
-    function loop(time) {
-      if (customLabRenderFn) {
-        customLabRenderFn(canvas, ctx, customLabState, time);
-      }
-      customLabAnimId = requestAnimationFrame(loop);
-    }
-    customLabAnimId = requestAnimationFrame(loop);
-  }
-
-  function renderCustomControls(controls) {
-    if (!genControlsContainer) return;
-    genControlsContainer.innerHTML = controls
-      .map(
-        (c) => `
-      <div class="space-y-1">
-        <div class="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-          <span>${c.label}</span>
-          <span id="genVal_${c.id}" class="text-purple-700 dark:text-purple-300 font-mono">${c.default_val} ${c.unit}</span>
-        </div>
-        <input
-          type="range"
-          id="genInput_${c.id}"
-          min="${c.min_val}"
-          max="${c.max_val}"
-          value="${c.default_val}"
-          step="${c.step || 1}"
-          class="w-full accent-purple-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
-        />
-      </div>`
-      )
-      .join("");
-
-    controls.forEach((c) => {
-      customLabState[c.id] = c.default_val;
-      const inputEl = document.getElementById(`genInput_${c.id}`);
-      const valEl = document.getElementById(`genVal_${c.id}`);
-      if (inputEl) {
-        inputEl.addEventListener("input", (e) => {
-          customLabState[c.id] = parseFloat(e.target.value);
-          if (valEl) valEl.textContent = `${e.target.value} ${c.unit}`;
-        });
-      }
-    });
-  }
-
-  if (generateCustomLabBtn) {
-    if (generateCustomLabBtn) generateCustomLabBtn.addEventListener("click", async () => {
-      const topic = customLabTopicInput.value.trim() || (activeStudyData ? activeStudyData.analogy_title : "Physics Wave Optics");
-      playSfx("click");
-      generateCustomLabBtn.disabled = true;
-      generateCustomLabBtn.textContent = "⚡ Generating Lab...";
-
-      try {
-        const res = await fetch("/api/generate-sandbox", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic: topic, language: currentLanguage }),
-        });
-
-        const data = await res.json();
-        dynamicLabTitle.textContent = data.sandbox_title || `Interactive Lab: ${topic}`;
-        renderCustomControls(data.controls || []);
-
-        genExperimentPrompts.innerHTML = (data.experiment_prompts || [])
-          .map((p) => `<li>${p}</li>`)
-          .join("");
-
-        // Compile custom JS function
-        try {
-          // eslint-disable-next-line no-eval
-          const fn = eval(data.canvas_js_code);
-          if (typeof fn === "function") {
-            customLabState._particles = [];
-            customLabRenderFn = fn;
-            startLabAnimationLoop();
-          }
-        } catch (compileErr) {
-          console.warn("Using fallback physics sandbox:", compileErr);
-          if (genCanvasStatus) genCanvasStatus.textContent = "⚠️ Custom lab unavailable — using default particle physics sandbox";
-          initDefaultLab();
-        }
-
-        playSfx("level_up");
-        addXP(30);
-      } catch (e) {
-        console.error("Lab Generator Error:", e);
-        showError("Unable to compile custom simulation — using default particle lab instead.");
-      } finally {
-        generateCustomLabBtn.disabled = false;
-        generateCustomLabBtn.textContent = "⚡ Generate Lab";
-      }
-    });
-  }
-
-  labPresetBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const lab = btn.dataset.lab;
-      playSfx("click");
-      if (lab === "pendulum") {
-        customLabTopicInput.value = "Pendulum Wave Mechanics & Periodic Oscillations";
-      } else if (lab === "orbital") {
-        customLabTopicInput.value = "Newton's Planetary Orbit & Gravitational Escape Velocity";
-      } else if (lab === "thermo") {
-        customLabTopicInput.value = "Thermodynamic Gas Molecules & Pressure-Temperature Equilibrium";
-      }
-      generateCustomLabBtn.click();
-    });
-  });
-
-  // ------------------------------------------------------------------ Export Study Kit (Anki CSV, Markdown, Print)
-  async function downloadExportFile(format) {
-    if (!activeStudyData) {
-      showError("Please generate a study kit first to export.");
-      return;
-    }
-    playSfx("click");
-
-    try {
-      const res = await fetch("/api/export-deck", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: activeStudyData.analogy_title,
-          analogy_title: activeStudyData.analogy_title,
-          simplified_text: activeStudyData.simplified_text,
-          key_takeaways: activeStudyData.key_takeaways,
-          flashcards: activeStudyData.flashcards,
-          format: format,
-        }),
-      });
-
-      const data = await res.json();
-      const blob = new Blob([data.file_content], { type: data.content_type });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      playSfx("correct");
-      addXP(25);
-    } catch (e) {
-      console.error("Export Error:", e);
-      showError("Unable to export study deck — please try again.");
-    }
-  }
-
-  if (exportAnkiBtn) exportAnkiBtn.addEventListener("click", () => downloadExportFile("anki_csv"));
-  if (exportMarkdownBtn) exportMarkdownBtn.addEventListener("click", () => downloadExportFile("markdown_guide"));
-  if (printSheetBtn) {
-    if (printSheetBtn) printSheetBtn.addEventListener("click", () => {
-      playSfx("click");
-      window.print();
-    });
-  }
-
-  // ------------------------------------------------------------------ Instant Doubt Solver
-  if (openDoubtBtn) {
-    if (openDoubtBtn) openDoubtBtn.addEventListener("click", () => {
-      playSfx("click");
-      doubtModal.classList.remove("hidden");
-    });
-  }
-  if (closeDoubtModal) closeDoubtModal.addEventListener("click", () => doubtModal.classList.add("hidden"));
-
-  if (doubtMicBtn) {
-    if (doubtMicBtn) doubtMicBtn.addEventListener("click", () => {
-      playSfx("click");
-      startSimpleSpeechToText((transcript) => {
-        doubtInput.value = transcript;
-      }, doubtMicLabel);
-    });
-  }
-
-  if (submitDoubtBtn) {
-    if (submitDoubtBtn) submitDoubtBtn.addEventListener("click", async () => {
-      const q = doubtInput.value.trim();
-      if (!q) return;
-      playSfx("click");
-      submitDoubtBtn.disabled = true;
-      doubtSpinner.classList.remove("hidden");
-      doubtBtnText.textContent = "Solving...";
-
-      try {
-        const res = await fetch("/api/ask-doubt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic: activeStudyData ? activeStudyData.analogy_title : "General Concept",
-            doubt_question: q,
-            language: currentLanguage,
-          }),
-        });
-
-        const data = await res.json();
-        doubtAnswerContainer.classList.remove("hidden");
-        doubtAnswerText.textContent = data.answer;
-        doubtAnalogyText.textContent = `"${data.analogy}"`;
-        playSfx("correct");
-        addXP(15);
-      } catch (e) {
-        console.error("Doubt Solver Error:", e);
-        showError("Luna is currently busy — please ask your doubt again in a moment.");
-      } finally {
-        submitDoubtBtn.disabled = false;
-        doubtSpinner.classList.add("hidden");
-        doubtBtnText.textContent = "✨ Solve My Doubt";
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Speech-to-Text Utility
-  function startSimpleSpeechToText(onTranscript, labelElement) {
-    const SpeechClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechClass) {
-      showError("Speech Recognition is not supported on this browser.");
-      return;
-    }
-    const rec = new SpeechClass();
-    rec.lang = currentLanguage === "hi" ? "hi-IN" : "en-US";
-    rec.interimResults = false;
-
-    if (labelElement) labelElement.textContent = "Listening...";
-    rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      onTranscript(text);
-      if (labelElement) labelElement.textContent = "Speak";
-    };
-    rec.onerror = () => {
-      if (labelElement) labelElement.textContent = "Speak";
-    };
-    rec.onend = () => {
-      if (labelElement) labelElement.textContent = "Speak";
-    };
-    rec.start();
-  }
-
-  // ------------------------------------------------------------------ Copy Text
-  if (copyBtn) {
-    if (copyBtn) copyBtn.addEventListener("click", () => {
-      playSfx("click");
-      if (activeStudyData && activeStudyData.simplified_text) {
-        navigator.clipboard.writeText(activeStudyData.simplified_text);
-        copyBtnText.textContent = "Copied! ✅";
-        setTimeout(() => (copyBtnText.textContent = "Copy Text"), 1500);
-      }
-    });
-  }
-
-  // ------------------------------------------------------------------ Error Alerts
-  function showError(msg) {
-    playSfx("wrong");
-    errorMsgText.textContent = msg;
-    errorBox.classList.remove("hidden");
-    errorBox.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  function clearError() {
-    errorBox.classList.add("hidden");
-    errorMsgText.textContent = "";
-  }
-
-
-  // ------------------------------------------------------------------ Student Profile Manager
-  function updateProfileUI() {
-    const hAvatar = document.getElementById("headerAvatar");
-    const hName = document.getElementById("headerProfileName");
-    const dAvatar = document.getElementById("dashAvatarBadge");
-    const dName = document.getElementById("dashStudentName");
-    const dGrade = document.getElementById("dashGradeBadge");
-    const dGoal = document.getElementById("dashGoalText");
-
-    if (hAvatar) hAvatar.textContent = studentProfile.avatar || "🧠";
-    if (hName) hName.textContent = studentProfile.name || "Alex";
-    if (dAvatar) dAvatar.textContent = studentProfile.avatar || "🧠";
-    if (dName) dName.textContent = studentProfile.name || "Alex";
-    if (dGrade) dGrade.textContent = studentProfile.grade || "High School";
-    if (dGoal) dGoal.textContent = `🎯 Goal: ${studentProfile.goal || "Master Core Concepts"}`;
-  }
-
-  function initProfileModal() {
-    const profileBtn = document.getElementById("profileBtn");
-    const editDashBtn = document.getElementById("editProfileDashBtn");
-    const profileModal = document.getElementById("profileModal");
-    const closeBtn = document.getElementById("closeProfileModal");
-    const cancelBtn = document.getElementById("cancelProfileBtn");
-    const saveBtn = document.getElementById("saveProfileBtn");
-    const nameInput = document.getElementById("profileNameInput");
-    const gradeSelect = document.getElementById("profileGradeSelect");
-    const goalInput = document.getElementById("profileGoalInput");
-    const avatarButtons = document.querySelectorAll(".avatar-option");
-
-    let selectedAvatar = studentProfile.avatar || "🧠";
-
-    function openModal() {
-      if (nameInput) nameInput.value = studentProfile.name || "Alex";
-      if (gradeSelect) gradeSelect.value = studentProfile.grade || "High School";
-      if (goalInput) goalInput.value = studentProfile.goal || "Master Core Concepts";
-      selectedAvatar = studentProfile.avatar || "🧠";
-      highlightSelectedAvatar();
-      if (profileModal) profileModal.classList.remove("hidden");
-    }
-
-    function closeModal() {
-      if (profileModal) profileModal.classList.add("hidden");
-    }
-
-    function highlightSelectedAvatar() {
-      avatarButtons.forEach(btn => {
-        if (btn.dataset.avatar === selectedAvatar) {
-          btn.classList.add("border-2", "border-purple-500");
-          btn.classList.remove("border-slate-200", "dark:border-slate-700");
-        } else {
-          btn.classList.remove("border-2", "border-purple-500");
-          btn.classList.add("border", "border-slate-200", "dark:border-slate-700");
-        }
-      });
-    }
-
-    avatarButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        selectedAvatar = btn.dataset.avatar;
-        highlightSelectedAvatar();
-        playSfx("click");
-      });
+      h = h.replace(`___MATH_TOKEN_${idx}___`, rendered);
     });
 
-    if (profileBtn) profileBtn.addEventListener("click", openModal);
-    if (editDashBtn) editDashBtn.addEventListener("click", openModal);
-    if (closeBtn) closeBtn.addEventListener("click", closeModal);
-    if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
-
-    if (saveBtn) {
-      saveBtn.addEventListener("click", () => {
-        const newName = nameInput ? nameInput.value.trim() || "Alex" : "Alex";
-        const newGrade = gradeSelect ? gradeSelect.value : "High School";
-        const newGoal = goalInput ? goalInput.value.trim() || "Master Core Concepts" : "Master Core Concepts";
-
-        studentProfile = {
-          name: newName,
-          avatar: selectedAvatar,
-          grade: newGrade,
-          goal: newGoal
-        };
-
-        localStorage.setItem("clearmind_profile", JSON.stringify(studentProfile));
-        updateProfileUI();
-        closeModal();
-        playSfx("correct");
-      });
-    }
-
-    updateProfileUI();
+    return h;
   }
 
-  // ------------------------------------------------------------------ Init on DOM Load
-  document.addEventListener("DOMContentLoaded", () => {
-    initTheme();
-  const streakEl = document.getElementById('streakCount');
-  if (streakEl) streakEl.textContent = currentStreak;
-  const xpEl = document.getElementById('xpScore');
-  if (xpEl) xpEl.textContent = totalXP;
-  updateDashboard();
-    initProfileModal();
-    checkApiStatus();
-    initWhiteboard();
-  });
-})();
+  // =========================================================================
+  // DYNAMIC LEARNING ROADMAP GENERATOR
+  // =========================================================================
+  function updateDynamicRoadmap() {
+    const list = document.getElementById("dynamicRoadmapStepsList");
+    const sub = document.getElementById("roadmapPathSubtitle");
+    if (!list) return;
 
+    if (sub) sub.textContent = `${activeTopic} Path`;
 
-  // ------------------------------------------------------------------ Sequential Learning Pathway (Curriculum Progression)
-  function renderLearningPathway(steps) {
-    const grid = document.getElementById("pathwayStepsGrid");
-    if (!grid) return;
+    let steps = [
+      { name: "Foundations & Terminology", status: "done" },
+      { name: "Core Principles & Mechanism", status: "active" },
+      { name: "Common Examiner Traps", status: "todo" },
+      { name: "Mastery & Blitz Verification", status: "todo" }
+    ];
 
-    if (!steps || steps.length === 0) {
-      // Default 4-part pathway if empty
-      const currentTopic = (studyTextInput.value || "Topic").trim();
+    if (activeTopic.toLowerCase().includes("calculus") || activeTopic.toLowerCase().includes("math")) {
       steps = [
-        { step_number: 1, title: `Basics of ${currentTopic}`, description: "Core definitions, everyday analogies, and foundational mental models.", subtopic_query: `${currentTopic} basics`, is_completed: true },
-        { step_number: 2, title: `How ${currentTopic} Works`, description: "Step-by-step mechanism, core formulas, and key operating rules.", subtopic_query: `How ${currentTopic} works step by step`, is_completed: false },
-        { step_number: 3, title: `Advanced ${currentTopic} Problems`, description: "Real-world tricky examples, problem solving, and edge cases.", subtopic_query: `Advanced ${currentTopic} problem solving`, is_completed: false },
-        { step_number: 4, title: `Capstone & Mastery`, description: "Cross-disciplinary applications, cutting-edge science, and exam mastery.", subtopic_query: `Real world applications of ${currentTopic}`, is_completed: false },
+        { name: "Limits & Continuous Rates", status: "done" },
+        { name: "Derivatives & Power Rules", status: "active" },
+        { name: "Chain Rule & Examiner Traps", status: "todo" },
+        { name: "Integration & Real Applications", status: "todo" }
+      ];
+    } else if (activeTopic.toLowerCase().includes("python") || activeTopic.toLowerCase().includes("code")) {
+      steps = [
+        { name: "Variables & Data Types", status: "done" },
+        { name: "Functions & Parameters", status: "active" },
+        { name: "Loops & Data Structures", status: "todo" },
+        { name: "Algorithms & OOP Design", status: "todo" }
+      ];
+    } else if (activeTopic.toLowerCase().includes("physics")) {
+      steps = [
+        { name: "Vectors & Kinematics", status: "done" },
+        { name: "Newton's Laws & Free-Body Forces", status: "active" },
+        { name: "Conservation of Momentum & Energy", status: "todo" },
+        { name: "Wave Mechanics & Fields", status: "todo" }
+      ];
+    } else if (activeTopic.toLowerCase().includes("bio") || activeTopic.toLowerCase().includes("photo")) {
+      steps = [
+        { name: "Cellular Structure & Chloroplasts", status: "done" },
+        { name: "Light Reactions & ATP Synthesis", status: "active" },
+        { name: "Calvin Cycle & Biochemical Traps", status: "todo" },
+        { name: "Ecosystem Respiration Energy Flows", status: "todo" }
       ];
     }
 
-    grid.innerHTML = steps.map((step, idx) => {
-      const isPart1 = step.step_number === 1 || step.is_completed;
-      const isPart2 = step.step_number === 2;
+    list.innerHTML = steps
+      .map((s) => {
+        if (s.status === "done") {
+          return `<div class="text-emerald-400 flex items-center gap-1.5 font-medium"><span>✓</span> <span>${escapeHtml(s.name)}</span></div>`;
+        } else if (s.status === "active") {
+          return `<div class="text-purple-300 font-extrabold flex items-center gap-1.5 animate-pulse"><span>➔</span> <span>${escapeHtml(s.name)} (Active)</span></div>`;
+        } else {
+          return `<div class="text-slate-500 flex items-center gap-1.5"><span>○</span> <span>${escapeHtml(s.name)}</span></div>`;
+        }
+      })
+      .join("");
+  }
 
-      let cardBorder = isPart1
-        ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30"
-        : isPart2
-        ? "border-purple-400 dark:border-purple-600 bg-white dark:bg-slate-800 ring-2 ring-purple-500/50 shadow-md shadow-purple-500/10"
-        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80";
+  // =========================================================================
+  // UNIFIED VIEW SWITCHING ENGINE (Supports Tabs, Cards, & Dock)
+  // =========================================================================
+  const viewMap = {
+    live: "viewCanvasLive",
+    canvas: "viewCanvasLive",
+    exam: "viewCanvasExam",
+    cheatsheet: "viewCanvasExam",
+    blitz: "viewCanvasBlitz",
+    voice: "viewCanvasVoice",
+    journey: "viewCanvasJourney"
+  };
 
-      let badge = isPart1
-        ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300">✅ Part 1 • Completed</span>`
-        : isPart2
-        ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-purple-600 to-pink-600 text-white animate-pulse">🔥 Part 2 • UP NEXT</span>`
-        : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Part ${step.step_number || idx + 1}</span>`;
+  window.switchCanvasTab = function (tabKey) {
+    // If switching AWAY from Blitz Quiz while timer is running, stop timer cleanly
+    if (tabKey !== "blitz" && blitzState.isRunning) {
+      clearInterval(blitzState.timerInterval);
+      blitzState.isRunning = false;
+      const tmDisp = document.getElementById("blitzTimerDisplay");
+      if (tmDisp) tmDisp.textContent = "01:00";
+    }
 
-      let btn = isPart1
-        ? `<button class="w-full py-2 px-3 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-default">
-             <span>✨ Mastered</span>
-           </button>`
-        : isPart2
-        ? `<button data-subtopic="${encodeURIComponent(step.subtopic_query || step.title)}" class="learn-next-step-btn w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-black shadow-md transition transform hover:-translate-y-0.5 flex items-center justify-center gap-1.5">
-             <span>🚀 Learn Part 2 ➔</span>
-           </button>`
-        : `<button data-subtopic="${encodeURIComponent(step.subtopic_query || step.title)}" class="learn-next-step-btn w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-purple-100 dark:bg-slate-700 dark:hover:bg-purple-950 text-slate-800 hover:text-purple-700 dark:text-slate-200 dark:hover:text-purple-300 text-xs font-bold border border-slate-200 dark:border-slate-600 transition flex items-center justify-center gap-1.5">
-             <span>Explore Part ${step.step_number || idx + 1} ➔</span>
-           </button>`;
+    // Hide all views
+    [
+      "viewCanvasLive",
+      "viewCanvasExam",
+      "viewCanvasBlitz",
+      "viewCanvasVoice",
+      "viewCanvasJourney"
+    ].forEach((id) => {
+      document.getElementById(id)?.classList.add("hidden");
+    });
 
-      return `
-        <div class="rounded-2xl p-4 border flex flex-col justify-between space-y-3 transition duration-200 ${cardBorder}">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              ${badge}
-            </div>
-            <h4 class="text-sm font-black text-slate-900 dark:text-white leading-snug">${step.title}</h4>
-            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">${step.description}</p>
+    // Show target view
+    const targetId = viewMap[tabKey] || "viewCanvasLive";
+    document.getElementById(targetId)?.classList.remove("hidden");
+
+    // Update Top Canvas Tab Buttons Active Style
+    document.querySelectorAll(".canvas-tab-btn").forEach((btn) => {
+      const key = btn.getAttribute("data-canvas-tab");
+      const isMatch = (key === tabKey) || (key === "live" && tabKey === "canvas") || (key === "exam" && tabKey === "cheatsheet");
+      if (isMatch) {
+        btn.classList.add("bg-gradient-to-r", "from-purple-600", "to-pink-600", "text-white", "shadow-sm");
+        btn.classList.remove("text-slate-400", "hover:text-white", "hover:bg-obsidian-750");
+      } else {
+        btn.classList.remove("bg-gradient-to-r", "from-purple-600", "to-pink-600", "text-white", "shadow-sm");
+        btn.classList.add("text-slate-400", "hover:text-white", "hover:bg-obsidian-750");
+      }
+    });
+
+    // Update Mini-Dock Buttons Active Style
+    document.querySelectorAll(".dock-nav-btn").forEach((btn) => {
+      const key = btn.getAttribute("data-dock-tab");
+      const isMatch = (key === tabKey) || (key === "live" && tabKey === "canvas") || (key === "exam" && tabKey === "cheatsheet");
+      if (isMatch) {
+        btn.classList.add("bg-purple-600", "text-white", "shadow-md");
+        btn.classList.remove("bg-obsidian-850", "text-slate-400", "hover:text-white");
+      } else {
+        btn.classList.remove("bg-purple-600", "text-white", "shadow-md");
+        btn.classList.add("bg-obsidian-850", "text-slate-400", "hover:text-white");
+      }
+    });
+
+    playSound("click");
+
+    if (tabKey === "exam" || tabKey === "cheatsheet") {
+      loadExamCheatSheet(false);
+    } else if (tabKey === "blitz") {
+      startBlitzBattle();
+    } else if (tabKey === "voice") {
+      startVoiceCall();
+    }
+  };
+
+  // =========================================================================
+  // CHAT STREAM: USER & LUNA MESSAGE RENDERERS
+  // =========================================================================
+  function appendUserMessage(text, imageSrc) {
+    const box = document.getElementById("chatMessagesContainer");
+    if (!box) return;
+    const d = document.createElement("div");
+    d.className = "flex items-start justify-end gap-2.5 animate-fade-in";
+    const imgHtml = imageSrc
+      ? `<div class="mb-2"><img src="${imageSrc}" class="max-w-[200px] max-h-[140px] rounded-xl border border-purple-500/50 object-cover" /></div>`
+      : "";
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    d.innerHTML = `
+      <div class="space-y-1 max-w-[85%] text-right">
+        <div class="bg-gradient-to-r from-purple-900/70 to-indigo-900/70 border border-purple-700/50 p-3.5 rounded-2xl rounded-tr-sm text-xs font-medium leading-relaxed shadow-sm inline-block text-left text-white">
+          <div class="flex items-center justify-between border-b border-purple-700/40 pb-1 text-[10px] text-purple-300 mb-1">
+            <span class="font-bold">${escapeHtml(studentProfile.name || "Student")}</span>
+            <span>${timeStr}</span>
           </div>
-          <div class="pt-2 border-t border-slate-100 dark:border-slate-750">
-            ${btn}
+          ${imgHtml}
+          <div>${escapeHtml(text)}</div>
+        </div>
+      </div>
+      <div class="w-8 h-8 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-sm shrink-0 mt-1 shadow">
+        ${studentProfile.avatar || "🎓"}
+      </div>`;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function appendLunaMessage(data) {
+    const box = document.getElementById("chatMessagesContainer");
+    if (!box) return;
+    const d = document.createElement("div");
+    d.className = "flex items-start gap-2.5 animate-fade-in";
+
+    let analogyHtml = "";
+    if (data.analogy_card && data.analogy_card.title) {
+      analogyHtml = `
+        <div class="p-3 bg-obsidian-950/80 border border-purple-800/60 rounded-xl space-y-1">
+          <span class="text-[9px] font-black uppercase tracking-wider text-purple-400">[Interactive Analogy Card]</span>
+          <h5 class="text-xs font-black text-white">${escapeHtml(data.analogy_card.title)}</h5>
+          <p class="text-[11px] text-purple-200/90 leading-relaxed">${escapeHtml(data.analogy_card.description || "")}</p>
+        </div>`;
+    }
+
+    const rawSpeech = (data.speech_text || data.reply_text || "").replace(/<[^>]*>/g, "").trim();
+    const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    d.innerHTML = `
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-sm text-white shrink-0 mt-1 shadow shadow-purple-500/20">
+        🌸
+      </div>
+      <div class="space-y-2 max-w-[90%]">
+        <div class="bg-obsidian-850 border border-obsidian-750 p-4 rounded-2xl rounded-tl-sm text-slate-200 text-xs leading-relaxed shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b border-obsidian-750 pb-1.5 text-[10px] text-slate-400">
+            <span class="font-bold text-purple-400">Luna</span>
+            <span>${timeStr}</span>
+          </div>
+          <div class="space-y-2 text-slate-200 leading-relaxed font-normal">${formatMarkdown(data.reply_text)}</div>
+          ${analogyHtml}
+          <div class="pt-2 flex items-center justify-between border-t border-obsidian-750">
+            <button class="chat-listen-btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 text-[11px] font-bold border border-purple-800/60 transition">
+              <span>🎧</span> <span>Listen with Voice</span>
+            </button>
+            <span class="text-[10px] text-slate-500">Dual Gemini &amp; GLM-4</span>
           </div>
         </div>
-      `;
-    }).join("");
+      </div>`;
 
-    // Bind click handlers to "Learn Next Step" buttons
-    grid.querySelectorAll(".learn-next-step-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const subtopic = decodeURIComponent(button.getAttribute("data-subtopic"));
-        if (!subtopic) return;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
 
-        // Populate search box
-        studyTextInput.value = subtopic;
+    const btn = d.querySelector(".chat-listen-btn");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (data.audio_base64) {
+          playPreSynthesizedAudio(data.audio_base64, btn);
+        } else {
+          playLunaVoice(rawSpeech, btn);
+        }
+      });
+    }
+
+    // In live call, speak immediately
+    if (isVoiceCallActive) {
+      if (data.audio_base64) {
+        playPreSynthesizedAudio(data.audio_base64);
+      } else if (rawSpeech) {
+        playLunaVoice(rawSpeech);
+      }
+    }
+  }
+
+  function appendTyping() {
+    const box = document.getElementById("chatMessagesContainer");
+    if (!box) return;
+    const ind = document.createElement("div");
+    ind.id = "lunaTypingIndicator";
+    ind.className = "flex items-start gap-2.5 animate-fade-in";
+    ind.innerHTML = `
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-sm text-white shrink-0 shadow animate-pulse">
+        🌸
+      </div>
+      <div class="bg-obsidian-850 border border-obsidian-750 px-4 py-2.5 rounded-2xl rounded-tl-sm flex items-center gap-2 text-xs text-purple-400 font-bold">
+        <span>🧠 Luna is thinking...</span>
+      </div>`;
+    box.appendChild(ind);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function removeTyping() {
+    document.getElementById("lunaTypingIndicator")?.remove();
+  }
+
+
+
+  function extractRoadmapFromClientText(text) {
+    if (!text) return [];
+    const steps = [];
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const m = line.match(/(?:(?:Step\s*(\d+)|\b(\d+)\.))\s*[:\-–]\s*([^\n\r]+)/i);
+      if (m) {
+        const num = parseInt(m[1] || m[2], 10);
+        let rawTitle = m[3].replace(/[\*#_`]/g, '').trim();
+        const descMatch = rawTitle.match(/\(([^\)]+)\)/);
+        const desc = descMatch ? descMatch[1] : `Master ${rawTitle}`;
+        const title = rawTitle.replace(/\s*\([^\)]*\)/, '').trim();
+        if (title.length > 2 && title.length < 50) {
+          steps.push({
+            step_number: num || (steps.length + 1),
+            title: title,
+            status: steps.length === 0 ? "done" : steps.length === 1 ? "active" : "todo",
+            description: desc
+          });
+        }
+      }
+    }
+    return steps.slice(0, 6);
+  }
+
+  function applyRoadmapSteps(steps, topicName) {
+    if (!steps || !steps.length) return;
+    const list = document.getElementById("dynamicRoadmapStepsList");
+    const sub = document.getElementById("roadmapPathSubtitle");
+    if (sub) sub.textContent = `${topicName || activeTopic} Roadmap (${steps.length} Steps)`;
+
+    if (list) {
+      list.innerHTML = steps.map((s, i) => {
+        const num = s.step_number || (i + 1);
+        const title = s.title || `Step ${num}`;
+        const desc = s.description ? `<p class="text-[10px] text-slate-400 pl-4">${escapeHtml(s.description)}</p>` : "";
         
-        // Play level up sound
-        playSound("levelUp");
+        let icon = `<span class="text-purple-400 font-bold">➔</span>`;
+        let badgeStyle = "text-purple-300 font-bold";
+        if (s.status === "done" || i === 0) {
+          icon = `<span class="text-emerald-400 font-bold">✓</span>`;
+          badgeStyle = "text-emerald-300 font-medium";
+        } else if (s.status === "active") {
+          icon = `<span class="text-pink-400 animate-pulse font-bold">●</span>`;
+          badgeStyle = "text-pink-300 font-extrabold";
+        } else {
+          icon = `<span class="text-slate-500 font-bold">○</span>`;
+          badgeStyle = "text-slate-400";
+        }
 
-        // Scroll back up to input
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        return `
+          <div class="p-2 rounded-xl bg-obsidian-900/60 border border-obsidian-750 hover:border-purple-600/60 transition cursor-pointer group roadmap-step-item" data-step-topic="${escapeHtml(title)}">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 ${badgeStyle}">
+                ${icon}
+                <span class="text-xs">${num}. ${escapeHtml(title)}</span>
+              </div>
+              <span class="text-[9px] text-purple-400 opacity-0 group-hover:opacity-100 transition">Teach ➔</span>
+            </div>
+            ${desc}
+          </div>`;
+      }).join("");
 
-        // Trigger generation
-        showToast(`🚀 Loading Next Chapter: "${subtopic}"...`, "info");
-        setTimeout(() => {
-          generateStudyKit();
-        }, 300);
+      // Bind click on step to ask Luna about that milestone
+      list.querySelectorAll(".roadmap-step-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const stepTitle = item.getAttribute("data-step-topic");
+          sendChatMessage(`Teach me: ${stepTitle} in ${activeTopic}!`);
+        });
+      });
+    }
+
+    // Also populate Unlocked Concept Nodes with the roadmap steps!
+    const nodesGrid = document.getElementById("canvasNodesGrid");
+    if (nodesGrid) {
+      nodesGrid.innerHTML = steps.map((s, i) => {
+        const num = s.step_number || (i + 1);
+        return `
+          <div class="p-3.5 rounded-2xl bg-obsidian-850 border border-purple-800/60 space-y-1 animate-fade-in cursor-pointer hover:border-pink-500/80 transition" onclick="window.askLunaStep('${escapeHtml(s.title)}')">
+            <span class="text-[9px] font-black text-purple-400 uppercase">Milestone 0${num} • Step</span>
+            <h5 class="text-xs font-extrabold text-white">${escapeHtml(s.title)}</h5>
+            <p class="text-[11px] text-slate-400 leading-relaxed">${escapeHtml(s.description || "Master this conceptual milestone.")}</p>
+          </div>`;
+      }).join("");
+    }
+  }
+
+  window.askLunaStep = function(title) {
+    if (title) {
+      sendChatMessage(`Teach me ${title} in detail with an everyday analogy!`);
+    }
+  };
+
+  // =========================================================================
+  // SEND CHAT MESSAGE TO BACKEND (MULTIMODAL VISION SUPPORT)
+  // =========================================================================
+  async function sendChatMessage(userText, imageBase64) {
+    if (!userText || !userText.trim()) return;
+    const clean = userText.trim();
+    appendUserMessage(clean, imageBase64);
+
+    const input = document.getElementById("chatMessageInput");
+    const sendBtn = document.getElementById("chatSendBtn");
+    if (input) input.value = "";
+    if (sendBtn) sendBtn.disabled = true;
+
+    appendTyping();
+    playSound("click");
+
+    conversationHistory.push({ role: "user", content: clean, image: imageBase64 || null });
+    saveHistory();
+
+    try {
+      const res = await fetch("/api/chat-teach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: activeTopic,
+          message: clean,
+          conversation_history: conversationHistory.slice(-6).map((x) => ({ role: x.role, content: x.content })),
+          language: activeLanguage,
+          student_name: studentProfile.name || "Student",
+          level: studentProfile.level || "College / University",
+          image_base64: imageBase64 || null
+        })
+      });
+
+      removeTyping();
+      if (!res.ok) throw new Error("Server response " + res.status);
+      const data = await res.json();
+
+      if (data.detected_topic && data.detected_topic !== activeTopic) {
+        activeTopic = data.detected_topic;
+        localStorage.setItem("clearmind_active_topic", activeTopic);
+        updateActiveTopicUI();
+        updateDynamicRoadmap();
+      }
+
+      conversationHistory.push({ role: "assistant", content: data.reply_text, data: data });
+      saveHistory();
+
+      appendLunaMessage(data);
+      playSound("correct");
+      addXP(25);
+
+      if (data.suggested_replies && data.suggested_replies.length) {
+        renderSuggestedChips(data.suggested_replies);
+      }
+
+      // Ensure roadmap is ALWAYS updated on the right side
+      let finalSteps = data.roadmap_steps;
+      if (!finalSteps || !finalSteps.length) {
+        // Extract steps from text if Luna formatted them as a list
+        finalSteps = extractRoadmapFromClientText(data.reply_text);
+      }
+      if (!finalSteps || !finalSteps.length) {
+        if (clean.toLowerCase().includes("roadmap") || (data.detected_topic && data.detected_topic !== "General Science")) {
+          finalSteps = [
+            { step_number: 1, title: `${data.detected_topic || activeTopic} Foundations`, status: "done", description: "Prerequisites, definitions & vocabulary" },
+            { step_number: 2, title: `Core Mechanism & Rules`, status: "active", description: "Fundamental operations & relations" },
+            { step_number: 3, title: `Classification & Types`, status: "todo", description: "Key categories and mapping models" },
+            { step_number: 4, title: `Examiner Traps & Formulas`, status: "todo", description: "Common exam mistakes and traps" },
+            { step_number: 5, title: `Mastery & 60s Blitz Arena`, status: "todo", description: "Rapid testing and verification" }
+          ];
+        }
+      }
+
+      if (finalSteps && finalSteps.length) {
+        applyRoadmapSteps(finalSteps, data.detected_topic || activeTopic);
+        showToast("🗺️ Learning Roadmap Synced to Canvas!", "success");
+        // Smoothly scroll or highlight roadmap card
+        const rCard = document.getElementById("dynamicRoadmapStepsList")?.parentElement;
+        if (rCard) {
+          rCard.classList.add("ring-2", "ring-purple-500", "shadow-lg", "shadow-purple-500/20");
+          setTimeout(() => rCard.classList.remove("ring-2", "ring-purple-500", "shadow-lg", "shadow-purple-500/20"), 2500);
+        }
+      }
+
+      if (data.canvas_node_title && (!data.roadmap_steps || !data.roadmap_steps.length)) {
+        addRoadmapNode(data.canvas_node_title, data.canvas_node_summary);
+      }
+    } catch (e) {
+      console.warn("Chat error:", e);
+      removeTyping();
+      showToast("Network error communicating with AI tutor.", "error");
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
+      if (input) input.focus();
+    }
+  }
+
+  function updateActiveTopicUI() {
+    const tTopic = document.getElementById("chatActiveTopic");
+    const cTitle = document.getElementById("canvasTopicTitle");
+    const examTopic = document.getElementById("examSheetTopicTitle");
+    const dispTopic = activeTopic || "Choose Any Topic";
+    if (tTopic) tTopic.textContent = dispTopic;
+    if (cTitle) cTitle.textContent = dispTopic + (activeTopic ? " Knowledge Canvas" : "");
+    if (examTopic) {
+      examTopic.innerHTML = `<span>⚡</span> <span>${escapeHtml(dispTopic)} Cheat Sheet</span>`;
+    }
+  }
+
+  function renderSuggestedChips(chips) {
+    const dock = document.getElementById("suggestedChipsDock");
+    if (!dock || !chips) return;
+    dock.innerHTML = chips
+      .map(
+        (c) =>
+          `<button class="suggested-chip text-[11px] font-semibold px-3 py-1 rounded-xl bg-obsidian-850 hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-obsidian-750 transition shrink-0 cursor-pointer">
+            ${escapeHtml(c)}
+          </button>`
+      )
+      .join("");
+
+    dock.querySelectorAll(".suggested-chip").forEach((btn) => {
+      btn.addEventListener("click", () => sendChatMessage(btn.textContent.trim()));
+    });
+  }
+
+  function addRoadmapNode(title, summary) {
+    const list = document.getElementById("canvasNodesGrid");
+    if (!list) return;
+    const node = document.createElement("div");
+    node.className =
+      "p-3.5 rounded-2xl bg-obsidian-850 border border-purple-800/60 space-y-1 animate-fade-in";
+    node.innerHTML = `
+      <span class="text-[9px] font-black text-purple-400 uppercase">✨ New Unlocked Node</span>
+      <h5 class="text-xs font-extrabold text-white">${escapeHtml(title)}</h5>
+      <p class="text-[11px] text-slate-400 leading-relaxed">${escapeHtml(summary || "")}</p>`;
+    list.prepend(node);
+  }
+
+  // =========================================================================
+  // VOICE TTS AUDIO PLAYBACK (INSTANT PRE-SYNTHESIZED + FALLBACK)
+  // =========================================================================
+  function playPreSynthesizedAudio(base64Audio, btn) {
+    if (!soundEnabled || !base64Audio) return;
+    try {
+      if (activeAudio) activeAudio.pause();
+      if (btn) {
+        btn.innerHTML = "<span>🔊</span> <span>Playing...</span>";
+        btn.disabled = true;
+      }
+      activeAudio = new Audio("data:audio/mpeg;base64," + base64Audio);
+      activeAudio.play();
+      activeAudio.onended = () => {
+        if (btn) {
+          btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
+          btn.disabled = false;
+        }
+      };
+    } catch (e) {
+      console.warn("Base64 audio play failed, falling back:", e);
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function playLunaVoice(rawText, btn) {
+    if (!soundEnabled || !rawText) return;
+    const clean = rawText.replace(/<[^>]*>/g, "").trim();
+    if (!clean) return;
+
+    if (btn) {
+      btn.innerHTML = "<span>⏳</span> <span>Synthesizing...</span>";
+      btn.disabled = true;
+    }
+
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean, language: activeLanguage })
+      });
+      if (!res.ok) throw new Error("TTS failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (activeAudio) activeAudio.pause();
+      activeAudio = new Audio(url);
+      activeAudio.play();
+      activeAudio.onended = () => {
+        if (btn) {
+          btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
+          btn.disabled = false;
+        }
+      };
+    } catch (e) {
+      console.warn("TTS fallback:", e);
+      if ("speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(clean);
+        u.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
+        window.speechSynthesis.speak(u);
+      }
+      if (btn) {
+        btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
+        btn.disabled = false;
+      }
+    }
+  }
+
+  // =========================================================================
+  // 60-SECOND EXAM CHEAT SHEET (WITH TOPIC CACHING & REGENERATE)
+  // =========================================================================
+  async function loadExamCheatSheet(forceRegenerate = false) {
+    const title = document.getElementById("examSheetTopicTitle");
+    if (title) {
+      title.innerHTML = `<span>⚡</span> <span>${escapeHtml(activeTopic)} Cheat Sheet</span>`;
+    }
+
+    const trap = document.getElementById("examTrapWarningText");
+    const mnem = document.getElementById("examMnemonicText");
+    const q5 = document.getElementById("exam5MarkQuestionText");
+    const fList = document.getElementById("examFormulasList");
+
+    // Check cache to avoid repeated AI calls and infinite XP exploit
+    if (!forceRegenerate && cachedCheatSheets[activeTopic]) {
+      const d = cachedCheatSheets[activeTopic];
+      if (trap) trap.textContent = d.examiner_trap_warning;
+      if (mnem) mnem.textContent = d.rapid_memory_mnemonic;
+      if (q5) q5.innerHTML = formatMarkdown(d.must_know_5mark_question);
+      if (fList && d.formulas_and_definitions) {
+        fList.innerHTML = d.formulas_and_definitions
+          .map(
+            (f) => `
+            <div class="p-3 bg-obsidian-850 border border-obsidian-750 rounded-xl text-xs text-emerald-400 font-mono flex items-center justify-between">
+              <span>${escapeHtml(f)}</span>
+              <span class="text-[10px] text-slate-500 uppercase font-bold">Rule</span>
+            </div>`
+          )
+          .join("");
+      }
+      return;
+    }
+
+    if (trap) trap.textContent = "Synthesizing examiner traps...";
+    if (mnem) mnem.textContent = "Generating rapid memory mnemonic...";
+    if (q5) q5.textContent = "Extracting guaranteed 5-mark question...";
+
+    try {
+      const res = await fetch("/api/exam-cheat-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: activeTopic,
+          language: activeLanguage,
+          level: studentProfile.level || "College / University"
+        })
+      });
+
+      if (!res.ok) throw new Error("Cheat sheet request failed");
+      const d = await res.json();
+      cachedCheatSheets[activeTopic] = d;
+
+      if (trap) trap.textContent = d.examiner_trap_warning || "Avoid standard order of operations errors.";
+      if (mnem) mnem.textContent = d.rapid_memory_mnemonic || "S.P.A.R.K: Scope, Parameters, Arguments, Return, Keep clean!";
+      if (q5) q5.innerHTML = formatMarkdown(d.must_know_5mark_question || "Derive fundamental relationship step-by-step.");
+
+      if (fList && d.formulas_and_definitions) {
+        fList.innerHTML = d.formulas_and_definitions
+          .map(
+            (f) => `
+            <div class="p-3 bg-obsidian-850 border border-obsidian-750 rounded-xl text-xs text-emerald-400 font-mono flex items-center justify-between">
+              <span>${escapeHtml(f)}</span>
+              <span class="text-[10px] text-slate-500 uppercase font-bold">Rule</span>
+            </div>`
+          )
+          .join("");
+      }
+
+      // Award XP once per session for this topic
+      if (!awardedCheatSheetTopics.has(activeTopic)) {
+        awardedCheatSheetTopics.add(activeTopic);
+        addXP(50);
+        bumpStreak();
+        playSound("fanfare");
+        if (typeof confetti === "function") {
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
+        }
+        showToast("⚡ 60s Cheat Sheet Created! +50 XP Earned", "success");
+      }
+    } catch (e) {
+      console.warn("Cheat sheet error:", e);
+      showToast("Could not generate cheat sheet from AI.", "error");
+    }
+  }
+
+  // =========================================================================
+  // 60-SECOND RAPID-FIRE BLITZ BATTLE (LOCKS ANSWERS WHEN TIME RUNS OUT)
+  // =========================================================================
+  function formatTimerString(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+  }
+
+  async function startBlitzBattle() {
+    clearInterval(blitzState.timerInterval);
+    blitzState.isRunning = false;
+    blitzState.score = 0;
+    blitzState.combo = 1;
+    blitzState.timeLeft = 60;
+    blitzState.currentQuestionIdx = 0;
+    blitzState.questions = [];
+
+    const tmDisp = document.getElementById("blitzTimerDisplay");
+    const scNum = document.getElementById("blitzScoreNum");
+    const cbBadge = document.getElementById("blitzComboBadge");
+    const qCard = document.getElementById("blitzQuestionCard");
+
+    if (tmDisp) tmDisp.textContent = "01:00";
+    if (scNum) scNum.textContent = "0";
+    if (cbBadge) cbBadge.textContent = "1x COMBO";
+
+    if (qCard) {
+      qCard.innerHTML = `
+        <div class="p-8 text-center space-y-3">
+          <p class="text-xs text-purple-300 font-bold animate-pulse">Loading rapid-fire questions for ${escapeHtml(activeTopic)}...</p>
+          <p class="text-[11px] text-slate-400">Timer starts when questions are ready!</p>
+        </div>`;
+    }
+
+    try {
+      const res = await fetch("/api/blitz-quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: activeTopic, language: activeLanguage })
+      });
+      const d = await res.json();
+      blitzState.questions = d.questions || [];
+    } catch (e) {
+      console.warn("Blitz error:", e);
+    }
+
+    if (!blitzState.questions || !blitzState.questions.length) {
+      blitzState.questions = [
+        {
+          id: 1,
+          question: `What fundamental rule governs ${activeTopic}?`,
+          options: ["Conservation of State", "Random Variance", "Infinite Acceleration"],
+          correct_index: 0,
+          explanation: "Fundamental laws dictate structured conservation."
+        },
+        {
+          id: 2,
+          question: "What is the standard order of operations?",
+          options: ["BODMAS / PEMDAS", "Random order", "Right to Left always"],
+          correct_index: 0,
+          explanation: "Brackets, Orders, Division, Multiplication, Addition, Subtraction."
+        },
+        {
+          id: 3,
+          question: "Which data structure operates on LIFO (Last In First Out)?",
+          options: ["Queue", "Stack", "Array"],
+          correct_index: 1,
+          explanation: "Stacks push and pop from the top."
+        },
+        {
+          id: 4,
+          question: "What is the time complexity of binary search on a sorted array?",
+          options: ["O(1)", "O(n)", "O(log n)"],
+          correct_index: 2,
+          explanation: "Binary search halves the search space at each step."
+        }
+      ];
+    }
+
+    blitzState.isRunning = true;
+    renderBlitzQuestion();
+
+    // Start timer AFTER questions are displayed
+    blitzState.timerInterval = setInterval(() => {
+      blitzState.timeLeft -= 1;
+      if (tmDisp) tmDisp.textContent = formatTimerString(blitzState.timeLeft);
+      if (blitzState.timeLeft <= 10) playSound("tick");
+      if (blitzState.timeLeft <= 0) endBlitzBattle("timeout");
+    }, 1000);
+  }
+
+  function renderBlitzQuestion() {
+    if (!blitzState.isRunning) return;
+    const q = blitzState.questions[blitzState.currentQuestionIdx];
+    if (!q) {
+      endBlitzBattle("completed");
+      return;
+    }
+
+    const qIdx = document.getElementById("blitzQuestionIdx");
+    const qTotal = document.getElementById("blitzTotalQuestions");
+    if (qIdx) qIdx.textContent = blitzState.currentQuestionIdx + 1;
+    if (qTotal) qTotal.textContent = blitzState.questions.length;
+
+    const qCard = document.getElementById("blitzQuestionCard");
+    if (!qCard) return;
+
+    qCard.innerHTML = `
+      <p id="blitzQuestionText" class="text-sm font-extrabold text-white leading-relaxed text-center">
+        ${escapeHtml(q.question)}
+      </p>
+      <div id="blitzOptionsGrid" class="grid gap-2.5 pt-2">
+        ${q.options
+          .map(
+            (opt, idx) => `
+          <button data-opt="${idx}" class="blitz-opt-btn p-3 rounded-xl bg-obsidian-800 hover:bg-purple-950/80 border border-obsidian-750 text-xs font-bold text-white text-left transition flex items-center justify-between cursor-pointer">
+            <span>${escapeHtml(opt)}</span>
+            <span class="text-[10px] text-slate-400">Option ${String.fromCharCode(65 + idx)}</span>
+          </button>`
+          )
+          .join("")}
+      </div>`;
+
+    qCard.querySelectorAll(".blitz-opt-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        handleBlitzAnswer(parseInt(btn.getAttribute("data-opt"), 10), btn);
       });
     });
   }
+
+  function handleBlitzAnswer(selectedIdx, btn) {
+    if (!blitzState.isRunning) {
+      showToast("⏰ Time is up! You cannot answer after the timer ends.", "error");
+      return;
+    }
+
+    const q = blitzState.questions[blitzState.currentQuestionIdx];
+    if (!q) return;
+
+    const allBtns = document.querySelectorAll(".blitz-opt-btn");
+    allBtns.forEach((b) => (b.disabled = true));
+
+    const correctIdx = parseInt(q.correct_index, 10);
+    if (selectedIdx === correctIdx) {
+      playSound(blitzState.combo > 1 ? "combo" : "correct");
+      blitzState.score += 100 * blitzState.combo;
+      blitzState.combo = Math.min(5, blitzState.combo + 1);
+      btn.classList.add("bg-emerald-950/90", "border-emerald-500", "text-emerald-200");
+    } else {
+      playSound("wrong");
+      blitzState.combo = 1;
+      btn.classList.add("bg-rose-950/90", "border-rose-500", "text-rose-200");
+      if (allBtns[correctIdx]) {
+        allBtns[correctIdx].classList.add("bg-emerald-950/90", "border-emerald-500", "text-emerald-200");
+      }
+    }
+
+    const scNum = document.getElementById("blitzScoreNum");
+    const cbBadge = document.getElementById("blitzComboBadge");
+    if (scNum) scNum.textContent = blitzState.score;
+    if (cbBadge) cbBadge.textContent = blitzState.combo + "x COMBO";
+
+    setTimeout(() => {
+      if (!blitzState.isRunning) return;
+      blitzState.currentQuestionIdx += 1;
+      renderBlitzQuestion();
+    }, 450);
+  }
+
+  function endBlitzBattle(reason) {
+    clearInterval(blitzState.timerInterval);
+    blitzState.isRunning = false;
+
+    document.querySelectorAll(".blitz-opt-btn").forEach((b) => (b.disabled = true));
+
+    playSound("fanfare");
+    if (typeof confetti === "function") {
+      confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+    }
+
+    const earnedXP = Math.round(blitzState.score / 2);
+    addXP(earnedXP);
+
+    const tmDisp = document.getElementById("blitzTimerDisplay");
+    if (tmDisp) tmDisp.textContent = "00:00 (Time's Up!)";
+
+    const qCard = document.getElementById("blitzQuestionCard");
+    if (qCard) {
+      qCard.innerHTML = `
+        <div class="p-6 bg-gradient-to-br from-obsidian-900 to-purple-950/60 rounded-2xl border border-purple-800/60 space-y-4 text-center">
+          <div class="w-14 h-14 rounded-full bg-amber-400 text-black mx-auto flex items-center justify-center text-2xl font-black shadow-lg">
+            🏆
+          </div>
+          <div>
+            <h4 class="text-base font-black text-white">${reason === "timeout" ? "⏰ Time's Up! Round Finished" : "⚡ Blitz Battle Complete!"}</h4>
+            <p class="text-xs text-purple-200">Topic: ${escapeHtml(activeTopic)}</p>
+          </div>
+          <div class="grid grid-cols-3 gap-2 py-2 border-y border-obsidian-750">
+            <div class="p-2 bg-obsidian-850 rounded-xl">
+              <span class="text-[10px] text-slate-400 block uppercase">Final Score</span>
+              <span class="text-sm font-black text-amber-400">${blitzState.score} PTS</span>
+            </div>
+            <div class="p-2 bg-obsidian-850 rounded-xl">
+              <span class="text-[10px] text-slate-400 block uppercase">XP Gained</span>
+              <span class="text-sm font-black text-emerald-400">+${earnedXP} XP</span>
+            </div>
+            <div class="p-2 bg-obsidian-850 rounded-xl">
+              <span class="text-[10px] text-slate-400 block uppercase">Answered</span>
+              <span class="text-sm font-black text-purple-400">${blitzState.currentQuestionIdx} / ${blitzState.questions.length}</span>
+            </div>
+          </div>
+          <div class="flex justify-center gap-3 pt-1">
+            <button id="restartBlitzBtn" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-bold transition shadow-md">
+              ⚡ Play Again (60s)
+            </button>
+            <button id="closeBlitzSummaryBtn" class="px-4 py-2.5 bg-obsidian-800 hover:bg-obsidian-750 text-slate-300 rounded-xl text-xs font-bold transition">
+              Back to Canvas
+            </button>
+          </div>
+        </div>`;
+
+      document.getElementById("restartBlitzBtn")?.addEventListener("click", startBlitzBattle);
+      document.getElementById("closeBlitzSummaryBtn")?.addEventListener("click", () => window.switchCanvasTab("live"));
+    }
+
+    showToast("🏆 Blitz Done! +" + earnedXP + " XP Earned", "success");
+  }
+
+  // =========================================================================
+  // LIVE VOICE CALL ORBIT
+  // =========================================================================
+  function startVoiceCall() {
+    isVoiceCallActive = true;
+    const statusText = document.getElementById("voiceCallStatusText");
+    if (statusText) statusText.textContent = "Live Call Active • Speak with Luna";
+    playSound("combo");
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      try {
+        if (voiceRecognition) {
+          voiceRecognition.stop();
+        }
+        voiceRecognition = new SpeechRec();
+        voiceRecognition.continuous = true;
+        voiceRecognition.interimResults = true;
+        voiceRecognition.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
+        voiceRecognition.onresult = (e) => {
+          const tr = Array.from(e.results)
+            .map((r) => r[0].transcript)
+            .join("");
+          const el = document.getElementById("voiceLiveTranscript");
+          if (el) el.textContent = `"${tr}"`;
+          if (e.results[e.results.length - 1].isFinal) {
+            sendChatMessage(tr);
+          }
+        };
+        voiceRecognition.onerror = (e) => {
+          console.warn("Voice rec error:", e);
+          if (e.error === "not-allowed") {
+            showToast("Microphone permission denied. Please allow mic in browser settings.", "error");
+          }
+        };
+        voiceRecognition.start();
+        showToast("🎙️ Voice Call Active. Speak now!", "info");
+      } catch (err) {
+        console.warn("SpeechRec start error:", err);
+      }
+    } else {
+      showToast("Voice recognition not supported in this browser. Use Chrome/Edge.", "error");
+    }
+  }
+
+  function endVoiceCall() {
+    isVoiceCallActive = false;
+    if (voiceRecognition) {
+      try { voiceRecognition.stop(); } catch (e) {}
+      voiceRecognition = null;
+    }
+    const statusText = document.getElementById("voiceCallStatusText");
+    if (statusText) statusText.textContent = "Tap Orb to Start Call";
+    if (activeAudio) activeAudio.pause();
+    playSound("click");
+    showToast("Voice call ended.", "info");
+  }
+
+  // =========================================================================
+  // RESIZABLE SPLIT-PANE CONTROLLER (DRAG TO RESIZE CHAT PANEL)
+  // =========================================================================
+  function initSplitPaneResizer() {
+    const left = document.getElementById("leftChatSection");
+    const splitter = document.getElementById("workspaceSplitter");
+    if (!left || !splitter) return;
+
+    const savedWidth = localStorage.getItem("clearmind_chat_width");
+    if (savedWidth && window.innerWidth >= 1024) {
+      left.style.width = parseFloat(savedWidth) + "%";
+    }
+
+    let isDragging = false;
+
+    splitter.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      e.preventDefault();
+      document.body.classList.add("cursor-col-resize", "select-none");
+      left.style.transition = "none";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging || window.innerWidth < 1024) return;
+      const parent = left.parentElement;
+      const rect = parent.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      let pct = Math.max(25, Math.min(75, (offsetX / rect.width) * 100));
+      left.style.width = pct + "%";
+      localStorage.setItem("clearmind_chat_width", pct.toFixed(1));
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        document.body.classList.remove("cursor-col-resize", "select-none");
+        left.style.transition = "";
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth < 1024) {
+        left.style.width = "";
+      }
+    });
+  }
+
+  // =========================================================================
+  // EVENT LISTENERS & INITIALIZATION
+  // =========================================================================
+  function initEventListeners() {
+    initSplitPaneResizer();
+
+    // Top Canvas Tabs
+    document.querySelectorAll(".canvas-tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-canvas-tab");
+        window.switchCanvasTab(tab);
+      });
+    });
+
+    // Left Vertical Mini-Sidebar Dock Buttons
+    document.querySelectorAll(".dock-nav-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-dock-tab");
+        window.switchCanvasTab(tab);
+      });
+    });
+
+    // Central Knowledge Orb
+    document.getElementById("centralKnowledgeOrb")?.addEventListener("click", () => {
+      window.switchCanvasTab("voice");
+    });
+
+    // Regenerate Cheat Sheet Button
+    document.getElementById("regenerateExamSheetBtn")?.addEventListener("click", () => {
+      loadExamCheatSheet(true);
+    });
+
+    // Chat Form Submit
+    const chatForm = document.getElementById("chatInputForm");
+    const chatInput = document.getElementById("chatMessageInput");
+    if (chatForm) {
+      chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (chatInput && chatInput.value.trim()) {
+          sendChatMessage(chatInput.value);
+        }
+      });
+    }
+
+    // ENTER TO SEND MESSAGE, SHIFT + ENTER FOR NEWLINE!
+    if (chatInput) {
+      chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (chatInput.value.trim()) {
+            sendChatMessage(chatInput.value);
+          }
+        }
+      });
+    }
+
+    // Photo OCR Upload (with vision base64 pass-through)
+    const photoInput = document.getElementById("chatPhotoInput");
+    if (photoInput) {
+      photoInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          sendChatMessage("Teach me the formulas and concepts from this textbook photo!", ev.target.result);
+          photoInput.value = "";
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Voice & Mic Button
+    document.getElementById("chatMicBtn")?.addEventListener("click", () => {
+      window.switchCanvasTab("voice");
+    });
+    document.getElementById("endVoiceCallBtn")?.addEventListener("click", endVoiceCall);
+
+    // Global Search Input
+    const gSearch = document.getElementById("globalTopicSearchInput");
+    if (gSearch) {
+      gSearch.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && gSearch.value.trim()) {
+          activeTopic = gSearch.value.trim();
+          localStorage.setItem("clearmind_active_topic", activeTopic);
+          updateActiveTopicUI();
+          updateDynamicRoadmap();
+          showToast("Switched topic to " + activeTopic, "info");
+          sendChatMessage(`Hi Luna! Teach me ${activeTopic}.`);
+          gSearch.value = "";
+        }
+      });
+    }
+
+    // Quick Topic Chips in Header
+    document.querySelectorAll(".quick-topic-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const t = btn.getAttribute("data-topic");
+        if (t) {
+          activeTopic = t;
+          localStorage.setItem("clearmind_active_topic", activeTopic);
+          updateActiveTopicUI();
+          updateDynamicRoadmap();
+          showToast("Switched topic to " + activeTopic, "info");
+          sendChatMessage(`Hi Luna! Teach me ${activeTopic}.`);
+        }
+      });
+    });
+
+    // Language Dropdown
+    const langSelect = document.getElementById("languageSelect");
+    if (langSelect) {
+      langSelect.value = activeLanguage;
+      langSelect.addEventListener("change", () => {
+        activeLanguage = langSelect.value;
+        localStorage.setItem("clearmind_lang", activeLanguage);
+        if (voiceRecognition && isVoiceCallActive) {
+          voiceRecognition.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
+        }
+        showToast("Language changed to " + langSelect.options[langSelect.selectedIndex].text, "info");
+      });
+    }
+
+    // Sound FX Toggle (with icon sync & audio stop)
+    const soundBtn = document.getElementById("soundToggleBtn");
+    if (soundBtn) {
+      soundBtn.textContent = soundEnabled ? "🔊" : "🔇";
+      soundBtn.addEventListener("click", () => {
+        soundEnabled = !soundEnabled;
+        localStorage.setItem("clearmind_sound", String(soundEnabled));
+        soundBtn.textContent = soundEnabled ? "🔊" : "🔇";
+        if (!soundEnabled && activeAudio) {
+          activeAudio.pause();
+        }
+        showToast("Sound FX " + (soundEnabled ? "Enabled" : "Muted"), "info");
+      });
+    }
+
+    // Profile / Settings Modal Controller
+    const pModal = document.getElementById("profileModal");
+    const openProfile = () => {
+      const nInp = document.getElementById("inputStudentName");
+      const lInp = document.getElementById("inputStudyLevel");
+      const tInp = document.getElementById("inputStudentTopic");
+      if (nInp) nInp.value = studentProfile.name || "";
+      if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
+      if (tInp) tInp.value = activeTopic || "";
+      pModal?.classList.remove("hidden");
+    };
+
+    // All buttons that open Profile Modal
+    document.getElementById("headerProfileBtn")?.addEventListener("click", openProfile);
+    document.getElementById("dockSettingsBtn")?.addEventListener("click", openProfile);
+    document.getElementById("editProfileJourneyBtn")?.addEventListener("click", openProfile);
+    document.getElementById("brandLogoBtn")?.addEventListener("click", openProfile);
+
+    // Close Profile Modal ✕ Button
+    document.getElementById("closeProfileModal")?.addEventListener("click", () => {
+      pModal?.classList.add("hidden");
+    });
+
+    // Save Profile Submit Button
+    document.getElementById("saveProfileBtn")?.addEventListener("click", () => {
+      const nInp = document.getElementById("inputStudentName");
+      const lInp = document.getElementById("inputStudyLevel");
+      const tInp = document.getElementById("inputStudentTopic");
+      const enteredName = nInp?.value.trim() || "Student";
+      const chosenTopic = tInp?.value.trim() || "General Science & Problem Solving";
+
+      studentProfile.name = enteredName;
+      studentProfile.level = lInp?.value || "College / University";
+      activeTopic = chosenTopic;
+      localStorage.setItem("clearmind_profile", JSON.stringify(studentProfile));
+      localStorage.setItem("clearmind_active_topic", activeTopic);
+
+      updateHUD();
+      updateActiveTopicUI();
+      updateDynamicRoadmap();
+      pModal?.classList.add("hidden");
+      playSound("fanfare");
+      showToast("Welcome " + enteredName + "! Topic set to " + activeTopic, "success");
+
+      // Reset chat and give greeting asking what they want to learn
+      const box = document.getElementById("chatMessagesContainer");
+      if (box) box.innerHTML = "";
+      conversationHistory = [];
+      saveHistory();
+
+      if (tInp && tInp.value.trim()) {
+        sendChatMessage(`Hi Luna! I am ${enteredName}. I am studying at ${studentProfile.level} level and I want to learn ${activeTopic}. Please give me an exciting breakdown with a real-world analogy!`);
+      } else {
+        appendLunaMessage({
+          reply_text: `Hello **${enteredName}**! 🌸 Wonderful to meet you!\n\nI have calibrated your tutoring session for **${studentProfile.level}**.\n\n**What would you like to learn today?**\n\nType any topic, paste your homework question, or tap a suggestion chip below!`,
+          speech_text: `Hello ${enteredName}! What would you like to learn today?`,
+          analogy_card: {
+            title: "🎯 Calibrated for Your Level",
+            description: `Ready for ${studentProfile.level}. Ask anything or click a subject below!`
+          }
+        });
+        renderSuggestedChips([
+          "⚛️ Physics: Newton's Laws of Motion",
+          "📐 Math: Differentiation & Calculus",
+          "🌿 Biology: Photosynthesis & Plants",
+          "🧪 Chemistry: Organic Reactions",
+          "💻 Computer Science & Programming"
+        ]);
+      }
+    });
+
+    // Avatar Picker Buttons
+    document.querySelectorAll(".avatar-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        studentProfile.avatar = b.getAttribute("data-avatar") || "🎓";
+        document.querySelectorAll(".avatar-btn").forEach((x) => x.classList.remove("ring-2", "ring-purple-500"));
+        b.classList.add("ring-2", "ring-purple-500");
+      });
+    });
+
+    // Print Exam Sheet
+    document.getElementById("printExamSheetBtn")?.addEventListener("click", () => window.print());
+
+    // Reset Session / Clear Data Button in Dock
+    document.getElementById("dockResetBtn")?.addEventListener("click", () => {
+      if (confirm("Reset study session and configure new profile?")) {
+        localStorage.clear();
+        studentProfile = { name: "", avatar: "🎓", level: "College / University" };
+        totalXP = 0;
+        currentStreak = 1;
+        conversationHistory = [];
+        cachedCheatSheets = {};
+        awardedCheatSheetTopics = new Set();
+        activeTopic = "Introduction to Python";
+        updateHUD();
+        updateActiveTopicUI();
+        updateDynamicRoadmap();
+        const box = document.getElementById("chatMessagesContainer");
+        if (box) box.innerHTML = "";
+        openProfile();
+        showToast("Session reset. Please enter your details!", "info");
+      }
+    });
+
+    // Reset Chat Button (Top Left of Chat Stream)
+    document.getElementById("resetChatBtn")?.addEventListener("click", () => {
+      conversationHistory = [];
+      saveHistory();
+      const box = document.getElementById("chatMessagesContainer");
+      if (box) box.innerHTML = "";
+      const currentName = studentProfile.name || "there";
+      appendLunaMessage({
+        reply_text: `Hello **${currentName}**! 🌸 Fresh start ready.\n\n**What would you like to learn today?**\n\nType any topic or tap one of the subjects below!`,
+        speech_text: `Hello ${currentName}! What would you like to learn today?`,
+        analogy_card: {
+          title: "🌸 Clean Slate Ready",
+          description: "Choose any subject or ask any question to get started!"
+        }
+      });
+      renderSuggestedChips([
+        "⚛️ Physics: Newton's Laws of Motion",
+        "📐 Math: Differentiation & Calculus",
+        "🌿 Biology: Photosynthesis & Plants",
+        "🧪 Chemistry: Organic Reactions",
+        "💻 Computer Science & Programming"
+      ]);
+      showToast("Chat reset. Ready for new questions!", "info");
+    });
+
+    // Prompt Chips in Chat Stream
+    document.getElementById("chipAnalogy")?.addEventListener("click", () => {
+      sendChatMessage(`Teach me ${activeTopic} with an everyday real-world analogy.`);
+    });
+    document.getElementById("chipTraps")?.addEventListener("click", () => {
+      sendChatMessage(`What is the #1 examiner trap that students lose marks on in ${activeTopic}?`);
+    });
+    document.getElementById("chipBlitz")?.addEventListener("click", () => {
+      window.switchCanvasTab("blitz");
+    });
+  }
+
+  // =========================================================================
+  // APP BOOTSTRAP & CHAT HISTORY RESTORATION
+  // =========================================================================
+  document.addEventListener("DOMContentLoaded", () => {
+    updateHUD();
+    updateActiveTopicUI();
+    updateDynamicRoadmap();
+    initEventListeners();
+
+    // RESTORE CHAT HISTORY IF EXISTS, OR SHOW INITIAL GREETING
+    const box = document.getElementById("chatMessagesContainer");
+    if (box) {
+      if (conversationHistory && conversationHistory.length > 0) {
+        // Rehydrate saved conversation
+        conversationHistory.forEach((item) => {
+          if (item.role === "user") {
+            appendUserMessage(item.content, item.image);
+          } else if (item.role === "assistant") {
+            if (item.data) {
+              appendLunaMessage(item.data);
+            } else {
+              appendLunaMessage({ reply_text: item.content });
+            }
+          }
+        });
+      } else {
+        // Friendly greeting asking: What do you want to learn today?
+        const currentName = studentProfile.name || "there";
+        appendLunaMessage({
+          reply_text: `Hello **${currentName}**! 🌸 I am **Luna**, your personal AI tutor.\n\n**What would you like to learn today?**\n\nYou can ask about any subject, formula, or concept (or upload textbook photos with the 📷 button), or tap one of the popular topics below to begin!`,
+          speech_text: `Hello ${currentName}! I am Luna, your personal AI tutor. What would you like to learn today?`,
+          analogy_card: {
+            title: "🌸 Ready Whenever You Are",
+            description: "Tell me any topic in science, mathematics, engineering, or literature, and I'll break it down with everyday analogies!"
+          }
+        });
+        renderSuggestedChips([
+          "⚛️ Physics: Newton's Laws of Motion",
+          "📐 Math: Differentiation & Calculus",
+          "🌿 Biology: Photosynthesis & Plants",
+          "🧪 Chemistry: Organic Reactions",
+          "💻 Computer Science & Programming"
+        ]);
+      }
+    }
+
+    // If new user has no name set, pop up the profile modal
+    if (!studentProfile.name) {
+      setTimeout(() => {
+        document.getElementById("profileModal")?.classList.remove("hidden");
+      }, 400);
+    }
+
+    console.log("🌸 ClearMind Pro v17.0 — High-Yield Educational Engine Ready.");
+  });
+})();

@@ -1,9 +1,30 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ClearMind Pro — Multi-Modal AI Tutor Luna, Socratic Voice & Diagnostic Whiteboard</title>
+  <title>ClearMind Pro — Conversational AI Tutor & What would you like to learn today?</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080c" />
+
+  <!-- Instant Cache Killer Script -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(keys) {
+        keys.forEach(function(k) { caches.delete(k); });
+      });
+    }
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,1245 +33,758 @@
       darkMode: 'class',
       theme: {
         extend: {
-          colors: {
-            brand: {
-              50:  '#eef2ff',
-              100: '#e0e7ff',
-              200: '#c7d2fe',
-              300: '#a5b4fc',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              800: '#3730a3',
-              900: '#312e81',
-            }
-          },
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e17',
+              850: '#111422',
+              800: '#171b2d',
+              750: '#1e233a',
+              700: '#272e4b',
+              600: '#38426b'
+            },
+            neon: {
+              purple: '#a855f7',
+              pink: '#ec4899',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              amber: '#f59e0b'
+            }
           }
         }
       }
     }
   </script>
 
-  <!-- Google Fonts — Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
-    rel="stylesheet"
-  />
-
-  <!-- Mermaid.js for Visual Concept Maps -->
-  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-
-  <!-- Canvas Confetti for Celebrations -->
+  <!-- Confetti Engine -->
   <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
-  <!-- Client-Side Real-Time OCR Engine (Tesseract.js) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="/style.css" />
-  <link rel="manifest" href="/manifest.json">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/style.css?v=21.0" />
+  <!-- KaTeX for Scientific & Mathematical Formula Typography -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 </head>
+<body class="bg-obsidian-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-purple-500 selection:text-white overflow-x-hidden">
 
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased transition-colors duration-200">
-
-  <!-- ============================================================ -->
-  <!-- HEADER & NAVIGATION                                          -->
-  <!-- ============================================================ -->
-  <header class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 sticky top-0 z-40 shadow-sm transition-colors">
-    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+  <!-- ========================================================================= -->
+  <!-- TOP OBSIDIAN NAVIGATION HUD (Exact Match with PDF Page 1)                 -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 bg-obsidian-900/95 backdrop-blur-xl border-b border-obsidian-800/80 px-4 py-2.5 transition">
+    <div class="max-w-[1800px] mx-auto flex items-center justify-between gap-3">
       
-      <!-- Brand & Tutor Tag -->
-      <div class="flex items-center gap-3">
-        <div class="relative cursor-pointer" id="brandLogoBtn">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-500/20 text-white text-xl">
-            👩‍🏫
+      <!-- Brand & Project Identity -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-pink-500 p-0.5 shadow-lg shadow-purple-500/20 flex items-center justify-center">
+          <div class="w-full h-full bg-obsidian-900 rounded-[14px] flex items-center justify-center text-xl">
+            🌸
           </div>
-          <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-lg font-black tracking-tight text-slate-900 dark:text-white">ClearMind <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 dark:from-pink-400 dark:to-purple-400">Pro</span></h1>
-            <span class="text-[10px] font-extrabold text-pink-700 dark:text-pink-300 bg-pink-100 dark:bg-pink-950/80 border border-pink-200 dark:border-pink-800 px-2 py-0.5 rounded-full uppercase tracking-wider">Meet Luna 🌸</span>
+            <h1 class="text-base font-black tracking-tight text-white flex items-center gap-1">
+              ClearMind <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">Pro</span>
+            </h1>
+            <span class="text-[9px] font-black uppercase tracking-wider bg-purple-950/90 text-purple-300 border border-purple-800/80 px-2 py-0.5 rounded-full">
+              Live Canvas
+            </span>
           </div>
-          <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Multimodal AI Tutor • Socratic Voice • Smart Whiteboard</p>
+          <p class="text-[11px] text-slate-400 font-medium">AI Tutor Luna • Dual Gemini & GLM-4 Engine</p>
         </div>
       </div>
 
-      <!-- Center: Feature Nav Tabs -->
-      <nav class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
-        <button class="nav-tab active px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5" data-tab="tab-study">
-          <span>📘</span> <span>Study Studio</span>
-        </button>
-        <button class="nav-tab px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="tab-socratic">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
-          </span>
-          <span>🎙️</span> <span>Socratic Voice</span>
-        </button>
-        <button class="nav-tab px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="tab-whiteboard">
-          <span>🖊️</span> <span>AI Whiteboard</span>
-        </button>
-        <button class="nav-tab px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-tab="tab-sandbox">
-          <span>🕹️</span> <span>Dynamic Labs</span>
-        </button>
-      
-          <button class="nav-tab px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 rounded-xl transition hover:bg-slate-100 dark:hover:bg-slate-800" data-tab="tab-dashboard">
-            📊 Progress
-          </button>
-        </nav>
+      <!-- Center: Global Topic Search Input -->
+      <div class="hidden lg:flex items-center gap-2 flex-1 max-w-xl mx-4">
+        <div class="relative w-full">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 text-xs">🔍</span>
+          <input
+            type="text"
+            id="globalTopicSearchInput"
+            placeholder="Search or enter any topic (e.g., Photosynthesis, Python, Calculus)..."
+            class="w-full pl-8 pr-4 py-1.5 bg-obsidian-850 border border-obsidian-750 text-xs text-slate-200 placeholder:text-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition"
+          />
+        </div>
+      </div>
 
-      <!-- Right Header: Language, SFX, Dark Mode, Doubt & XP -->
-      <div class="flex items-center gap-2">
+      <!-- Quick Topic Chips -->
+      <div class="hidden md:flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+        <button data-quick="Introduction to Python" class="quick-topic-chip text-xs font-semibold px-2.5 py-1 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 text-slate-300 border border-obsidian-750 hover:border-purple-500/50 transition shrink-0">
+          🐍 Python
+        </button>
+        <button data-quick="Calculus & Derivatives" class="quick-topic-chip text-xs font-semibold px-2.5 py-1 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 text-slate-300 border border-obsidian-750 hover:border-purple-500/50 transition shrink-0">
+          📐 Calculus
+        </button>
+        <button data-quick="Photosynthesis & Cellular Respiration" class="quick-topic-chip text-xs font-semibold px-2.5 py-1 rounded-xl bg-obsidian-850 hover:bg-obsidian-800 text-slate-300 border border-obsidian-750 hover:border-purple-500/50 transition shrink-0">
+          🌿 Biology
+        </button>
+      </div>
+
+      <!-- Right HUD Controls: XP, Streak, Language, Profile -->
+      <div class="flex items-center gap-2 shrink-0">
         
-        <!-- Native Language Switcher (Hinglish Featured First) -->
-        <div class="relative">
-          <select
-            id="languageSelect"
-            class="appearance-none bg-gradient-to-r from-pink-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 text-purple-900 dark:text-purple-300 text-xs font-bold py-1.5 pl-2.5 pr-6 rounded-xl border border-purple-200 dark:border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 transition shadow-sm"
-          >
-            <option value="hinglish" selected>🇮🇳 Hinglish (Hindi+English)</option>
-            <option value="en">🇺🇸 English</option>
-            <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
-            <option value="es">🇪🇸 Español</option>
-            <option value="fr">🇫🇷 Français</option>
-            <option value="de">🇩🇪 Deutsch</option>
-            <option value="ja">🇯🇵 日本語</option>
-            <option value="zh">🇨🇳 中文</option>
-            <option value="pt">🇵🇹 Português</option>
-            <option value="ar">🇸🇦 العربية</option>
-          </select>
-          <span class="absolute right-2 top-2 pointer-events-none text-[10px] text-purple-700 dark:text-purple-400">▼</span>
+        <!-- Language Selector -->
+        <select id="languageSelect" class="bg-obsidian-850 border border-obsidian-750 text-xs font-bold text-slate-200 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-purple-500 focus:outline-none transition">
+          <option value="hinglish" selected>🇮🇳 Hinglish</option>
+          <option value="en">🇺🇸 English</option>
+          <option value="hi">🇮🇳 Hindi</option>
+          <option value="es">🇪🇸 Spanish</option>
+          <option value="fr">🇫🇷 French</option>
+          <option value="de">🇩🇪 German</option>
+          <option value="ja">🇯🇵 Japanese</option>
+        </select>
+
+        <!-- Daily Streak Counter -->
+        <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-850 border border-obsidian-750 text-amber-400 text-xs font-extrabold" title="Daily Study Streak">
+          <span>🔥</span>
+          <span>Streak: <strong id="streakCount">1</strong></span>
         </div>
 
-        
-        <!-- Student Profile Badge -->
-        <button
-          id="profileBtn"
-          title="Student Profile & Avatar"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 border border-purple-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition shadow-sm hover:border-purple-400"
-        >
-          <span id="headerAvatar">🧠</span>
-          <span id="headerProfileName" class="hidden sm:inline">Alex</span>
-        </button>
+        <!-- XP Counter -->
+        <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-obsidian-850 border border-obsidian-750 text-purple-300 text-xs font-extrabold" title="Total XP Earned">
+          <span>⭐</span>
+          <span>XP: <strong id="totalXPDisplay">0</strong></span>
+        </div>
 
         <!-- Sound FX Toggle -->
-        <button
-          id="sfxToggleBtn"
-          title="Toggle Sound Effects"
-          class="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs transition"
-        >
-          <span id="sfxIcon">🔊</span>
+        <button id="soundToggleBtn" class="p-2 rounded-xl bg-obsidian-850 border border-obsidian-750 text-slate-300 hover:text-white transition" title="Toggle Sound FX">
+          🔊
         </button>
 
-        <!-- Dark Mode Toggle -->
-        <button
-          id="themeToggleBtn"
-          title="Toggle Dark/Light Mode"
-          class="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs transition"
-        >
-          <span id="themeIcon">🌙</span>
-        </button>
-
-        <!-- Ask Doubt Trigger Button -->
-        <button
-          id="openDoubtBtn"
-          class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-pink-50 dark:bg-pink-950/60 hover:bg-pink-100 dark:hover:bg-pink-900/60 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800 text-xs font-bold transition shadow-sm"
-        >
-          💬 <span class="hidden sm:inline">Doubt</span>
-        </button>
-
-        <!-- XP Badge -->
-        <div id="xpBadge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold">
-          <span>⭐</span>
-          <span><span id="xpScore">0</span> XP</span>
-        </div>
-
-        <!-- API Key Status -->
-        <button
-          id="apiKeyBtn"
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-sm transition"
-        >
-          <span id="apiStatusDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span id="apiKeyBtnLabel" class="hidden sm:inline">Ready</span>
+        <!-- Student Profile Button -->
+        <button id="headerProfileBtn" class="flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-xl bg-obsidian-800 hover:bg-obsidian-750 border border-obsidian-700 text-xs font-bold text-white transition">
+          <span id="profileAvatarHeader" class="text-base">🎓</span>
+          <span id="profileNameHeader" class="max-w-[120px] truncate">Student</span>
         </button>
       </div>
-    </div>
 
-    <!-- Mobile Nav Bar -->
-    <div class="flex md:hidden items-center justify-around border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-1.5 px-2 text-xs font-bold">
-      <button class="nav-tab active py-1 px-2 rounded-lg" data-tab="tab-study">📘 Study</button>
-      <button class="nav-tab py-1 px-2 rounded-lg text-slate-600 dark:text-slate-400" data-tab="tab-socratic">🎙️ Socratic</button>
-      <button class="nav-tab py-1 px-2 rounded-lg text-slate-600 dark:text-slate-400" data-tab="tab-whiteboard">🖊️ Whiteboard</button>
-      <button class="nav-tab py-1 px-2 rounded-lg text-slate-600 dark:text-slate-400" data-tab="tab-sandbox">🕹️ Labs</button>
     </div>
   </header>
 
-  <!-- ============================================================ -->
-  <!-- ASK LUNA DOUBT DRAWER / MODAL                                -->
-  <!-- ============================================================ -->
-  <div id="doubtModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-pink-100 dark:border-slate-800 space-y-4 animate-fade-in">
-      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl">👩‍🏫</span>
-          <div>
-            <h3 class="text-base font-black text-slate-900 dark:text-white">Ask Luna (Instant Doubt Solver)</h3>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400">Get crystal-clear answers with simple everyday analogies</p>
-          </div>
-        </div>
-        <button id="closeDoubtModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold p-1">✕</button>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN WORKSPACE: MINI-DOCK + SPLIT-SCREEN 42% / 58%                        -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 flex max-w-[1800px] w-full mx-auto p-2 lg:p-4 gap-3 lg:gap-4 overflow-hidden min-h-[calc(100vh-65px)]">
+
+    <!-- LEFT VERTICAL MINI-SIDEBAR DOCK -->
+    <aside class="hidden sm:flex flex-col items-center justify-between py-3 px-1.5 bg-obsidian-900/90 rounded-2xl border border-obsidian-800/90 w-14 shrink-0 shadow-xl">
+      <div class="flex flex-col items-center gap-3">
+        <button data-dock-tab="live" class="dock-nav-btn active p-2.5 rounded-xl bg-purple-600 text-white shadow-md shadow-purple-500/30 transition transform hover:scale-105" title="Live Canvas">
+          🏠
+        </button>
+        <button data-dock-tab="exam" class="dock-nav-btn p-2.5 rounded-xl bg-obsidian-850 text-slate-400 hover:text-white hover:bg-obsidian-800 border border-obsidian-750 transition" title="60s Exam Cheat Sheet">
+          ⚡
+        </button>
+        <button data-dock-tab="blitz" class="dock-nav-btn p-2.5 rounded-xl bg-obsidian-850 text-slate-400 hover:text-white hover:bg-obsidian-800 border border-obsidian-750 transition" title="60s Blitz Battle">
+          ⏱️
+        </button>
+        <button data-dock-tab="voice" class="dock-nav-btn p-2.5 rounded-xl bg-obsidian-850 text-slate-400 hover:text-white hover:bg-obsidian-800 border border-obsidian-750 transition" title="Live Voice Call Orbit">
+          🎙️
+        </button>
+        <button data-dock-tab="journey" class="dock-nav-btn p-2.5 rounded-xl bg-obsidian-850 text-slate-400 hover:text-white hover:bg-obsidian-800 border border-obsidian-750 transition" title="Student Journey & XP">
+          📊
+        </button>
       </div>
 
-      <div class="space-y-2">
-        <label for="doubtInput" class="text-xs font-bold text-slate-700 dark:text-slate-300">What is confusing you? (Type or Speak):</label>
-        <div class="relative">
-          <textarea
-            id="doubtInput"
-            rows="3"
-            class="w-full rounded-2xl border border-pink-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 p-3.5 text-sm transition leading-relaxed placeholder:text-slate-400"
-            placeholder="e.g. Why do plants need water if sunlight already gives energy? / Mitochondria ATP kaise banata hai?"
-          ></textarea>
-        </div>
-        <div class="flex items-center justify-between pt-1">
-          <button
-            id="doubtMicBtn"
-            class="inline-flex items-center gap-1.5 text-xs font-bold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 hover:bg-pink-100 px-3 py-1.5 rounded-xl transition border border-pink-200 dark:border-pink-800"
-          >
-            🎙️ <span id="doubtMicLabel">Speak Doubt</span>
-          </button>
-          <button
-            id="submitDoubtBtn"
-            class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-bold text-xs shadow-md transition"
-          >
-            <span id="doubtBtnText">✨ Solve My Doubt</span>
-            <svg id="doubtSpinner" class="hidden animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </button>
-        </div>
+      <div class="flex flex-col items-center gap-2">
+        <button id="dockSettingsBtn" class="p-2.5 rounded-xl bg-obsidian-850 text-slate-400 hover:text-white hover:bg-obsidian-800 border border-obsidian-750 transition" title="Settings">
+          ⚙️
+        </button>
+        <button id="dockResetBtn" class="p-2.5 rounded-xl bg-obsidian-850 text-rose-400 hover:bg-rose-950/80 border border-obsidian-750 transition" title="Reset Session">
+          🚪
+        </button>
       </div>
+    </aside>
 
-      <!-- Doubt Answer Reveal -->
-      <div id="doubtAnswerContainer" class="hidden space-y-3 p-4 rounded-2xl border border-pink-200 dark:border-pink-900 bg-gradient-to-r from-pink-50/60 to-purple-50/40 dark:from-slate-800 dark:to-slate-850 animate-fade-in">
-        <div class="space-y-1">
-          <span class="text-[10px] font-black text-pink-700 dark:text-pink-400 uppercase tracking-wider">Luna's Explanation:</span>
-          <p id="doubtAnswerText" class="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed"></p>
-        </div>
-        <div class="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-pink-100 dark:border-slate-700 space-y-0.5">
-          <span class="text-[10px] font-bold text-purple-700 dark:text-purple-400">💡 Analogy:</span>
-          <p id="doubtAnalogyText" class="text-xs text-slate-700 dark:text-slate-300 italic"></p>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- ============================================================ -->
-  <!-- API KEY MODAL                                                -->
-  <!-- ============================================================ -->
-  <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4 animate-fade-in">
-      <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          🔑 Google Gemini API Key
-        </h3>
-        <button id="closeKeyModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-semibold p-1">✕</button>
-      </div>
-      <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        Key is stored securely in your local environment.
-      </p>
-      <div>
-        <input
-          type="password"
-          id="apiKeyInput"
-          placeholder="AQ.Ab8... or AIzaSy..."
-          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition font-mono"
-        />
-      </div>
-      <div id="keySaveStatus" class="hidden text-xs py-2 px-3 rounded-lg font-medium"></div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button id="cancelKeyBtn" class="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition">Cancel</button>
-        <button id="saveKeyBtn" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm transition">Save Key</button>
-      </div>
-    </div>
-  </div>
+    <!-- MAIN 2-COLUMN SPLIT-SCREEN WORKSPACE -->
+    <main class="flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden relative">
 
-  <!-- ============================================================ -->
-  <!-- MAIN WORKSPACE CONTAINER                                     -->
-  <!-- ============================================================ -->
-  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
-
-    <!-- ERROR NOTIFICATION -->
-    <div
-      id="errorBox"
-      class="hidden rounded-2xl border border-red-200 dark:border-red-900 bg-red-50/90 dark:bg-red-950/80 text-red-800 dark:text-red-300 p-4 text-sm shadow-sm space-y-2 animate-fade-in"
-      role="alert"
-    >
-      <div class="flex items-start gap-3">
-        <span class="text-xl">⚠️</span>
-        <div class="flex-1" id="errorMsgText"></div>
-      </div>
-    </div>
-
-    <!-- ============================================================ -->
-    <!-- TAB 1: STUDY STUDIO (CORE MULTIMODAL LESSON GENERATOR)       -->
-    <!-- ============================================================ -->
-    <section id="tab-study" class="tab-pane space-y-6">
-      
-      <!-- INPUT HERO CARD -->
-      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+      <!-- ======================================================================= -->
+      <!-- LEFT STREAM: CONVERSATIONAL AI MENTOR (LUNA) [42% WIDTH, 5 COLS]        -->
+      <!-- ======================================================================= -->
+      <section id="leftChatSection" class="w-full lg:w-[42%] min-w-[280px] max-w-[75%] bg-obsidian-900/90 rounded-3xl border border-obsidian-800/90 shadow-2xl flex flex-col overflow-hidden h-[calc(100vh-90px)]">
         
-        <!-- Audience level & 1-Click Topic Presets -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
-          
-          <!-- Explanation Persona -->
-          <div class="space-y-1.5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Audience Style</span>
-            <div class="flex flex-wrap items-center gap-1.5" id="levelSelector">
-              <button class="level-pill px-3 py-1.5 rounded-xl text-xs font-semibold border transition" data-level="5yo">
-                🐣 5-Year Old
-              </button>
-              <button class="level-pill active px-3 py-1.5 rounded-xl text-xs font-semibold border transition" data-level="10yo">
-                👦 10-Year Old (ClearMind)
-              </button>
-              <button class="level-pill px-3 py-1.5 rounded-xl text-xs font-semibold border transition" data-level="high_school">
-                🎓 High School / AP
-              </button>
-              <button class="level-pill px-3 py-1.5 rounded-xl text-xs font-semibold border transition" data-level="college">
-                🧠 College / Expert
-              </button>
+        <!-- Stream Header -->
+        <div class="px-4 py-3 border-b border-obsidian-800/80 bg-obsidian-850/60 flex items-center justify-between backdrop-blur-md">
+          <div class="flex items-center gap-2.5">
+            <div class="relative">
+              <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-lg text-white shadow-md shadow-purple-500/20">
+                🌸
+              </div>
+              <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-obsidian-900 rounded-full animate-pulse"></span>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h2 class="text-xs font-extrabold text-white">AI Tutor: <span id="chatActiveTopic">Ready to Learn</span></h2>
+                <span class="text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-800/60">Active</span>
+              </div>
+              <p class="text-[10px] text-slate-400">Conversational Deep Teaching Stream</p>
             </div>
           </div>
 
-          <!-- Sample Presets (For Judge 1-Click Testing) -->
-          <div class="space-y-1.5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Judge 1-Click Test Prompts</span>
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <button class="sample-btn text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 dark:hover:text-purple-300 text-slate-700 dark:text-slate-300 font-medium transition" data-sample="photosynthesis">🌿 Photosynthesis</button>
-              <button class="sample-btn text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 dark:hover:text-purple-300 text-slate-700 dark:text-slate-300 font-medium transition" data-sample="quantum">⚛️ Quantum Superposition</button>
-              <button class="sample-btn text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 dark:hover:text-purple-300 text-slate-700 dark:text-slate-300 font-medium transition" data-sample="blackholes">🌌 Gravity &amp; Black Holes</button>
-              <button class="sample-btn text-xs px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-700 dark:hover:text-purple-300 text-slate-700 dark:text-slate-300 font-medium transition" data-sample="mitochondria">⚡ Mitochondria ATP</button>
-            </div>
+          <div class="flex items-center gap-1.5">
+            <button id="teachingModeBadge" class="px-2.5 py-1 text-[11px] font-bold text-purple-300 bg-purple-950/80 border border-purple-800/60 rounded-xl transition">
+              ▶ Teaching
+            </button>
+            <button id="resetChatBtn" class="p-1.5 text-xs text-slate-400 hover:text-white bg-obsidian-800 hover:bg-obsidian-750 rounded-xl border border-obsidian-700 transition" title="Start New Topic">
+              🔄
+            </button>
           </div>
         </div>
 
-        <!-- Inputs: Textarea + Vision Upload Dropzone -->
-        <div class="grid md:grid-cols-12 gap-5">
-          <div class="md:col-span-8 space-y-2">
-            <label for="inputText" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              📘 Study Notes, Topic Name, or Textbook Excerpt
-            </label>
-            <textarea
-              id="inputText"
-              rows="5"
-              class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 p-4 text-sm sm:text-base resize-y transition bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 leading-relaxed placeholder:text-slate-400"
-              placeholder="Type topic (e.g. 'Photosynthesis in Hinglish', 'Newton's 3rd Law') or paste dense notes..."
-            ></textarea>
-          </div>
-
-          <!-- Vision Dropzone -->
-          <div class="md:col-span-4 space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                📸 Textbook Photo / Diagram
-              </label>
-              <button id="clearImageBtn" class="hidden text-[11px] font-bold text-red-500 hover:text-red-700">Clear</button>
-            </div>
-            <div
-              id="dropzone"
-              class="relative rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-purple-400 bg-slate-50/70 dark:bg-slate-800/40 p-4 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[140px]"
-            >
-              <input type="file" id="imageInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-              
-              <div id="dropzonePrompt" class="space-y-1">
-                <span class="text-2xl">📷</span>
-                <p class="text-xs font-bold text-slate-700 dark:text-slate-300">Drop or Snap Photo</p>
-                <p class="text-[11px] text-slate-400">OCR + Vision AI active</p>
-              </div>
-
-              <!-- Preview Image -->
-              <div id="imagePreviewContainer" class="hidden w-full h-full flex flex-col items-center">
-                <img id="imagePreview" class="max-h-24 rounded-lg object-contain shadow-sm border border-slate-200 dark:border-slate-700" alt="Preview" />
-                <span class="text-[10px] text-purple-600 dark:text-purple-400 font-bold mt-1">Vision Extracted ✅</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Action Bar -->
-        <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div class="flex items-center gap-3">
-            <button
-              id="submitBtn"
-              class="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-[1.01] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span id="btnLabel">🌸 Teach Me, Luna!</span>
-
-              <svg id="spinner" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </button>
-
-            <button
-              id="demoBtn"
-              class="inline-flex items-center gap-1.5 px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition"
-            >
-              ⚡ Instant Demo
-            </button>
-          </div>
-
-          <span id="statusMsg" class="text-xs text-slate-500 dark:text-slate-400 font-medium italic"></span>
-        </div>
-      </div>
-
-      <!-- RESULTS STUDY KIT -->
-      <div id="results" class="hidden space-y-8 animate-fade-in">
-
-        <!-- 1. LUNA'S WARM EXPLANATION + STUDIO NEURAL VOICE PLAYER -->
-        <section class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+        <!-- Chat Messages Container -->
+        <div id="chatMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-obsidian-700">
           
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-pink-100 dark:bg-pink-950 text-pink-600 dark:text-pink-400 flex items-center justify-center text-2xl border border-pink-200 dark:border-pink-800 shadow-sm">
-                👩‍🏫
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 id="analogyTitle" class="text-xl font-black text-slate-900 dark:text-white">🌿 The Concept Breakdown</h2>
-                  <span id="levelBadge" class="text-[11px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-800 dark:text-pink-300 px-2.5 py-0.5 rounded-full">Age 10</span>
+          <!-- Turn 1: Luna Initial Turn -->
+          <div class="flex items-start gap-2.5 animate-fade-in">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-sm text-white shrink-0 mt-1 shadow">
+              🌸
+            </div>
+            <div class="space-y-2 max-w-[90%]">
+              <div class="bg-obsidian-850 border border-obsidian-750 p-4 rounded-2xl rounded-tl-sm text-slate-200 text-xs leading-relaxed shadow-sm space-y-3">
+                <div class="flex items-center justify-between border-b border-obsidian-750 pb-1.5 text-[10px] text-slate-400">
+                  <span class="font-bold text-purple-400">Luna</span>
+                  <span>11:02 AM</span>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Explained by Luna with warm human metaphors</p>
-              </div>
-            </div>
 
-            <div class="flex items-center gap-2">
-              <button
-                id="copyBtn"
-                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-sm transition"
-              >
-                📋 <span id="copyBtnText">Copy Text</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Studio-Quality Neural Voice Audio Player Bar -->
-          <div class="bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-purple-200/80 dark:border-purple-900/60 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                id="speakBtn"
-                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-extrabold shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition"
-              >
-                <span id="speakIcon">🎧</span>
-                <span id="speakBtnText">Listen to Luna (Real Neural Voice)</span>
-              </button>
-
-              <!-- Sound Wave Equalizer -->
-              <div id="soundWave" class="hidden items-center gap-1 h-5 px-2">
-                <span class="w-1 bg-pink-500 rounded-full animate-sound-bar-1"></span>
-                <span class="w-1 bg-purple-600 rounded-full animate-sound-bar-2"></span>
-                <span class="w-1 bg-indigo-600 rounded-full animate-sound-bar-3"></span>
-                <span class="w-1 bg-pink-500 rounded-full animate-sound-bar-2"></span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 text-xs font-bold">
-              <button id="stopVoiceBtn" class="hidden px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 rounded-lg hover:bg-red-100 transition">⏹️ Stop Audio</button>
-            </div>
-          </div>
-
-          <!-- Luna's Greeting Box -->
-          <div id="lunaGreetingBox" class="bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 border border-pink-100/80 dark:border-slate-700 p-4 rounded-2xl flex items-start gap-3">
-            <span class="text-xl">💬</span>
-            <p id="lunaGreetingText" class="text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed italic"></p>
-          </div>
-
-          <!-- Explanation Body -->
-          <div
-            id="simplifiedText"
-            class="prose dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-base leading-relaxed space-y-3 bg-slate-50/50 dark:bg-slate-800/40 p-6 rounded-2xl border border-slate-100 dark:border-slate-800"
-          ></div>
-
-          <!-- 3 Core Takeaways -->
-          <div class="space-y-2 pt-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">🎯 Key Takeaways</h3>
-            <div id="keyTakeawaysList" class="grid sm:grid-cols-3 gap-3"></div>
-          </div>
-        </section>
-
-        <!-- 2. QUICK TEST ARENA -->
-        <section class="bg-white dark:bg-slate-900 rounded-3xl border-2 border-indigo-200 dark:border-indigo-900/80 p-6 sm:p-8 shadow-sm space-y-6">
-          
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 dark:border-indigo-950 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xl font-bold">
-                📝
-              </div>
-              <div>
-                <h2 class="text-lg font-black text-slate-900 dark:text-white">Quick Test Arena</h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Active Recall exam with timer, XP scores &amp; explanations</p>
-              </div>
-            </div>
-
-            <span class="text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-3 py-1 rounded-full">Gamified Mastery Arena</span>
-          </div>
-
-          <!-- Quiz Config Controls -->
-          <div id="quizConfigBox" class="bg-indigo-50/50 dark:bg-slate-900 p-5 rounded-2xl border border-indigo-100 dark:border-slate-700 space-y-4">
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Number of Questions:</label>
-                <div class="grid grid-cols-4 gap-2" id="quizCountSelector">
-                  <button class="quiz-count-btn active px-3 py-2 rounded-xl text-xs font-bold border transition" data-count="5">5 Qs</button>
-                  <button class="quiz-count-btn px-3 py-2 rounded-xl text-xs font-bold border transition" data-count="10">10 Qs</button>
-                  <button class="quiz-count-btn px-3 py-2 rounded-xl text-xs font-bold border transition" data-count="15">15 Qs</button>
-                  <button class="quiz-count-btn px-3 py-2 rounded-xl text-xs font-bold border transition" data-count="20">20 Qs</button>
-                </div>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Difficulty Level:</label>
-                <div class="grid grid-cols-3 gap-2" id="quizDiffSelector">
-                  <button class="quiz-diff-btn active px-3 py-2 rounded-xl text-xs font-bold border transition" data-diff="easy">🟢 Easy</button>
-                  <button class="quiz-diff-btn px-3 py-2 rounded-xl text-xs font-bold border transition" data-diff="normal">🟡 Normal</button>
-                  <button class="quiz-diff-btn px-3 py-2 rounded-xl text-xs font-bold border transition" data-diff="hard">🔴 Hard</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex justify-end pt-2">
-              <button
-                id="startQuizBtn"
-                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition"
-              >
-                <span id="startQuizBtnText">🚀 Generate &amp; Start Test</span>
-                <svg id="quizSpinner" class="hidden animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- Live Quiz Container -->
-          <div id="liveQuizContainer" class="hidden space-y-5 animate-fade-in">
-            <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-              <span>Question <span id="currentQNum">1</span> of <span id="totalQNum">5</span></span>
-              <span id="quizScoreTracker" class="text-indigo-600 dark:text-indigo-400">Score: 0</span>
-            </div>
-            <div class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div id="quizProgressBar" class="h-full bg-indigo-600 transition-all duration-300" style="width: 20%;"></div>
-            </div>
-
-            <div class="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-              <h3 id="quizQuestionText" class="text-base font-bold text-slate-900 dark:text-white leading-snug"></h3>
-              <div id="quizOptionsGrid" class="grid sm:grid-cols-2 gap-3 pt-1"></div>
-              <div id="quizInstantFeedback" class="hidden text-xs p-3.5 rounded-xl font-medium"></div>
-            </div>
-
-            <div class="flex justify-end">
-              <button
-                id="nextQuizQBtn"
-                class="hidden px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs transition shadow-md"
-              >
-                Next Question ➔
-              </button>
-            </div>
-          </div>
-
-          <!-- Final Score Card -->
-          <div id="quizScoreCard" class="hidden bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 p-6 rounded-2xl border border-indigo-200 dark:border-slate-700 text-center space-y-4 animate-fade-in">
-            <div class="text-4xl">🏆</div>
-            <h3 class="text-lg font-black text-indigo-950 dark:text-white">Test Completed!</h3>
-            <p class="text-sm font-bold text-slate-700 dark:text-slate-300">You scored <span id="finalScoreNum" class="text-xl font-black text-indigo-600 dark:text-indigo-400">5/5</span> (<span id="finalPercentNum">100%</span>)</p>
-            <div id="finalBadge" class="inline-block px-4 py-1.5 rounded-full text-xs font-black bg-indigo-600 text-white shadow-sm"></div>
-            <p id="finalComment" class="text-xs text-slate-600 dark:text-slate-400 max-w-md mx-auto"></p>
-            <button id="retakeQuizBtn" class="px-5 py-2 text-xs font-bold bg-white dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 rounded-xl text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 shadow-sm transition">
-              🔄 Retake Test
-            </button>
-          </div>
-        </section>
-
-        <!-- 3. TEACH CURIOUS LEO ARENA -->
-        <section class="bg-gradient-to-br from-amber-500/10 via-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:via-slate-900 dark:to-slate-900 rounded-3xl border-2 border-amber-200 dark:border-amber-900/60 p-6 sm:p-8 shadow-sm space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-slate-800 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 flex items-center justify-center text-2xl shadow-sm">
-                👦
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 class="text-lg font-black text-amber-950 dark:text-white">Teach Curious Leo (Feynman Arena)</h2>
-                  <span class="text-[10px] font-bold bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full">Reverse-Tutor</span>
-                </div>
-                <p class="text-xs text-amber-800/80 dark:text-amber-400">Explain this so simply that a 10-year-old totally gets it!</p>
-              </div>
-            </div>
-
-            <div id="feynmanMasterBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-300 text-xs font-bold">
-              🏆 Master Teacher
-            </div>
-          </div>
-
-          <div class="bg-white dark:bg-slate-800/80 rounded-2xl p-5 border border-amber-200 dark:border-slate-700 shadow-sm space-y-3">
-            <div class="flex items-start gap-3">
-              <div id="leoAvatarReaction" class="text-3xl animate-bounce">🤔</div>
-              <div class="space-y-1">
-                <span class="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">Leo asks:</span>
-                <p id="leoQuestionText" class="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                  "Wait, why don't plants just eat soil like we eat sandwiches?"
+                <p>
+                  Awesome! Let's build our first function in Python. It's like defining a specific <strong>'recipe'</strong> your code will follow.
                 </p>
-              </div>
-            </div>
 
-            <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
-              <div class="flex items-center justify-between">
-                <label for="feynmanTeachingInput" class="text-xs font-bold text-slate-700 dark:text-slate-300">Your Simple Metaphor (No jargon!):</label>
-                <button
-                  id="feynmanMicBtn"
-                  class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950 hover:bg-amber-200 px-3 py-1 rounded-xl transition"
-                >
-                  🎙️ <span id="feynmanMicLabel">Speak to Leo</span>
-                </button>
-              </div>
-
-              <textarea
-                id="feynmanTeachingInput"
-                rows="3"
-                class="w-full rounded-xl border border-amber-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 p-3.5 text-sm transition leading-relaxed placeholder:text-slate-400"
-                placeholder="e.g. Think of the plant like a tiny chef with solar panels on the roof..."
-              ></textarea>
-
-              <div class="flex justify-end pt-1">
-                <button
-                  id="submitFeynmanBtn"
-                  class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition"
-                >
-                  <span id="feynmanBtnText">👦 Tell Leo</span>
-                  <svg id="feynmanSpinner" class="hidden animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Leo's Reaction -->
-            <div id="feynmanResultContainer" class="hidden space-y-3 p-4 rounded-2xl border transition animate-fade-in">
-              <div class="flex items-center justify-between">
-                <span id="feynmanGradeTitle" class="text-xs font-black px-3 py-1 rounded-full"></span>
-                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Feynman Score: <strong id="feynmanScoreNum">0</strong>/100</span>
-              </div>
-              <div class="bg-white/80 dark:bg-slate-900/80 p-3.5 rounded-xl border border-amber-200 dark:border-slate-700">
-                <p class="text-xs font-bold text-amber-900 dark:text-amber-400 mb-0.5">👦 Leo's Reaction:</p>
-                <p id="leoSpeechText" class="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed"></p>
-              </div>
-              <div id="feynmanTipsBox" class="text-xs text-amber-900 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-950/60 p-3 rounded-xl space-y-1">
-                <span class="font-bold">💡 Coaching Tips:</span>
-                <ul id="feynmanTipsList" class="list-disc pl-4 space-y-0.5"></ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. VISUAL CONCEPT MAP (MERMAID) -->
-        <section class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-4">
-          <div class="flex items-center gap-3">
-            <span class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xl font-bold">🕸️</span>
-            <div>
-              <h2 class="text-lg font-black text-slate-900 dark:text-white">Visual Concept Hierarchy</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Step-by-step interactive relational graph</p>
-            </div>
-          </div>
-
-          <div class="bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700 overflow-x-auto flex justify-center items-center min-h-[140px]">
-            <div id="conceptMapContainer" class="w-full text-center"></div>
-          </div>
-        </section>
-
-        <!-- 5. 3D ACTIVE RECALL FLASHCARDS -->
-        <section class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="w-10 h-10 rounded-2xl bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xl font-bold">🃏</span>
-              <div>
-                <h2 class="text-lg font-black text-slate-900 dark:text-white">3D Active-Recall Flashcards</h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Click to flip • Rate difficulty to schedule spaced repetition</p>
-              </div>
-            </div>
-            <button id="flipAllBtn" class="text-xs font-bold text-brand-700 dark:text-brand-300 hover:text-brand-900 bg-brand-50 dark:bg-brand-950 border border-brand-200/60 dark:border-brand-800 px-3.5 py-1.5 rounded-xl transition">
-              Flip All Cards
-            </button>
-          </div>
-
-          <div id="flashcardsGrid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
-        </section>
-
-        <!-- 6. EXPORT TOOLBAR (ANKI & STUDY SHEET) -->
-        <section class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white rounded-3xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row items-center justify-between gap-5">
-          <div class="space-y-1 text-center md:text-left">
-            <h3 class="text-base font-bold flex items-center justify-center md:justify-start gap-2">
-              <span>📦</span> Export Study Kit
-            </h3>
-            <p class="text-xs text-slate-300">
-              Download formatted Anki TSV/CSV decks or print a full exam cheat-sheet.
-            </p>
-          </div>
-
-          <div class="flex items-center gap-3 flex-wrap justify-center">
-            <button
-              id="exportAnkiBtn"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition"
-            >
-              📥 Download Anki Deck (.CSV)
-            </button>
-            <button
-              id="exportMarkdownBtn"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition"
-            >
-              📝 Save Markdown Guide (.MD)
-            </button>
-            <button
-              id="printSheetBtn"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs transition"
-            >
-              🖨️ Print Study Sheet
-            </button>
-          </div>
-        </section>
-
-        <!-- 7. SEQUENTIAL LEARNING ROADMAP / NEXT LESSONS -->
-        <section id="pathwaySection" class="bg-gradient-to-br from-purple-50/80 via-white to-pink-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-3xl border-2 border-purple-200/90 dark:border-purple-900/60 p-6 sm:p-8 shadow-lg space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-purple-100 dark:border-slate-800 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 text-white flex items-center justify-center text-2xl shadow-md shadow-purple-500/20">
-                🗺️
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 class="text-xl font-black text-slate-900 dark:text-white">Mastery Pathway & Next Chapters</h2>
-                  <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white">Curriculum Progression</span>
+                <!-- Code Snippet Box -->
+                <div class="bg-obsidian-950 border border-obsidian-750 rounded-xl p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto space-y-1">
+                  <div class="text-slate-500 select-none"># Python Function Definition</div>
+                  <div><span class="text-purple-400">def</span> <span class="text-yellow-300">greet</span>(name):</div>
+                  <div class="pl-4"><span class="text-cyan-400">print</span>(<span class="text-amber-300">"Hello, "</span> + name + <span class="text-amber-300">"!"</span>)</div>
+                  <div class="pt-1"><span class="text-yellow-300">greet</span>(<span class="text-amber-300">"Alex"</span>)</div>
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Master this entire topic step-by-step with Luna's sequential 4-part roadmap</p>
+
+                <p>
+                  When we call <code class="bg-obsidian-750 px-1.5 py-0.5 rounded text-purple-300 font-mono text-[11px]">greet("Alex")</code>, the output will be <em>'Hello, Alex!'</em>.
+                </p>
+
+                <!-- Interactive Analogy Spotlight Card -->
+                <div class="p-3 bg-purple-950/50 border border-purple-800/70 rounded-xl space-y-1">
+                  <span class="text-[9px] font-black uppercase tracking-wider text-purple-400">💡 [Interactive Analogy Card]</span>
+                  <h5 class="text-xs font-black text-white">Title: 'Functions = Recipe Box'</h5>
+                  <p class="text-[11px] text-purple-200 leading-relaxed">
+                    Description: Define recipe (function) once, reuse whenever needed (call function).
+                  </p>
+                </div>
+
+                <!-- Voice Listen Button -->
+                <div class="pt-1.5 flex items-center justify-between border-t border-obsidian-750">
+                  <button data-speech="Awesome! Let's build our first function in Python. It's like defining a specific recipe your code will follow. When we call greet('Alex'), the output will be 'Hello, Alex!'." class="chat-listen-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 text-xs font-bold border border-purple-500/40 transition">
+                    <span>🎧</span> <span>Listen with Voice</span>
+                  </button>
+                  <span class="text-[10px] text-slate-500 font-medium">Neural Voice Synthesis</span>
+                </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800">
-                📍 4-Part Curriculum
-              </span>
+          </div>
+
+          <!-- Turn 2: Student Initial Turn -->
+          <div class="flex items-start justify-end gap-2.5 animate-fade-in">
+            <div class="space-y-1 max-w-[85%] text-right">
+              <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3.5 rounded-2xl rounded-tr-sm text-xs font-medium leading-relaxed shadow-md inline-block text-left">
+                <div class="flex items-center justify-between border-b border-purple-400/30 pb-1 text-[10px] text-purple-200 mb-1.5">
+                  <span class="font-bold">Sarah J.</span>
+                  <span>11:03 AM</span>
+                </div>
+                Okay, I see how they work! What's the output for <code class="bg-purple-800/60 px-1 py-0.5 rounded font-mono text-[11px]">greet("Sarah")</code>?
+              </div>
+            </div>
+            <div class="w-8 h-8 rounded-xl bg-obsidian-800 border border-obsidian-750 flex items-center justify-center text-base shrink-0 mt-1">
+              👩
             </div>
           </div>
 
-          <!-- Pathway Steps Grid -->
-          <div id="pathwayStepsGrid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <!-- Dynamically populated by app.js -->
-          </div>
-        </section>
+        </div>
 
-      </div>
-    </section>
+        <!-- Suggested Reply Chips Dock -->
+        <div id="suggestedChipsDock" class="px-3 py-2 border-t border-obsidian-800/80 bg-obsidian-850/40 flex items-center gap-2 overflow-x-auto scrollbar-none">
+          <button class="suggested-chip text-[11px] font-semibold px-3 py-1 rounded-xl bg-obsidian-800 hover:bg-purple-950 hover:text-purple-300 text-slate-300 border border-obsidian-700 transition shrink-0">
+            💡 Give an everyday analogy
+          </button>
+          <button class="suggested-chip text-[11px] font-semibold px-3 py-1 rounded-xl bg-obsidian-800 hover:bg-purple-950 hover:text-purple-300 text-slate-300 border border-obsidian-700 transition shrink-0">
+            ⚠️ Show examiner traps
+          </button>
+          <button class="suggested-chip text-[11px] font-semibold px-3 py-1 rounded-xl bg-obsidian-800 hover:bg-purple-950 hover:text-purple-300 text-slate-300 border border-obsidian-700 transition shrink-0">
+            ⏱️ Test me with Blitz Quiz
+          </button>
+        </div>
 
-    <!-- ============================================================ -->
-    <!-- TAB 2: 🎙️ LIVE SOCRATIC VOICE COACH MODE                     -->
-    <!-- ============================================================ -->
-    <section id="tab-socratic" class="tab-pane hidden space-y-6">
-      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-purple-200 dark:border-purple-900/60 p-6 sm:p-8 shadow-sm space-y-6">
-        
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 text-white flex items-center justify-center text-2xl shadow-md shadow-purple-500/20">
+        <!-- Bottom Chat Input Bar -->
+        <div class="p-3 border-t border-obsidian-800 bg-obsidian-900">
+          <form id="chatInputForm" class="flex items-center gap-2 bg-obsidian-850 p-1.5 rounded-2xl border border-obsidian-750 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-500/20 transition">
+            
+            <!-- Photo OCR Upload Button -->
+            <label for="chatPhotoInput" class="p-2 rounded-xl hover:bg-obsidian-750 text-slate-400 hover:text-purple-400 cursor-pointer transition shrink-0" title="Snap / Upload Textbook Photo (OCR)">
+              📷
+              <input type="file" id="chatPhotoInput" accept="image/*" class="hidden" />
+            </label>
+
+            <!-- Voice Mic Button -->
+            <button type="button" id="chatMicBtn" class="p-2 rounded-xl hover:bg-obsidian-750 text-slate-400 hover:text-purple-400 transition shrink-0" title="Speak to Luna">
               🎙️
-            </div>
-            <div>
-              <h2 class="text-xl font-black text-slate-900 dark:text-white">Hands-Free Socratic Voice Tutor</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Luna interviews you verbally and guides you to discover answers yourself</p>
-            </div>
+            </button>
+
+            <!-- Text Input Area -->
+            <textarea
+              id="chatMessageInput"
+              rows="1"
+              placeholder="Message Luna (e.g., 'What happens if we pass multiple arguments?')..."
+              class="flex-1 bg-transparent border-0 text-xs text-slate-100 placeholder:text-slate-500 focus:ring-0 focus:outline-none resize-none py-1.5"
+            ></textarea>
+
+            <!-- Send Button -->
+            <button
+              type="submit"
+              id="chatSendBtn"
+              class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold flex items-center justify-center shrink-0 shadow-md shadow-purple-500/20 transition transform active:scale-95 disabled:opacity-50"
+            >
+              ↑
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+
+      <!-- ======================================================================= -->
+      <!-- RIGHT PANEL: DYNAMIC LIVE KNOWLEDGE CANVAS [58% WIDTH, 7 COLS]          -->
+      <!-- ======================================================================= -->
+      <!-- Splitter Handle -->
+      <div id="workspaceSplitter" class="hidden lg:flex w-2 hover:w-3 cursor-col-resize items-center justify-center bg-obsidian-800/40 hover:bg-purple-600/70 transition-all duration-150 shrink-0 z-20 group" title="Drag to resize panels">
+        <div class="w-0.5 h-8 bg-obsidian-600 group-hover:bg-purple-300 rounded-full"></div>
+      </div>
+      <section id="rightCanvasSection" class="flex-1 bg-obsidian-900/90 rounded-3xl border border-obsidian-800/90 shadow-2xl flex flex-col overflow-hidden h-[calc(100vh-90px)]">
+        
+        <!-- Canvas Tab Switcher Bar -->
+        <div class="px-4 py-2.5 border-b border-obsidian-800/80 bg-obsidian-850/60 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+          <div class="flex items-center gap-1.5">
+            <button data-canvas-tab="live" class="canvas-tab-btn active px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-sm">
+              <span>🗺️</span> <span>Live Canvas</span>
+            </button>
+            <button data-canvas-tab="exam" class="canvas-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-obsidian-750 transition flex items-center gap-1.5">
+              <span>⚡</span> <span>Exam Cheat Sheet</span>
+            </button>
+            <button data-canvas-tab="blitz" class="canvas-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-obsidian-750 transition flex items-center gap-1.5">
+              <span>⏱️</span> <span>60s Blitz Battle</span>
+            </button>
+            <button data-canvas-tab="voice" class="canvas-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-obsidian-750 transition flex items-center gap-1.5">
+              <span>📱</span> <span>Voice Call Orbit</span>
+            </button>
+            <button data-canvas-tab="journey" class="canvas-tab-btn px-3 py-1.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-obsidian-750 transition flex items-center gap-1.5">
+              <span>📊</span> <span>Student Journey</span>
+            </button>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span id="socraticMasteryBadge" class="text-xs font-bold bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-3 py-1 rounded-full">
-              Socratic Dialogue
+          <div class="hidden sm:flex items-center gap-1.5">
+            <span id="canvasSyncIndicator" class="text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-800/60 px-2.5 py-0.5 rounded-full">
+              ● Canvas Sync Active
             </span>
           </div>
         </div>
 
-        <!-- Socratic Voice Arena -->
-        <div class="grid md:grid-cols-12 gap-6 items-center">
-          
-          <!-- Voice Orb & Status (5 cols) -->
-          <div class="md:col-span-5 flex flex-col items-center justify-center p-8 bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 rounded-3xl border border-purple-800/40 text-center space-y-5 min-h-[300px]">
+        <!-- Canvas Body Views Container -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-obsidian-700">
+
+          <!-- =================================================================== -->
+          <!-- VIEW 1: LIVE CANVAS & 4 STACKED INTERACTIVE ACTION CARDS (PDF MATCH)-->
+          <!-- =================================================================== -->
+          <div id="viewCanvasLive" class="space-y-4">
             
-            <!-- Animated Glowing Voice Orb -->
-            <div class="relative cursor-pointer" id="socraticOrbBtn">
-              <div id="voiceOrbOuterGlow" class="absolute -inset-4 bg-gradient-to-r from-pink-600 to-purple-600 rounded-full blur-xl opacity-40 animate-pulse"></div>
-              <div id="voiceOrbInner" class="relative w-28 h-28 rounded-full bg-gradient-to-tr from-pink-500 via-purple-600 to-indigo-600 flex items-center justify-center shadow-2xl text-4xl text-white select-none transition-transform duration-300 hover:scale-105">
-                🌸
-              </div>
-            </div>
+            <!-- Top Glowing 3D Voice Orb Hero Stage -->
+            <div class="relative bg-gradient-to-b from-obsidian-850 via-obsidian-900 to-obsidian-950 rounded-2xl p-5 border border-obsidian-750 overflow-hidden text-center flex flex-col items-center justify-center">
+              <div class="absolute w-44 h-44 bg-purple-600/10 rounded-full blur-3xl -top-10 -left-10 pointer-events-none"></div>
+              <div class="absolute w-44 h-44 bg-pink-600/10 rounded-full blur-3xl -bottom-10 -right-10 pointer-events-none"></div>
 
-            <div class="space-y-1">
-              <h3 id="socraticOrbStatus" class="text-sm font-black text-white">Tap Mic to Talk to Luna</h3>
-              <p id="socraticOrbSubtext" class="text-xs text-purple-300/80">Continuous 2-way natural conversation</p>
-            </div>
-
-            <!-- Voice Trigger Controls -->
-            <div class="flex items-center gap-3">
-              <button
-                id="socraticListenBtn"
-                class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-black text-xs shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95 transition"
-              >
-                🎙️ <span id="socraticListenBtnLabel">Start Speaking</span>
-              </button>
-              <button
-                id="socraticClearHistoryBtn"
-                class="px-3.5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-semibold border border-white/10 transition"
-              >
-                🔄 Reset
-              </button>
-            </div>
-
-            <!-- Live Spoken Sentence Wave -->
-            <div id="socraticSoundWave" class="hidden items-center gap-1.5 h-6">
-              <span class="w-1.5 bg-pink-400 rounded-full animate-sound-bar-1"></span>
-              <span class="w-1.5 bg-purple-400 rounded-full animate-sound-bar-2"></span>
-              <span class="w-1.5 bg-indigo-400 rounded-full animate-sound-bar-3"></span>
-              <span class="w-1.5 bg-pink-400 rounded-full animate-sound-bar-2"></span>
-              <span class="w-1.5 bg-purple-400 rounded-full animate-sound-bar-1"></span>
-            </div>
-          </div>
-
-          <!-- Live Dialogue Feed & Socratic Hints (7 cols) -->
-          <div class="md:col-span-7 space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Live Dialogue Stream</span>
-              <span id="socraticUnderstandingMeter" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-md">Progress: Active</span>
-            </div>
-
-            <div id="socraticChatHistory" class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 h-[260px] overflow-y-auto space-y-3 text-xs leading-relaxed">
-              <div class="p-3 bg-purple-100/60 dark:bg-purple-950/60 rounded-xl text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
-                <strong>🌸 Luna:</strong> "Hi there! I'm Luna. What topic are you studying today? Tap the mic and tell me your thoughts, and let's explore it together step by step!"
-              </div>
-            </div>
-
-            <!-- Follow-up Socratic Probing Question & Hint -->
-            <div id="socraticCoachCard" class="hidden bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-850 dark:to-slate-800 p-4 rounded-2xl border border-purple-200 dark:border-purple-900/60 space-y-2 animate-fade-in">
-              <div class="flex items-start gap-2">
-                <span class="text-base">🎯</span>
-                <div>
-                  <span class="text-[10px] font-black uppercase text-purple-700 dark:text-purple-400">Luna's Socratic Question:</span>
-                  <p id="socraticFollowupText" class="text-xs font-bold text-slate-800 dark:text-white"></p>
+              <!-- Glowing 3D Orb -->
+              <div id="centralKnowledgeOrb" class="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-cyan-400 p-1 shadow-xl shadow-purple-500/30 animate-pulse transition duration-300 flex items-center justify-center cursor-pointer hover:scale-110" title="Click to Speak with Luna">
+                <div class="w-full h-full bg-obsidian-950 rounded-full flex items-center justify-center text-3xl">
+                  🌸
                 </div>
               </div>
-              <div id="socraticHintBox" class="hidden text-[11px] text-slate-600 dark:text-slate-300 italic pl-6">
-                💡 <span id="socraticHintText"></span>
+
+              <h3 id="canvasTopicTitle" class="mt-3 text-sm font-black text-white">Introduction to What would you like to learn today?</h3>
+              <p id="canvasTopicSubtitle" class="text-xs text-slate-400 max-w-md mt-0.5">Tell Luna any topic or question to instantly map formulas, examiner traps, and revision cards!</p>
+            </div>
+
+            <!-- 4 Prominent Stacked Cards (Exact Design from PDF Page 1) -->
+            <div class="grid sm:grid-cols-2 gap-3">
+              
+              <!-- Card 1: 60s Exam Cheat Sheet Card -->
+              <div class="p-4 rounded-2xl bg-obsidian-850 border border-obsidian-750 hover:border-purple-500/60 transition space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">⚡</span>
+                    <h4 class="text-xs font-black text-white">60s Exam Cheat Sheet</h4>
+                  </div>
+                  <span class="text-[10px] text-purple-400 font-bold">Card</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  High-yield revision card, golden formulas, and #1 examiner traps that cut marks.
+                </p>
+                <button onclick="switchCanvasTab('exam')" class="w-full py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition transform active:scale-98">
+                  Start Cheat Sheet ➔
+                </button>
+              </div>
+
+              <!-- Card 2: 60s Rapid-Fire Blitz Quiz Card -->
+              <div class="p-4 rounded-2xl bg-obsidian-850 border border-obsidian-750 hover:border-pink-500/60 transition space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">⏱️</span>
+                    <h4 class="text-xs font-black text-white">Blitz Quiz with timer</h4>
+                  </div>
+                  <span class="text-[10px] text-pink-400 font-mono font-bold">Timer: 01:00</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Questions remaining: 8. Ticking 60s countdown clock and combo multipliers.
+                </p>
+                <button onclick="switchCanvasTab('blitz')" class="w-full py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition transform active:scale-98">
+                  START QUIZ ⚡
+                </button>
+              </div>
+
+              <!-- Card 3: Live Voice Call Orb Card -->
+              <div class="p-4 rounded-2xl bg-obsidian-850 border border-obsidian-750 hover:border-cyan-500/60 transition space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">🎙️</span>
+                    <h4 class="text-xs font-black text-white">Live Voice Call Orb</h4>
+                  </div>
+                  <span class="text-[10px] text-emerald-400 font-bold">status: Available</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  Hands-free continuous Coral/Siri style voice tutoring with live pulsing waveform.
+                </p>
+                <button onclick="switchCanvasTab('voice')" class="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 transition transform active:scale-98">
+                  Call Luna 📞
+                </button>
+              </div>
+
+              <!-- Card 4: Learning Roadmap Card -->
+              <div class="p-4 rounded-2xl bg-obsidian-850 border border-obsidian-750 hover:border-emerald-500/60 transition space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-base">🗺️</span>
+                    <h4 class="text-xs font-black text-white">Learning Roadmap</h4>
+                  </div>
+                  <span id="roadmapPathSubtitle" class="text-[10px] text-slate-500 font-semibold">Curriculum Progression</span>
+                </div>
+                <div id="dynamicRoadmapStepsList" class="space-y-1 text-[11px]">
+                  <!-- Populated dynamically based on active topic -->
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Dynamic Concept Nodes Grid -->
+            <div class="space-y-2 pt-1">
+              <h4 class="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <span>🕸️</span> <span>Unlocked Concept Nodes</span>
+              </h4>
+              <div id="canvasNodesGrid" class="grid sm:grid-cols-2 gap-3">
+                <div class="p-3.5 rounded-2xl bg-obsidian-850 border border-obsidian-750 space-y-1">
+                  <span class="text-[9px] font-black text-purple-400 uppercase">Node 01 • Definition</span>
+                  <h5 class="text-xs font-extrabold text-white">Function Header & Parameters</h5>
+                  <p class="text-[11px] text-slate-400 leading-relaxed">Functions accept inputs, execute operations, and return output values.</p>
+                </div>
+                <div class="p-3.5 rounded-2xl bg-obsidian-850 border border-obsidian-750 space-y-1">
+                  <span class="text-[9px] font-black text-pink-400 uppercase">Node 02 • Analogy</span>
+                  <h5 class="text-xs font-extrabold text-white">The Recipe Box Model</h5>
+                  <p class="text-[11px] text-slate-400 leading-relaxed">Store the instruction card once, bake whenever you are hungry!</p>
+                </div>
               </div>
             </div>
 
-            <!-- Manual text fallback -->
-            <div class="flex gap-2">
-              <input
-                type="text"
-                id="socraticTextInput"
-                placeholder="Or type your verbal answer here..."
-                class="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3.5 py-2 text-xs focus:ring-2 focus:ring-purple-500 outline-none"
-              />
-              <button
-                id="socraticTextSubmitBtn"
-                class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition"
-              >
-                Send
+          </div>
+
+
+          <!-- =================================================================== -->
+          <!-- VIEW 2: 60-SECOND EXAM CHEAT SHEET (PDF PAGE 2 MATCH)              -->
+          <!-- =================================================================== -->
+          <div id="viewCanvasExam" class="hidden space-y-4">
+            
+            <div class="flex items-center justify-between pb-2 border-b border-obsidian-750">
+              <div>
+                <h3 id="examSheetTopicTitle" class="text-sm font-black text-white flex items-center gap-1.5">
+                  <span>⚡</span> <span>60-Second Exam Cheat Sheet</span>
+                </h3>
+                <p class="text-[11px] text-slate-400">High-yield revision card, examiner traps, and SPARK mnemonics.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="regenerateExamSheetBtn" class="px-3 py-1.5 bg-obsidian-800 hover:bg-obsidian-750 text-purple-300 rounded-xl text-xs font-bold border border-obsidian-700 transition flex items-center gap-1">
+                  ⚡ Regenerate
+                </button>
+                <button id="printExamSheetBtn" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow">
+                  🖨️ Print Exam Sheet
+                </button>
+              </div>
+            </div>
+
+            <!-- #1 Examiner Trap Alert Box (Amber Callout) -->
+            <div class="p-4 rounded-2xl bg-amber-950/50 border border-amber-800/80 text-amber-200 space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-base">⚠️</span>
+                <h4 class="text-xs font-black uppercase tracking-wider text-amber-400">#1 EXAMINER TRAP WARNING (Negative Marking Risk)</h4>
+              </div>
+              <p id="examTrapWarningText" class="text-xs text-amber-200/90 leading-relaxed font-medium">
+                Examiners love testing default return values: Functions without an explicit 'return' statement in Python evaluate to None!
+              </p>
+            </div>
+
+            <!-- Golden Formulas & Rules -->
+            <div class="space-y-2">
+              <h4 class="text-xs font-black uppercase tracking-wider text-purple-400">📌 Golden Formulas & Syntax Rules</h4>
+              <div id="examFormulasList" class="space-y-2">
+                <div class="p-3 bg-obsidian-850 border border-obsidian-750 rounded-xl text-xs text-slate-200 font-mono">
+                  def function_name(param1, param2=default): return result
+                </div>
+                <div class="p-3 bg-obsidian-850 border border-obsidian-750 rounded-xl text-xs text-slate-200 font-mono">
+                  Scope Rule: LEGB (Local -> Enclosing -> Global -> Built-in)
+                </div>
+              </div>
+            </div>
+
+            <!-- SPARK Mnemonic -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-800/60 space-y-1">
+              <span class="text-[10px] font-black uppercase tracking-wider text-purple-400">🧠 Rapid Memory Mnemonic</span>
+              <p id="examMnemonicText" class="text-xs font-bold text-white">
+                S.P.A.R.K: Scope -> Parameters -> Arguments -> Return -> Keep clean indentation!
+              </p>
+            </div>
+
+            <!-- Expected 5-Mark Question -->
+            <div class="space-y-1.5">
+              <h4 class="text-xs font-black uppercase tracking-wider text-purple-400">🎯 Expected 5-Mark Question</h4>
+              <div class="p-3.5 bg-obsidian-850 border border-obsidian-750 rounded-2xl">
+                <p id="exam5MarkQuestionText" class="text-xs text-slate-200 font-bold leading-relaxed">
+                  Explain the difference between positional arguments, keyword arguments, and *args with code examples.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+
+          <!-- =================================================================== -->
+          <!-- VIEW 3: 60-SECOND RAPID-FIRE BLITZ BATTLE (PDF PAGE 2 MATCH)       -->
+          <!-- =================================================================== -->
+          <div id="viewCanvasBlitz" class="hidden space-y-4">
+            
+            <!-- Blitz HUD Header with Timer & Combo -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-obsidian-850 to-pink-950 border border-purple-800/80 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 p-0.5 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                  <div class="w-full h-full bg-obsidian-950 rounded-full flex items-center justify-center">
+                    <span id="blitzTimerDisplay" class="text-sm font-black text-purple-300 font-mono">01:00</span>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="text-xs font-black text-white">60s Rapid-Fire Blitz Challenge</h3>
+                  <p class="text-[11px] text-slate-400">Answer fast to build massive combo multipliers!</p>
+                </div>
+              </div>
+
+              <div class="text-right">
+                <div class="flex items-center gap-1.5 justify-end">
+                  <span id="blitzComboBadge" class="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-black animate-pulse">3x COMBO</span>
+                  <span id="blitzScoreNum" class="text-base font-black text-white">0</span>
+                  <span class="text-xs text-slate-400">PTS</span>
+                </div>
+                <p class="text-[10px] text-slate-500">Q: <span id="blitzQuestionIdx">1</span> / <span id="blitzTotalQuestions">8</span></p>
+              </div>
+            </div>
+
+            <!-- Question Card -->
+            <div id="blitzQuestionCard" class="p-5 rounded-2xl bg-obsidian-850 border border-obsidian-750 space-y-4">
+              <p id="blitzQuestionText" class="text-sm font-extrabold text-white leading-relaxed text-center">
+                What is the keyword used to define a function in Python?
+              </p>
+
+              <!-- Option Buttons Grid -->
+              <div id="blitzOptionsGrid" class="grid gap-2.5">
+                <button data-opt="0" class="blitz-opt-btn p-3 rounded-xl bg-obsidian-800 hover:bg-purple-950/80 hover:border-purple-500 border border-obsidian-700 text-xs font-bold text-slate-200 text-left transition transform active:scale-98 flex items-center justify-between">
+                  <span>def</span>
+                  <span class="text-[10px] text-slate-500">Option A</span>
+                </button>
+                <button data-opt="1" class="blitz-opt-btn p-3 rounded-xl bg-obsidian-800 hover:bg-purple-950/80 hover:border-purple-500 border border-obsidian-700 text-xs font-bold text-slate-200 text-left transition transform active:scale-98 flex items-center justify-between">
+                  <span>function</span>
+                  <span class="text-[10px] text-slate-500">Option B</span>
+                </button>
+                <button data-opt="2" class="blitz-opt-btn p-3 rounded-xl bg-obsidian-800 hover:bg-purple-950/80 hover:border-purple-500 border border-obsidian-700 text-xs font-bold text-slate-200 text-left transition transform active:scale-98 flex items-center justify-between">
+                  <span>fun</span>
+                  <span class="text-[10px] text-slate-500">Option C</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Start / Play Again Button -->
+            <div>
+              <button id="startBlitzBtn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-500/20 transition transform active:scale-98 flex items-center justify-center gap-2">
+                <span>⚡</span> <span>START BLITZ BATTLE</span>
               </button>
             </div>
 
           </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- ============================================================ -->
-    <!-- TAB 3: 🖊️ AI SMART WHITEBOARD & MISCONCEPTION DIAGNOSTICS   -->
-    <!-- ============================================================ -->
-    <section id="tab-whiteboard" class="tab-pane hidden space-y-6">
-      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
-        
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-2xl border border-indigo-200 dark:border-indigo-800 shadow-sm">
-              🖊️
-            </div>
-            <div>
-              <h2 class="text-xl font-black text-slate-900 dark:text-white">AI Smart Whiteboard &amp; Misconception Diagnostics</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Draw or write math/science steps — AI marks with Red/Green pens to spot exact errors!</p>
-            </div>
-          </div>
 
-          <div class="flex items-center gap-2">
-            <button id="whiteboardClearBtn" class="px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition">
-              🗑️ Clear Board
+          <!-- =================================================================== -->
+          <!-- VIEW 4: LIVE VOICE CALL ORBIT (CORAL / SIRI STYLE)                  -->
+          <!-- =================================================================== -->
+          <div id="viewCanvasVoice" class="hidden space-y-5 text-center flex flex-col items-center justify-center min-h-[380px]">
+            
+            <div class="space-y-1">
+              <h3 class="text-base font-black text-white">Live Voice Call with Luna</h3>
+              <p class="text-xs text-slate-400">Continuous hands-free conversation with sub-2s neural voice.</p>
+            </div>
+
+            <!-- Pulsing Waveform Rings -->
+            <div class="relative my-5">
+              <div id="voiceCallWaveRings" class="absolute inset-0 w-36 h-36 -m-4 rounded-full border-2 border-purple-500/40 animate-ping pointer-events-none"></div>
+              <div id="voiceCallOrbBtn" class="w-28 h-28 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-cyan-400 p-1.5 shadow-2xl shadow-purple-500/50 flex items-center justify-center cursor-pointer transition transform hover:scale-105 active:scale-95">
+                <div class="w-full h-full bg-obsidian-950 rounded-full flex items-center justify-center text-4xl">
+                  🎙️
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Status & Transcript -->
+            <div class="space-y-1">
+              <span id="voiceCallStatusText" class="text-xs font-extrabold text-purple-400 uppercase tracking-wider">Tap Orb to Start Call</span>
+              <p id="voiceLiveTranscript" class="text-xs text-slate-300 italic max-w-sm">"Listening to your voice..."</p>
+            </div>
+
+            <button id="endVoiceCallBtn" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition">
+              End Call 📵
             </button>
-          </div>
-        </div>
 
-        <!-- Problem Input Bar -->
-        <div class="space-y-1.5">
-          <label for="diagProblemInput" class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            1. Problem Statement / Question
-          </label>
-          <input
-            type="text"
-            id="diagProblemInput"
-            placeholder="e.g. Solve for x: 3(x - 4) = 2x + 8 / Calculate kinetic energy of a 2kg mass moving at 5m/s"
-            class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white p-3.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
-        </div>
-
-        <!-- Interactive Whiteboard Drawing Canvas & Text Steps -->
-        <div class="grid md:grid-cols-12 gap-5">
-          
-          <!-- Drawing Board (7 cols) -->
-          <div class="md:col-span-7 space-y-2">
-            <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-              <span>✍️ Draw Your Solution Scratchpad:</span>
-              
-              <!-- Toolbar -->
-              <div class="flex items-center gap-1.5">
-                <button id="wbToolPen" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold">Pen</button>
-                <button id="wbToolEraser" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold">Eraser</button>
-                <input type="color" id="wbColorPicker" value="#4f46e5" class="w-6 h-6 rounded cursor-pointer border-0 p-0" />
-              </div>
-            </div>
-
-            <div class="relative rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 overflow-hidden shadow-inner cursor-crosshair">
-              <canvas id="whiteboardCanvas" width="560" height="260" class="w-full h-[260px] touch-none"></canvas>
-              <span class="absolute bottom-2 right-3 text-[10px] text-slate-400 pointer-events-none select-none">Draw math, circuits or equations with mouse or stylus</span>
-            </div>
           </div>
 
-          <!-- Text Working Steps (5 cols) -->
-          <div class="md:col-span-5 space-y-2 flex flex-col">
-            <label for="diagTextSteps" class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              2. Or Type Your Steps:
-            </label>
-            <textarea
-              id="diagTextSteps"
-              rows="9"
-              class="w-full flex-1 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white p-3.5 text-xs font-mono leading-relaxed focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="Step 1: 3x - 12 = 2x + 8&#10;Step 2: 3x - 2x = 8 - 12&#10;Step 3: x = -4"
-            ></textarea>
-          </div>
-        </div>
 
-        <!-- Diagnose Action Button -->
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-          <button
-            id="runDiagnosticBtn"
-            class="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.01] active:scale-[0.98] transition"
-          >
-            <span id="diagBtnLabel">✨ Diagnose My Solution (Red/Green Pen AI)</span>
-            <svg id="diagSpinner" class="hidden animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Diagnostic Feedback Arena -->
-        <div id="diagnosticResultsContainer" class="hidden space-y-6 pt-4 animate-fade-in border-t border-slate-100 dark:border-slate-800">
-          
-          <!-- Grade & Root Misconception Header -->
-          <div class="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 p-6 rounded-3xl border border-indigo-200 dark:border-slate-700 space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-2xl">🎯</span>
-                <h3 id="diagProblemTitle" class="text-base font-black text-slate-900 dark:text-white">Diagnostic Summary</h3>
-              </div>
-              <span id="diagGradeBadge" class="text-xs font-black px-4 py-1 rounded-full bg-indigo-600 text-white shadow-sm">Grade</span>
-            </div>
-
-            <div class="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl border border-indigo-100 dark:border-slate-700 space-y-1">
-              <span class="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-wider">Root Misconception Identified:</span>
-              <p id="diagRootMisconception" class="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed"></p>
-            </div>
-          </div>
-
-          <!-- Step by Step Red/Green Pen Marking Cards -->
-          <div class="space-y-3">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Step-by-Step Diagnostic Breakdown</h4>
-            <div id="diagStepsList" class="grid gap-3"></div>
-          </div>
-
-          <!-- Full Correct Step-by-Step Resolution & Mnemonic -->
-          <div class="grid md:grid-cols-2 gap-4">
-            <div class="bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-              <h5 class="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                <span>✅</span> <span>Correct Step-by-Step Flow:</span>
-              </h5>
-              <ul id="diagCorrectFlowList" class="text-xs text-slate-700 dark:text-slate-300 space-y-1 font-mono"></ul>
-            </div>
-
-            <div class="bg-amber-50/70 dark:bg-amber-950/40 p-5 rounded-2xl border border-amber-200 dark:border-amber-900 space-y-2">
-              <h5 class="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                <span>💡</span> <span>Memory Mnemonic / Golden Rule:</span>
-              </h5>
-              <p id="diagRuleText" class="text-xs font-bold text-amber-950 dark:text-amber-200 italic leading-relaxed"></p>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- TAB 4: 🕹️ GENERATIVE DYNAMIC HTML5 CANVAS LABS               -->
-    <!-- ============================================================ -->
-    <section id="tab-sandbox" class="tab-pane hidden space-y-6">
-      <div class="bg-white dark:bg-slate-900 rounded-3xl border border-purple-200 dark:border-purple-900/60 p-6 sm:p-8 shadow-sm space-y-6">
-        
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center text-2xl border border-purple-200 dark:border-purple-800 shadow-sm">
-              🕹️
-            </div>
-            <div>
-              <h2 id="dynamicLabTitle" class="text-xl font-black text-slate-900 dark:text-white">Generative Interactive Simulation Labs</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Live 60fps physics &amp; reaction sandboxes generated on-the-fly for any concept!</p>
-            </div>
-          </div>
-
-          <!-- Preset Labs -->
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <button class="lab-preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 hover:bg-purple-200 transition" data-lab="pendulum">⚛️ Pendulum Wave</button>
-            <button class="lab-preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 hover:bg-purple-200 transition" data-lab="orbital">🌌 Orbital Gravity</button>
-            <button class="lab-preset-btn px-2.5 py-1 rounded-xl text-xs font-bold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 hover:bg-purple-200 transition" data-lab="thermo">🔥 Thermodynamics</button>
-          </div>
-        </div>
-
-        <!-- Custom Lab Generator Input -->
-        <div class="flex gap-2">
-          <input
-            type="text"
-            id="customLabTopicInput"
-            placeholder="Generate custom lab for: (e.g. 'Coulomb Electric Charges', 'Refraction of Light', 'Supply Demand Equilibrium')"
-            class="flex-1 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white p-3.5 text-xs font-medium focus:ring-2 focus:ring-purple-500 outline-none"
-          />
-          <button
-            id="generateCustomLabBtn"
-            class="px-6 py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md transition"
-          >
-            ⚡ Generate Lab
-          </button>
-        </div>
-
-        <!-- Live Simulation Arena -->
-        <div class="grid md:grid-cols-12 gap-6 items-center">
-          
-          <!-- 60FPS Interactive Canvas (7 cols) -->
-          <div class="md:col-span-7 bg-slate-950 rounded-2xl p-4 shadow-inner relative overflow-hidden flex flex-col items-center justify-center min-h-[280px] cursor-crosshair group">
-            <canvas id="genSimCanvas" width="500" height="260" class="w-full h-full max-h-[260px] rounded-xl"></canvas>
+          <!-- =================================================================== -->
+          <!-- VIEW 5: STUDENT JOURNEY & XP DASHBOARD                             -->
+          <!-- =================================================================== -->
+          <div id="viewCanvasJourney" class="hidden space-y-4">
             
-            <div class="absolute top-2 left-3 text-[10px] font-bold text-purple-300/80 bg-slate-900/70 backdrop-blur-xs px-2.5 py-0.5 rounded-md pointer-events-none">
-              ✨ Click &amp; drag on canvas to interact dynamically!
-            </div>
-
-            <div class="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[11px] text-slate-300 bg-slate-900/90 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-slate-800">
-              <span id="genCanvasStatus">🟢 60 FPS Particle Flow</span>
-              <span id="genCanvasMetric" class="font-bold text-emerald-400">Status: Running</span>
-            </div>
-          </div>
-
-          <!-- Dynamic Parameter Controls (5 cols) -->
-          <div class="md:col-span-5 space-y-4 bg-gradient-to-br from-purple-50/70 to-indigo-50/50 dark:from-slate-850 dark:to-slate-800 p-5 rounded-2xl border border-purple-100 dark:border-slate-700 shadow-sm">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Live Parameter Controls:</h4>
-            
-            <div id="genControlsContainer" class="space-y-3">
-              <!-- Sliders injected dynamically -->
-            </div>
-
-            <!-- Experiment Challenges -->
-            <div class="pt-3 border-t border-purple-200/80 dark:border-slate-700 space-y-2">
-              <span class="text-xs font-bold text-purple-900 dark:text-purple-300 flex items-center gap-1">
-                <span>🎯</span> <span>Try These Experiments:</span>
-              </span>
-              <ul id="genExperimentPrompts" class="text-[11px] text-slate-700 dark:text-slate-300 space-y-1 pl-4 list-disc">
-                <li>Set Energy to maximum and observe particle acceleration.</li>
-                <li>Click and drag on canvas to test gravity attraction.</li>
-                <li>Lower Medium Viscosity to zero to see friction-free motion.</li>
-              </ul>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-  
-      <!-- PROGRESS DASHBOARD TAB -->
-      <section id="tab-dashboard" class="tab-pane hidden w-full max-w-4xl mx-auto space-y-6">
-        <div class="text-center space-y-2 mb-8">
-          <h2 class="text-3xl font-black text-slate-900 dark:text-white">Your Learning Journey</h2>
-          <p class="text-slate-600 dark:text-slate-400 font-medium">Track your mastery and AI-curated pathways</p>
-        </div>
-        
-        
-        <!-- Student Profile Card in Dashboard -->
-        <div class="dashboard-card flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-pink-50 dark:from-slate-800 dark:via-slate-800/90 dark:to-indigo-950/40 border border-purple-200/80 dark:border-slate-700">
-          <div class="flex items-center gap-4">
-            <div id="dashAvatarBadge" class="w-16 h-16 rounded-2xl bg-white dark:bg-slate-700 shadow-md text-3xl flex items-center justify-center border border-purple-200 dark:border-slate-600">
-              🧠
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 id="dashStudentName" class="text-xl font-black text-slate-900 dark:text-white">Alex</h3>
-                <span id="dashGradeBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">High School</span>
+            <!-- Student Profile Summary -->
+            <div class="p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-obsidian-850 to-indigo-950 border border-purple-800/80 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span id="journeyAvatar" class="text-3xl">🎓</span>
+                <div>
+                  <h3 id="journeyStudentName" class="text-sm font-black text-white">Student</h3>
+                  <p class="text-xs text-purple-300 font-semibold" id="journeyStudyLevel">High School / AP</p>
+                </div>
               </div>
-              <p id="dashGoalText" class="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">🎯 Goal: Master Core Concepts</p>
+              <button id="editProfileJourneyBtn" class="px-3 py-1.5 bg-obsidian-800 hover:bg-obsidian-750 text-white rounded-xl text-xs font-bold border border-obsidian-700 transition">
+                Edit Profile ✏️
+              </button>
             </div>
+
+            <!-- Gamified XP Bar -->
+            <div class="p-4 rounded-2xl bg-obsidian-850 border border-obsidian-750 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-300">Level Progress</span>
+                <span class="font-black text-purple-400" id="journeyXPProgress">0 / 4000 XP</span>
+              </div>
+              <div class="w-full h-2.5 bg-obsidian-950 rounded-full overflow-hidden border border-obsidian-750">
+                <div id="journeyXPBar" class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500" style="width: 2%;"></div>
+              </div>
+            </div>
+
+            <!-- Study History -->
+            <div class="space-y-2">
+              <h4 class="text-xs font-black uppercase tracking-wider text-purple-400">📜 Recent Study Sessions</h4>
+              <div id="journeyHistoryList" class="space-y-2">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
           </div>
-          <button id="editProfileDashBtn" class="px-4 py-2 text-xs font-bold rounded-xl bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-slate-600 hover:bg-purple-50 dark:hover:bg-slate-600 transition shadow-sm">
-            ✏️ Edit Profile
-          </button>
+
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="dashboard-card text-center space-y-2">
-            <div class="text-4xl">⭐</div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Total XP</h3>
-            <p id="dashTotalXP" class="text-3xl font-black text-purple-600 dark:text-purple-400">0</p>
-          </div>
-          <div class="dashboard-card text-center space-y-2">
-            <div class="text-4xl">🔥</div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Day Streak</h3>
-            <p id="dashStreak" class="text-3xl font-black text-orange-500">1</p>
-          </div>
-          <div class="dashboard-card text-center space-y-2">
-            <div class="text-4xl">🎯</div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Topics Conquered</h3>
-            <p id="dashTopicsCount" class="text-3xl font-black text-emerald-500">0</p>
-          </div>
-        </div>
-
-        <div class="dashboard-card space-y-4">
-          <h3 class="text-xl font-bold text-slate-900 dark:text-white">Recent Study Sessions</h3>
-          <div id="dashHistoryList" class="space-y-2">
-            <p class="text-slate-500 text-sm italic">No topics studied yet. Start learning!</p>
-          </div>
-        </div>
       </section>
 
     </main>
 
-  <!-- ============================================================ -->
-  <!-- FOOTER                                                       -->
-  <!-- ============================================================ -->
-  <footer class="text-center text-xs text-slate-400 py-6 border-t border-slate-200 dark:border-slate-800 mt-auto bg-white dark:bg-slate-900 transition-colors">
-    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <span class="font-medium">Built for the <strong class="text-slate-700 dark:text-slate-200">SPEED August AI Challenge</strong></span>
-      <span class="font-medium">Powered by <strong class="text-slate-700 dark:text-slate-200">Google Gemini &amp; Microsoft Edge Neural Voice</strong></span>
-    </div>
-  </footer>
+  </div>
 
-  
-  <!-- ============================================================ -->
-  <!-- STUDENT PROFILE MODAL                                         -->
-  <!-- ============================================================ -->
-  <div id="profileModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
-      
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl">
-            🎓
-          </div>
-          <div>
-            <h3 class="text-base font-black text-slate-900 dark:text-white">Student Profile</h3>
-            <p class="text-xs text-slate-500">Personalize your learning companion</p>
+
+  <!-- ========================================================================= -->
+  <!-- STUDENT PROFILE MODAL                                                     -->
+  <!-- ========================================================================= -->
+  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-obsidian-900 border border-obsidian-750 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-obsidian-800 pb-3">
+        <h3 class="text-sm font-extrabold text-white">Student Profile Settings</h3>
+        <button id="closeProfileModal" class="text-slate-400 hover:text-white font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs font-bold text-slate-300">Choose Avatar:</label>
+          <div id="avatarPickerGrid" class="grid grid-cols-4 gap-2 mt-1.5">
+            <button data-avatar="👩" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">👩</button>
+            <button data-avatar="🧠" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🧠</button>
+            <button data-avatar="🚀" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🚀</button>
+            <button data-avatar="🔬" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🔬</button>
+            <button data-avatar="⚡" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">⚡</button>
+            <button data-avatar="🦉" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🦉</button>
+            <button data-avatar="🌟" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🌟</button>
+            <button data-avatar="💡" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">💡</button>
           </div>
         </div>
-        <button id="closeProfileModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">✕</button>
-      </div>
 
-      <!-- Avatar Picker -->
-      <div class="space-y-2">
-        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Choose Your Study Avatar</label>
-        <div id="avatarPicker" class="flex flex-wrap gap-2">
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border-2 border-purple-500 flex items-center justify-center transition" data-avatar="🧠">🧠</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="🚀">🚀</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="🔬">🔬</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="⚡">⚡</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="🦉">🦉</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="🌟">🌟</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="🎨">🎨</button>
-          <button type="button" class="avatar-option w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center transition hover:border-purple-400" data-avatar="💡">💡</button>
+        <div>
+          <label for="inputStudentName" class="text-xs font-bold text-slate-300">Your Name:</label>
+          <input type="text" id="inputStudentName" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="e.g. Prakhar" />
+        </div>
+
+        <div>
+          <label for="inputStudentTopic" class="text-xs font-bold text-slate-300">What Subject or Topic do you want to learn?</label>
+          <input type="text" id="inputStudentTopic" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="e.g. Physics, Calculus, Organic Chemistry, Photosynthesis, Coding..." />
+        </div>
+
+        <div>
+          <label for="inputStudyLevel" class="text-xs font-bold text-slate-300">Study Level:</label>
+          <select id="inputStudyLevel" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            <optgroup label="School Education" class="bg-obsidian-900 text-purple-300 font-bold">
+              <option value="Class 1 - 2 (Primary School)">Class 1 - 2 (Primary School)</option>
+              <option value="Class 3 - 5 (Elementary School)">Class 3 - 5 (Elementary School)</option>
+              <option value="Class 6 - 8 (Middle School)">Class 6 - 8 (Middle School)</option>
+              <option value="Class 9 - 10 (Secondary / High School)">Class 9 - 10 (High School)</option>
+              <option value="Class 11 - 12 (Senior Secondary / JEE / NEET)">Class 11 - 12 (Senior Secondary / JEE / NEET)</option>
+            </optgroup>
+            <optgroup label="Higher Education" class="bg-obsidian-900 text-purple-300 font-bold">
+              <option value="College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)" selected>College / University (Undergraduate)</option>
+              <option value="Postgraduate / Professional / Master's">Postgraduate / Professional</option>
+              <option value="Competitive Exams (GATE, CAT, UPSC, GRE)">Competitive Exams</option>
+            </optgroup>
+          </select>
         </div>
       </div>
 
-      <!-- Student Name Input -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Your Name / Nickname</label>
-        <input
-          type="text"
-          id="profileNameInput"
-          placeholder="e.g. Alex, Maya, Aryan"
-          class="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          value="Alex"
-        />
-      </div>
-
-      <!-- Learning Level / Target -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Study Level</label>
-        <select
-          id="profileGradeSelect"
-          class="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <option value="Middle School">🏫 Middle School (Grades 6–8)</option>
-          <option value="High School" selected>🎒 High School (Grades 9–12 / Board Exams)</option>
-          <option value="College / Undergrad">🏛️ College / University Student</option>
-          <option value="Competitive Exam">🎯 Competitive Exams (JEE / NEET / SAT / AP)</option>
-          <option value="Lifelong Learner">✨ Lifelong Curious Learner</option>
-        </select>
-      </div>
-
-      <!-- Study Goal -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Target Study Goal</label>
-        <input
-          type="text"
-          id="profileGoalInput"
-          placeholder="e.g. Master Physics & Chemistry"
-          class="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          value="Master Core Concepts"
-        />
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex items-center justify-end gap-2 pt-2">
-        <button id="cancelProfileBtn" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
-          Cancel
-        </button>
-        <button id="saveProfileBtn" class="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md shadow-purple-500/20 transition">
-          Save Profile ✨
+      <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-800">
+        <button id="saveProfileBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition">
+          Save Profile
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Controller Script -->
-  <script src="/app.js"></script>
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW registration failed:', err));
-    }
-  </script>
-
+  <!-- App Core JS -->
+  <script src="/app.js?v=21.0"></script>
 </body>
 </html>
