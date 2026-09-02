@@ -499,21 +499,13 @@
     const btn = d.querySelector(".chat-listen-btn");
     if (btn) {
       btn.addEventListener("click", () => {
-        if (data.audio_base64) {
-          playPreSynthesizedAudio(data.audio_base64, btn);
-        } else {
-          playLunaVoice(rawSpeech, btn);
-        }
+        toggleVoiceAudio(data.audio_base64, rawSpeech, btn);
       });
     }
 
     // In live call, speak immediately
     if (isVoiceCallActive) {
-      if (data.audio_base64) {
-        playPreSynthesizedAudio(data.audio_base64);
-      } else if (rawSpeech) {
-        playLunaVoice(rawSpeech);
-      }
+      toggleVoiceAudio(data.audio_base64, rawSpeech, null);
     }
   }
 
@@ -774,28 +766,101 @@
   }
 
   // =========================================================================
-  // VOICE TTS AUDIO PLAYBACK (INSTANT PRE-SYNTHESIZED + FALLBACK)
+  // VOICE TTS AUDIO PLAYBACK (INTERACTIVE PLAY / PAUSE / RESUME CONTROLLER)
   // =========================================================================
-  function playPreSynthesizedAudio(base64Audio, btn) {
-    if (!soundEnabled || !base64Audio) return;
-    try {
-      if (activeAudio) activeAudio.pause();
-      if (btn) {
-        btn.innerHTML = "<span>🔊</span> <span>Playing...</span>";
-        btn.disabled = true;
-      }
-      activeAudio = new Audio("data:audio/mpeg;base64," + base64Audio);
-      activeAudio.play();
-      activeAudio.onended = () => {
-        if (btn) {
-          btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
-          btn.disabled = false;
-        }
-      };
-    } catch (e) {
-      console.warn("Base64 audio play failed, falling back:", e);
-      if (btn) btn.disabled = false;
+  let currentActiveVoiceBtn = null;
+
+  function resetVoiceButton(btn) {
+    if (!btn) return;
+    btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
+    btn.classList.remove("bg-red-950/80", "border-red-800/60", "text-red-300");
+    btn.classList.add("bg-purple-950/80", "border-purple-800/60", "text-purple-300");
+    btn.disabled = false;
+  }
+
+  function stopCurrentAudio() {
+    if (activeAudio) {
+      try {
+        activeAudio.pause();
+        activeAudio.currentTime = 0;
+      } catch (e) {}
+      activeAudio = null;
     }
+    if (currentActiveVoiceBtn) {
+      resetVoiceButton(currentActiveVoiceBtn);
+      currentActiveVoiceBtn = null;
+    }
+  }
+
+  function toggleVoiceAudio(base64Audio, rawSpeech, btn) {
+    if (!soundEnabled) {
+      soundEnabled = true;
+      localStorage.setItem("clearmind_sound", "true");
+      const sBtn = document.getElementById("soundToggleBtn");
+      if (sBtn) sBtn.textContent = "🔊";
+    }
+
+    // 1. If currently playing this audio, PAUSE IT
+    if (activeAudio && !activeAudio.paused && currentActiveVoiceBtn === btn && btn) {
+      activeAudio.pause();
+      btn.innerHTML = "<span>▶️</span> <span>Resume Voice</span>";
+      btn.classList.remove("bg-red-950/80", "border-red-800/60", "text-red-300");
+      btn.classList.add("bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
+      btn.disabled = false;
+      return;
+    }
+
+    // 2. If currently paused on this button, RESUME IT
+    if (activeAudio && activeAudio.paused && currentActiveVoiceBtn === btn && btn && activeAudio.currentTime > 0 && !activeAudio.ended) {
+      activeAudio.play().then(() => {
+        btn.innerHTML = "<span>⏸️</span> <span>Pause Voice</span>";
+        btn.classList.remove("bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
+        btn.classList.add("bg-red-950/80", "border-red-800/60", "text-red-300");
+        btn.disabled = false;
+      }).catch(err => {
+        console.warn("Audio resume error:", err);
+        stopCurrentAudio();
+      });
+      return;
+    }
+
+    // 3. Otherwise, stop any previous playing audio and start fresh
+    stopCurrentAudio();
+
+    if (!base64Audio && !rawSpeech) return;
+
+    if (btn) {
+      btn.innerHTML = "<span>⏸️</span> <span>Pause Voice</span>";
+      btn.classList.remove("bg-purple-950/80", "border-purple-800/60", "text-purple-300", "bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
+      btn.classList.add("bg-red-950/80", "border-red-800/60", "text-red-300");
+      btn.disabled = false;
+      currentActiveVoiceBtn = btn;
+    }
+
+    if (base64Audio) {
+      try {
+        activeAudio = new Audio("data:audio/mpeg;base64," + base64Audio);
+        activeAudio.onended = () => {
+          stopCurrentAudio();
+        };
+        activeAudio.onerror = () => {
+          stopCurrentAudio();
+        };
+        activeAudio.play().catch(e => {
+          console.warn("Audio play rejected:", e);
+          stopCurrentAudio();
+        });
+      } catch (err) {
+        console.warn("Audio init error:", err);
+        stopCurrentAudio();
+      }
+    } else if (rawSpeech) {
+      playLunaVoice(rawSpeech, btn);
+    }
+  }
+
+  function playPreSynthesizedAudio(base64Audio, btn) {
+    toggleVoiceAudio(base64Audio, null, btn);
   }
 
   async function playLunaVoice(rawText, btn) {
@@ -1390,8 +1455,8 @@
         soundEnabled = !soundEnabled;
         localStorage.setItem("clearmind_sound", String(soundEnabled));
         soundBtn.textContent = soundEnabled ? "🔊" : "🔇";
-        if (!soundEnabled && activeAudio) {
-          activeAudio.pause();
+        if (!soundEnabled) {
+          stopCurrentAudio();
         }
         showToast("Sound FX " + (soundEnabled ? "Enabled" : "Muted"), "info");
       });
