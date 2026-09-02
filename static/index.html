@@ -64,7 +64,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/style.css?v=23.0" />
+  <link rel="stylesheet" href="/style.css?v=24.0" />
   <!-- KaTeX for Scientific & Mathematical Formula Typography -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -795,10 +795,28 @@
     </div>
   </div>
 
+  <script>
+    // Guarantee instant popup on load for any new user or fresh session
+    (function() {
+      try {
+        var isSetupDone = localStorage.getItem("clearmind_setup_completed");
+        var savedKey = localStorage.getItem("clearmind_gemini_key");
+        var pModal = document.getElementById("profileModal");
+        if ((!isSetupDone || !savedKey) && pModal) {
+          pModal.classList.remove("hidden");
+          var cBtn = document.getElementById("closeProfileModal");
+          if (cBtn) cBtn.classList.add("hidden");
+        }
+      } catch (e) {
+        console.error("Setup modal check error", e);
+      }
+    })();
+  </script>
+
   <!-- TOAST CONTAINER -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- App Core JS -->
-  <script src="/app.js?v=23.0"></script>
+  <script src="/app.js?v=24.0"></script>
 </body>
 </html>
