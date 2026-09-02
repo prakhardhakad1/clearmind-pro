@@ -1408,7 +1408,7 @@
       const titleEl = document.getElementById("profileModalTitle");
       const subtitleEl = document.getElementById("profileModalSubtitle");
 
-      if (nInp) nInp.value = studentProfile.name || "";
+      if (nInp) nInp.value = studentProfile.name || "Prakhar";
       if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
       if (tInp) tInp.value = activeTopic || "";
       if (kInp) kInp.value = localStorage.getItem("clearmind_gemini_key") || "";
@@ -1454,13 +1454,9 @@
         }
       }
 
-      if (!enteredName || enteredName.toLowerCase() === "student") {
-        showToast("Please enter your name to continue!", "warning");
-        nInp?.focus();
-        return;
-      }
+      const finalName = (enteredName && enteredName.toLowerCase() !== "student") ? enteredName : "Prakhar";
 
-      studentProfile.name = enteredName;
+      studentProfile.name = finalName;
       studentProfile.level = lInp?.value || "College / University";
       activeTopic = chosenTopic;
       localStorage.setItem("clearmind_profile", JSON.stringify(studentProfile));
@@ -1472,7 +1468,7 @@
       updateDynamicRoadmap();
       pModal?.classList.add("hidden");
       playSound("fanfare");
-      showToast("Welcome " + enteredName + "! Topic set to " + activeTopic, "success");
+      showToast("Welcome " + finalName + "! Classroom ready for " + activeTopic, "success");
 
       // Reset chat and give greeting asking what they want to learn
       const box = document.getElementById("chatMessagesContainer");

@@ -147,6 +147,28 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
                 })
     return steps[:6]
 
+
+def call_gemini_with_fallback(client, contents, sys_prompt, is_json=True) -> Optional[str]:
+    """Tries multiple Gemini Flash models (3.6, 2.5, 2.0, 1.5) to guarantee compatibility across all keys."""
+    models = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
+    config = genai_types.GenerateContentConfig(
+        system_instruction=sys_prompt,
+        response_mime_type="application/json" if is_json else "text/plain",
+        temperature=0.7
+    )
+    for model_name in models:
+        try:
+            resp = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config
+            )
+            if resp.text:
+                return resp.text
+        except Exception as e:
+            logger.info(f"Model {model_name} attempt: {e}")
+    return None
+
 def get_gemini_client(custom_key: Optional[str] = None):
     api_key = custom_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -285,22 +307,17 @@ You MUST respond strictly with a valid JSON object matching this schema:
         content_items.append(user_prompt)
 
     raw_json = None
-    client = get_gemini_client(request.headers.get("x-gemini-key"))
-    if client:
-        try:
-            resp = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=content_items,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=sys_prompt,
-                    response_mime_type="application/json",
-                    temperature=0.7
-                )
-            )
-            if resp.text:
-                raw_json = resp.text
-        except Exception as e:
-            logger.warning(f"Gemini chat_teach error: {e}")
+    user_key = request.headers.get("x-gemini-key")
+    if user_key and user_key.strip():
+        u_client = get_gemini_client(user_key.strip())
+        if u_client:
+            raw_json = call_gemini_with_fallback(u_client, content_items, sys_prompt, is_json=True)
+
+    # If user key not provided or failed, failover to server environment key
+    if not raw_json:
+        s_client = get_gemini_client(None)
+        if s_client:
+            raw_json = call_gemini_with_fallback(s_client, content_items, sys_prompt, is_json=True)
 
 
     if raw_json:
