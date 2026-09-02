@@ -5,3 +5,5 @@ __pycache__/
 venv/
 ENV/
 env/
+cloudflared.exe
+*.exe
