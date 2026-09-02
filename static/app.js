@@ -1595,11 +1595,12 @@
       }
     }
 
-    // If new user has no name set, pop up the profile modal
-    if (!studentProfile.name) {
+    // Auto-open settings if requested via URL or for new users
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!studentProfile.name || urlParams.has("settings")) {
       setTimeout(() => {
-        document.getElementById("profileModal")?.classList.remove("hidden");
-      }, 400);
+        openProfile();
+      }, 300);
     }
 
     console.log("🌸 ClearMind Pro v17.0 — High-Yield Educational Engine Ready.");
