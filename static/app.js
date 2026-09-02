@@ -655,7 +655,7 @@
     try {
       const res = await fetch("/api/chat-teach", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({
           topic: activeTopic,
           message: clean,
@@ -811,7 +811,7 @@
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({ text: clean, language: activeLanguage })
       });
       if (!res.ok) throw new Error("TTS failed");
@@ -881,7 +881,7 @@
     try {
       const res = await fetch("/api/exam-cheat-sheet", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({
           topic: activeTopic,
           language: activeLanguage,
@@ -964,7 +964,7 @@
     try {
       const res = await fetch("/api/blitz-quiz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({ topic: activeTopic, language: activeLanguage })
       });
       const d = await res.json();
@@ -1403,9 +1403,11 @@
       const nInp = document.getElementById("inputStudentName");
       const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
+      const kInp = document.getElementById("inputApiKey");
       if (nInp) nInp.value = studentProfile.name || "";
       if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
       if (tInp) tInp.value = activeTopic || "";
+      if (kInp) kInp.value = localStorage.getItem("clearmind_gemini_key") || "";
       pModal?.classList.remove("hidden");
     };
 
@@ -1425,8 +1427,17 @@
       const nInp = document.getElementById("inputStudentName");
       const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
+      const kInp = document.getElementById("inputApiKey");
       const enteredName = nInp?.value.trim() || "Student";
       const chosenTopic = tInp?.value.trim() || "General Science & Problem Solving";
+      if (kInp) {
+        const enteredKey = kInp.value.trim();
+        if (enteredKey) {
+          localStorage.setItem("clearmind_gemini_key", enteredKey);
+        } else {
+          localStorage.removeItem("clearmind_gemini_key");
+        }
+      }
 
       studentProfile.name = enteredName;
       studentProfile.level = lInp?.value || "College / University";

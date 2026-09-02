@@ -64,7 +64,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/style.css?v=21.0" />
+  <link rel="stylesheet" href="/style.css?v=22.0" />
   <!-- KaTeX for Scientific & Mathematical Formula Typography -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -771,6 +771,14 @@
             </optgroup>
           </select>
         </div>
+
+        <div>
+          <label for="inputApiKey" class="text-xs font-bold text-slate-300 flex items-center justify-between">
+            <span>🔑 Gemini API Key (Optional):</span>
+            <span class="text-[10px] text-purple-400 font-normal">Paste demo key or leave blank for .env</span>
+          </label>
+          <input type="password" id="inputApiKey" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs font-mono focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="AIzaSy... (paste your Gemini API key here)" />
+        </div>
       </div>
 
       <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-800">
@@ -785,6 +793,6 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- App Core JS -->
-  <script src="/app.js?v=21.0"></script>
+  <script src="/app.js?v=22.0"></script>
 </body>
 </html>

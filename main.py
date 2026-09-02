@@ -147,8 +147,8 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
                 })
     return steps[:6]
 
-def get_gemini_client():
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+def get_gemini_client(custom_key: Optional[str] = None):
+    api_key = custom_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         return None
     try:
@@ -279,7 +279,7 @@ async def get_status():
     }
 
 @app.post("/api/chat-teach", response_model=ChatTeachResponse)
-async def chat_teach(req: ChatTeachRequest):
+async def chat_teach(req: ChatTeachRequest, request: Request):
     user_msg = req.message.strip()
     topic = req.topic.strip() or "General Science"
     lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
@@ -337,7 +337,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
         content_items.append(user_prompt)
 
     raw_json = None
-    client = get_gemini_client()
+    client = get_gemini_client(request.headers.get("x-gemini-key"))
     if client:
         try:
             resp = client.models.generate_content(
@@ -397,7 +397,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
     )
 
 @app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
-async def get_exam_cheat_sheet(req: ExamCheatSheetRequest):
+async def get_exam_cheat_sheet(req: ExamCheatSheetRequest, request: Request):
     topic = req.topic.strip() or "General Science"
     lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
 
@@ -415,7 +415,7 @@ Return strictly a JSON object matching this schema:
 }}"""
 
     raw_json = None
-    client = get_gemini_client()
+    client = get_gemini_client(request.headers.get("x-gemini-key"))
     if client:
         try:
             resp = client.models.generate_content(
@@ -453,7 +453,7 @@ Return strictly a JSON object matching this schema:
     )
 
 @app.post("/api/blitz-quiz", response_model=BlitzQuizResponse)
-async def get_blitz_quiz(req: BlitzQuizRequest):
+async def get_blitz_quiz(req: BlitzQuizRequest, request: Request):
     topic = req.topic.strip() or "General Science"
     lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
 
@@ -477,7 +477,7 @@ Return strictly a JSON object:
 }}"""
 
     raw_json = None
-    client = get_gemini_client()
+    client = get_gemini_client(request.headers.get("x-gemini-key"))
     if client:
         try:
             resp = client.models.generate_content(
