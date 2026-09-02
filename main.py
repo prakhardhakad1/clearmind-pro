@@ -179,6 +179,27 @@ def get_gemini_client(custom_key: Optional[str] = None):
         logger.error(f"Failed to create Gemini client: {e}")
         return None
 
+async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") -> Optional[str]:
+    """Synthesizes high-fidelity neural voice using Microsoft Edge TTS and returns base64 MP3."""
+    if not text or not text.strip():
+        return None
+    clean = clean_speech_text(text)
+    if not clean:
+        return None
+    voice = NEURAL_VOICES.get(language, NEURAL_VOICES["hinglish"])
+    try:
+        communicate = edge_tts.Communicate(clean[:400], voice)
+        audio_stream = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_stream.write(chunk["data"])
+        audio_bytes = audio_stream.getvalue()
+        if audio_bytes:
+            return base64.b64encode(audio_bytes).decode("utf-8")
+    except Exception as e:
+        logger.warning(f"Edge TTS synthesis error: {e}")
+    return None
+
 class AnalogyCard(BaseModel):
     title: str = Field(description="Vivid real-world analogy title")
     description: str = Field(description="Clear explanation of the concept using everyday physical metaphor")
