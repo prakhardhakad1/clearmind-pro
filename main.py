@@ -215,16 +215,19 @@ async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") ->
         return None
     voice = NEURAL_VOICES.get(language, NEURAL_VOICES["hinglish"])
     try:
-        communicate = edge_tts.Communicate(clean[:400], voice)
-        audio_stream = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_stream.write(chunk["data"])
-        audio_bytes = audio_stream.getvalue()
+        async def _synth():
+            communicate = edge_tts.Communicate(clean[:300], voice)
+            audio_stream = io.BytesIO()
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    audio_stream.write(chunk["data"])
+            return audio_stream.getvalue()
+
+        audio_bytes = await asyncio.wait_for(_synth(), timeout=4.5)
         if audio_bytes:
             return base64.b64encode(audio_bytes).decode("utf-8")
     except Exception as e:
-        logger.warning(f"Edge TTS synthesis error: {e}")
+        logger.warning(f"Edge TTS synthesis error or timeout: {e}")
     return None
 
 class AnalogyCard(BaseModel):
