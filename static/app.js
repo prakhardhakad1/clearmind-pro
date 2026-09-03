@@ -1227,6 +1227,11 @@
     isVoiceCallActive = true;
     const statusText = document.getElementById("voiceCallStatusText");
     if (statusText) statusText.textContent = "Live Call Active • Speak with Luna";
+    const callBtn = document.getElementById("endVoiceCallBtn");
+    if (callBtn) {
+      callBtn.innerHTML = "<span>End Call 📵</span>";
+      callBtn.className = "px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold shadow-lg shadow-rose-600/30 transition transform hover:scale-105 active:scale-95";
+    }
     playSound("combo");
 
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1273,6 +1278,11 @@
     }
     const statusText = document.getElementById("voiceCallStatusText");
     if (statusText) statusText.textContent = "Tap Orb to Start Call";
+    const callBtn = document.getElementById("endVoiceCallBtn");
+    if (callBtn) {
+      callBtn.innerHTML = "<span>Start Call 📞</span>";
+      callBtn.className = "px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/30 transition transform hover:scale-105 active:scale-95";
+    }
     if (activeAudio) activeAudio.pause();
     playSound("click");
     showToast("Voice call ended.", "info");
@@ -1400,7 +1410,13 @@
     document.getElementById("chatMicBtn")?.addEventListener("click", () => {
       window.switchCanvasTab("voice");
     });
-    document.getElementById("endVoiceCallBtn")?.addEventListener("click", endVoiceCall);
+    document.getElementById("endVoiceCallBtn")?.addEventListener("click", () => {
+      if (isVoiceCallActive) {
+        endVoiceCall();
+      } else {
+        startVoiceCall();
+      }
+    });
 
     // Global Search Input
     const gSearch = document.getElementById("globalTopicSearchInput");

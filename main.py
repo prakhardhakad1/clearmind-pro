@@ -218,7 +218,7 @@ async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") ->
     voice = NEURAL_VOICES.get(language, NEURAL_VOICES["hinglish"])
     try:
         async def _synth():
-            communicate = edge_tts.Communicate(clean[:300], voice)
+            communicate = edge_tts.Communicate(clean[:150], voice)
             audio_stream = io.BytesIO()
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
@@ -385,7 +385,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
             reply = d.get("reply_text") or d.get("explanation") or d.get("content") or d.get("message") or ""
             speech = clean_speech_text(d.get("speech_text") or reply)
             det_topic = d.get("detected_topic") or topic
-            audio = await synthesize_edge_audio_base64(speech[:300], req.language)
+            audio = await synthesize_edge_audio_base64(speech[:140], req.language)
 
             r_steps = d.get("roadmap_steps")
             if not r_steps or not isinstance(r_steps, list) or len(r_steps) == 0:
