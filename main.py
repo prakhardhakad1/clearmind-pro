@@ -149,8 +149,8 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
 
 
 def call_gemini_with_fallback(client, contents, sys_prompt, is_json=True) -> Optional[str]:
-    """Tries multiple Gemini Flash models (3.6, 2.5, 2.0, 1.5) to guarantee compatibility across all keys."""
-    models = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
+    """Tries active Gemini Flash models (3.5, 3.6, flash-latest) with rapid execution."""
+    models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]
     config = genai_types.GenerateContentConfig(
         system_instruction=sys_prompt,
         response_mime_type="application/json" if is_json else "text/plain",
@@ -174,6 +174,8 @@ def get_gemini_client(custom_key: Optional[str] = None):
     if not api_key:
         return None
     try:
+        os.environ["GEMINI_API_KEY"] = api_key
+        os.environ["GOOGLE_API_KEY"] = api_key
         return genai.Client(api_key=api_key)
     except Exception as e:
         logger.error(f"Failed to create Gemini client: {e}")
@@ -406,18 +408,31 @@ You MUST respond strictly with a valid JSON object matching this schema:
             )
 
     # Intelligent Dynamic Fallback
-    dyn_reply = f"Awesome question {req.student_name}! In {topic}, let's understand the core mechanism. Every action causes an immediate measurable change. Think of it like a continuous feedback loop in physical nature!"
-    speech = clean_speech_text(dyn_reply)
+    dyn_topic = topic
+    clean_msg = user_msg.lower()
+    for kw in ["relation and function", "relations and functions", "calculus", "differentiation", "integration", "photosynthesis", "python", "thermodynamics", "quantum physics", "mechanics", "genetics", "chemistry", "biology"]:
+        if kw in clean_msg:
+            dyn_topic = kw.title()
+            break
+
+    dyn_reply = f"Awesome question {req.student_name}! Let's master **{dyn_topic}** together. In this topic, the core concept connects mathematical and physical relations directly into practical real-world operations. We break it down into 4 clear milestones: Foundations, Mapping Mechanism, Practical Applications, and Exam Problem Solving!"
+    speech = clean_speech_text(f"Awesome question {req.student_name}! Let's master {dyn_topic} together.")
     audio = await synthesize_edge_audio_base64(speech, req.language)
     return ChatTeachResponse(
         reply_text=dyn_reply,
         speech_text=speech,
-        analogy_card={"title": f"💡 {topic} Mechanism", "description": "Directly connects theoretical formulas with physical real-world reactions."},
-        suggested_replies=["Show examiner traps ⚠️", "Give a real-world analogy 💡", "Start 60s Blitz ⏱️"],
-        canvas_node_title=topic,
-        canvas_node_summary="Fundamental principles mapped to live canvas.",
-        detected_topic=topic,
-        audio_base64=audio
+        analogy_card={"title": f"💡 {dyn_topic} Intuition", "description": f"Think of {dyn_topic} like an automated factory mapping every raw input directly to an exact, predictable output."},
+        suggested_replies=[f"Explain {dyn_topic} formulas", f"Give an everyday {dyn_topic} analogy 💡", "Start 60s Blitz ⏱️"],
+        canvas_node_title=dyn_topic,
+        canvas_node_summary=f"Foundations and core mechanisms of {dyn_topic}.",
+        detected_topic=dyn_topic,
+        audio_base64=audio,
+        roadmap_steps=[
+            {"step_number": 1, "title": f"{dyn_topic} Foundations", "status": "done", "description": "Core definitions and basic rules"},
+            {"step_number": 2, "title": "Mapping Mechanisms", "status": "active", "description": "How inputs relate to outputs"},
+            {"step_number": 3, "title": "Deep Applications", "status": "todo", "description": "Solving textbook and exam problems"},
+            {"step_number": 4, "title": "Exam Mastery & Traps", "status": "todo", "description": "Mastering traps and high-yield scoring"}
+        ]
     )
 
 @app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
