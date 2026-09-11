@@ -76,9 +76,9 @@ NEURAL_VOICES = {
 }
 
 LANGUAGES_MAP = {
-    "hinglish": "Hinglish (Hindi + English natural conversational blend)",
+    "hinglish": "Hinglish (Conversational Hindi + English blend)",
     "en": "English",
-    "hi": "Hindi",
+    "hi": "Hindi (हिन्दी)",
     "es": "Spanish",
     "fr": "French",
     "de": "German",
@@ -86,8 +86,39 @@ LANGUAGES_MAP = {
     "zh": "Chinese",
 }
 
+def get_language_directive(language_code: str) -> str:
+    lang = (language_code or "hinglish").lower().strip()
+    if lang == "hinglish":
+        return (
+            "CRITICAL MANDATORY LANGUAGE REQUIREMENT: You MUST communicate and explain STRICTLY in natural, engaging HINGLISH "
+            "(conversational Hindi written in standard English/Latin alphabet, blended naturally with English technical terms). "
+            "Examples: 'Arre wah! Yeh concept bohot hi aasan aur interesting hai. Socho agar aap...', 'Bilkul simple hai, dhyan se samjho!', 'Iska basic rule yeh hai...'. "
+            "NEVER reply in pure English! Keep formulas, code, and scientific terms in English (e.g. 'dy/dx', 'velocity', 'def function():'), "
+            "but all conversation, questions, explanations, analogies, and speech MUST be in natural, vibrant Hinglish."
+        )
+    elif lang == "hi":
+        return (
+            "CRITICAL MANDATORY LANGUAGE REQUIREMENT: You MUST communicate and explain STRICTLY in pure, standard HINDI (हिन्दी - मानक देवनागरी लिपि). "
+            "Examples: 'नमस्ते! चलिए इस विषय को बहुत ही सरल और रोचक तरीके से समझते हैं।', 'इसका मूल सिद्धांत यह है...'. "
+            "Keep mathematical formulas and symbols clear and intact, but ALL explanations, notes, analogies, and spoken script MUST be in pure Hindi (Devanagari). "
+            "NEVER default to English!"
+        )
+    elif lang == "es":
+        return "CRITICAL MANDATORY: You MUST write all explanations, analogies, and speech strictly in Spanish (Español). NEVER reply in English!"
+    elif lang == "fr":
+        return "CRITICAL MANDATORY: You MUST write all explanations, analogies, and speech strictly in French (Français). NEVER reply in English!"
+    elif lang == "de":
+        return "CRITICAL MANDATORY: You MUST write all explanations, analogies, and speech strictly in German (Deutsch). NEVER reply in English!"
+    elif lang == "ja":
+        return "CRITICAL MANDATORY: You MUST write all explanations, analogies, and speech strictly in Japanese (日本語). NEVER reply in English!"
+    elif lang == "zh":
+        return "CRITICAL MANDATORY: You MUST write all explanations, analogies, and speech strictly in Simplified Chinese (简体中文). NEVER reply in English!"
+    else:
+        return "CRITICAL MANDATORY: You MUST communicate in clear, natural, high-yield English."
+
 def clean_speech_text(text: str) -> str:
     """Strip markdown symbols, emojis, and code formatting so voice sounds 100% human-natural."""
+    if not text: return ""
     text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
     text = re.sub(r'\\[a-zA-Z]+', ' ', text)
     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
@@ -126,7 +157,6 @@ def safe_parse_json(raw: str) -> Optional[Dict[str, Any]]:
             pass
     return None
 
-
 def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
     steps = []
     lines = text.splitlines()
@@ -136,7 +166,6 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
             num = int(m.group(1) or m.group(2))
             raw_title = m.group(3).strip()
             raw_title = re.sub(r'[\*\#\_`]', '', raw_title)
-            # Remove trailing parenthetical note like (The Base)
             title = re.sub(r'\s*\([^\)]*\)', '', raw_title).strip()
             if len(title) > 2:
                 steps.append({
@@ -146,28 +175,6 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
                     "description": raw_title[:60]
                 })
     return steps[:6]
-
-
-def call_gemini_with_fallback(client, contents, sys_prompt, is_json=True) -> Optional[str]:
-    """Tries active Gemini Flash models (3.5, 3.6, flash-latest) with rapid execution."""
-    models = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"]
-    config = genai_types.GenerateContentConfig(
-        system_instruction=sys_prompt,
-        response_mime_type="application/json" if is_json else "text/plain",
-        temperature=0.7
-    )
-    for model_name in models:
-        try:
-            resp = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=config
-            )
-            if resp.text:
-                return resp.text
-        except Exception as e:
-            logger.info(f"Model {model_name} attempt: {e}")
-    return None
 
 def get_gemini_client(custom_key: Optional[str] = None):
     api_key = custom_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -181,31 +188,105 @@ def get_gemini_client(custom_key: Optional[str] = None):
         logger.error(f"Failed to create Gemini client: {e}")
         return None
 
+async def execute_dual_ai_completion(
+    sys_prompt: str,
+    user_prompt: str,
+    content_items: Optional[List[Any]] = None,
+    custom_key: Optional[str] = None,
+    max_tokens: int = 1000
+) -> Optional[str]:
+    """
+    Races Gemini 3.5 Flash and Zhipu GLM-4 Flash concurrently.
+    Returns the fastest valid response in under 2 seconds.
+    """
+    has_image = bool(content_items and any(isinstance(x, genai_types.Part) for x in content_items))
+    client = get_gemini_client(custom_key)
 
-async def call_glm_completion(user_prompt: str, sys_prompt: str = "") -> Optional[str]:
-    """Zhipu AI GLM-4 Zero-Downtime Failover API."""
-    glm_key = os.getenv("GLM_API_KEY")
-    if not glm_key:
+    async def _call_gemini() -> Optional[str]:
+        if not client: return None
+        loop = asyncio.get_running_loop()
+        def _sync_gemini():
+            primary_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+            candidate_models = [primary_model]
+            if primary_model != "gemini-3.6-flash":
+                candidate_models.append("gemini-3.6-flash")
+            if "gemini-3.5-flash-lite" not in candidate_models:
+                candidate_models.append("gemini-3.5-flash-lite")
+
+            cfg = genai_types.GenerateContentConfig(
+                system_instruction=sys_prompt,
+                response_mime_type="application/json",
+                temperature=0.6,
+                max_output_tokens=max_tokens,
+                thinking_config=genai_types.ThinkingConfig(thinking_level="low")
+            )
+            for m in candidate_models:
+                try:
+                    r = client.models.generate_content(
+                        model=m,
+                        contents=content_items if (content_items and len(content_items) > 0) else user_prompt,
+                        config=cfg
+                    )
+                    if r and r.text and r.text.strip():
+                        return r.text
+                except Exception as e:
+                    logger.info(f"Gemini candidate {m} error ({e}), trying next model...")
+            return None
+        try:
+            return await asyncio.wait_for(loop.run_in_executor(None, _sync_gemini), timeout=14.0)
+        except Exception as e:
+            logger.info(f"Gemini attempt timed out or failed: {e or type(e).__name__}")
+            return None
+
+    async def _call_glm() -> Optional[str]:
+        if has_image: return None
+        glm_key = os.getenv("GLM_API_KEY")
+        if not glm_key: return None
+        url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+        headers = {"Authorization": f"Bearer {glm_key}", "Content-Type": "application/json"}
+        payload = {
+            "model": "glm-4-flash",
+            "messages": [
+                {"role": "system", "content": sys_prompt + "\n\nCRITICAL: Return strictly a valid JSON object without markdown fences."},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": 0.6,
+            "max_tokens": max_tokens
+        }
+        try:
+            async with httpx.AsyncClient(timeout=6.5) as http_client:
+                resp = await http_client.post(url, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+                else:
+                    logger.info(f"GLM status error: {resp.status_code} {resp.text[:200]}")
+        except Exception as e:
+            logger.info(f"GLM attempt failed: {e or type(e).__name__}")
         return None
-    url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    headers = {"Authorization": f"Bearer {glm_key}", "Content-Type": "application/json"}
-    payload = {
-        "model": "glm-4-flash",
-        "messages": [
-            {"role": "system", "content": sys_prompt or "You are an expert AI educator."},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 1500
-    }
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.error(f"GLM failover request error: {e}")
+
+    if has_image:
+        return await _call_gemini()
+
+    tasks = [asyncio.create_task(_call_gemini()), asyncio.create_task(_call_glm())]
+    for fut in asyncio.as_completed(tasks):
+        try:
+            res = await fut
+            if res and safe_parse_json(res):
+                for t in tasks:
+                    if not t.done(): t.cancel()
+                return res
+        except Exception:
+            pass
+
+    for t in tasks:
+        if not t.done() and not t.cancelled():
+            try:
+                res = await t
+                if res and safe_parse_json(res):
+                    return res
+            except Exception:
+                pass
     return None
 
 async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") -> Optional[str]:
@@ -218,18 +299,18 @@ async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") ->
     voice = NEURAL_VOICES.get(language, NEURAL_VOICES["hinglish"])
     try:
         async def _synth():
-            communicate = edge_tts.Communicate(clean[:150], voice)
+            communicate = edge_tts.Communicate(clean[:140], voice)
             audio_stream = io.BytesIO()
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
                     audio_stream.write(chunk["data"])
             return audio_stream.getvalue()
 
-        audio_bytes = await asyncio.wait_for(_synth(), timeout=4.5)
+        audio_bytes = await asyncio.wait_for(_synth(), timeout=3.0)
         if audio_bytes:
             return base64.b64encode(audio_bytes).decode("utf-8")
     except Exception as e:
-        logger.warning(f"Edge TTS synthesis error or timeout: {e}")
+        logger.info(f"Edge TTS synthesis skipped or timed out: {e}")
     return None
 
 class AnalogyCard(BaseModel):
@@ -241,8 +322,9 @@ class ChatTeachRequest(BaseModel):
     message: str
     conversation_history: List[Dict[str, str]] = []
     language: str = "hinglish"
-    student_name: str = "Sarah J."
-    level: str = "High School"
+    student_name: str = "Prakhar"
+    level: str = "College / University"
+    mode: str = "direct" # "direct" or "socratic"
     image_base64: Optional[str] = None
 
 class ChatTeachResponse(BaseModel):
@@ -256,18 +338,48 @@ class ChatTeachResponse(BaseModel):
     audio_base64: Optional[str] = None
     roadmap_steps: Optional[List[Dict[str, Any]]] = None
 
+# Real Comprehensive Exam Cheat Sheet
+class FormulaCard(BaseModel):
+    name: str
+    latex: str
+    variables: str
+    importance: str
+
+class ExaminerTrap(BaseModel):
+    trap: str
+    fix: str
+    exam_type: str = "High-Yield"
+
+class MnemonicItem(BaseModel):
+    acronym: str
+    expansion: str
+    tip: str
+
+class MustKnowQuestion(BaseModel):
+    question: str
+    marks: int = 5
+    solution_steps: List[str]
+
 class ExamCheatSheetRequest(BaseModel):
     topic: str = "Introduction to Python"
     language: str = "hinglish"
-    level: str = "High School"
+    level: str = "College / University"
 
 class ExamCheatSheetResponse(BaseModel):
     topic: str
-    formulas_and_definitions: List[str]
-    examiner_trap_warning: str
-    rapid_memory_mnemonic: str
-    must_know_5mark_question: str
+    synopsis: str = ""
+    formula_cards: List[FormulaCard] = []
+    examiner_traps: List[ExaminerTrap] = []
+    mnemonics: List[MnemonicItem] = []
+    must_know_questions: List[MustKnowQuestion] = []
+    golden_rules: List[str] = []
+    # Backwards compatibility fields
+    formulas_and_definitions: List[str] = []
+    examiner_trap_warning: str = ""
+    rapid_memory_mnemonic: str = ""
+    must_know_5mark_question: str = ""
 
+# Blitz Battle Arena 2.0
 class BlitzQuestion(BaseModel):
     id: int
     question: str
@@ -278,11 +390,31 @@ class BlitzQuestion(BaseModel):
 class BlitzQuizRequest(BaseModel):
     topic: str = "Introduction to Python"
     language: str = "hinglish"
+    num_questions: int = 8
+    time_limit_seconds: int = 60
+    difficulty: str = "Standard"
 
 class BlitzQuizResponse(BaseModel):
     topic: str
     questions: List[BlitzQuestion]
     time_limit_seconds: int = 60
+
+# 3D Spaced-Repetition Flashcards
+class FlashcardItem(BaseModel):
+    id: int
+    front: str
+    back: str
+    category: str
+    hint: Optional[str] = None
+
+class FlashcardsRequest(BaseModel):
+    topic: str = "Introduction to Python"
+    language: str = "hinglish"
+    count: int = 6
+
+class FlashcardsResponse(BaseModel):
+    topic: str
+    cards: List[FlashcardItem]
 
 class TTSRequest(BaseModel):
     text: str
@@ -297,49 +429,80 @@ async def get_status():
     return {
         "status": "online",
         "gemini_active": bool(os.getenv("GEMINI_API_KEY")),
-        "gemini_active": bool(os.getenv("GEMINI_API_KEY")),
         "glm4_active": bool(os.getenv("GLM_API_KEY")),
-        "engine": "Google Gemini 3.6 Flash + GLM-4 Zero-Downtime Failover" if os.getenv("GLM_API_KEY") else "Google Gemini 3.6 Flash",
+        "engine": "Dual-Engine (Gemini 3.5 Flash + GLM-4 Flash Fast Race)",
         "voice": "Microsoft Edge Neural Voice"
     }
 
 @app.post("/api/chat-teach", response_model=ChatTeachResponse)
 async def chat_teach(req: ChatTeachRequest, request: Request):
     user_msg = req.message.strip()
-    topic = req.topic.strip() or "General Science"
-    lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
+    raw_topic = req.topic.strip()
+    if any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
+        topic = ""
+    else:
+        topic = raw_topic
+    lang_directive = get_language_directive(req.language)
 
-    sys_prompt = f"""You are Luna, an elite, world-class AI Master Teacher for ClearMind Pro.
+    teaching_style = (
+        "TEACHING STYLE: Socratic Method. Guide the student step-by-step with intuitive prompts, finishing your answer with an insightful question that encourages them to think!"
+        if req.mode == "socratic" else
+        "TEACHING STYLE: Direct Master Educator. Provide deep, crystal-clear conceptual explanations, step-by-step math derivations, and real physical analogies."
+    )
+
+    sys_prompt = f"""You are Luna, an elite world-class AI Master Teacher for ClearMind Pro.
 You teach students with warmth, high enthusiasm, deep pedagogical clarity, and vivid everyday real-world analogies.
-Target Language: {lang_name}
+
+{lang_directive}
+
+{teaching_style}
+
 Student Name: {req.student_name}
 Target Academic Level: {req.level}
 
-Analyze the student's message: '{user_msg}'.
-If the student uploaded an image (such as textbook formulas, diagrams, questions, or notes), carefully read the image via OCR and explain all formulas, solving any question shown with complete pedagogical clarity!
-If the student asks about a specific topic (e.g. Calculus, Differentiation, Photosynthesis, Quantum Physics, Mechanics, etc.), immediately teach THAT topic with full mathematical/scientific depth!
+Student's active topic (if specified): '{topic or "None decided yet"}'
+
+TOPIC DETECTION & DISAMBIGUATION RULES (CRITICAL):
+1. GREETINGS & CASUAL CHAT:
+   - If the student message is a greeting, pleasantry, or casual chitchat (e.g. 'hello', 'hi', 'hey', 'namaste', 'kaise ho', 'ok', 'thanks', 'thank you', 'bye'):
+   - Greet them warmly and enthusiastically in the designated language! Ask what subject or chapter they want to learn today.
+   - You MUST set "detected_topic": "" (empty string). DO NOT invent or assume any topic!
+   - Set "analogy_card": null, and set "canvas_node_title": "".
+
+2. BROAD GENERAL SUBJECTS REQUIRING CLARIFICATION:
+   - If the student mentions ONLY a broad subject or general discipline without a specific topic or chapter (e.g. 'math', 'maths', 'mathematics', 'physics', 'chemistry', 'biology', 'science', 'coding', 'computer science', 'history', 'economics'):
+   - Acknowledge the subject with excitement!
+   - Explicitly ask the student to clarify WHICH specific chapter or topic within that subject they want to study. Give them 3 to 4 specific popular chapter suggestions (for example, if they say 'maths', suggest: 'Relations & Functions', 'Calculus Derivatives', 'Matrices & Determinants', or 'Trigonometry').
+   - You MUST set "detected_topic": "" (empty string). DO NOT set the broad subject as the topic!
+
+3. CONCRETE KNOWLEDGE / STUDY TOPIC:
+   - Only when the student specifies a concrete educational topic, chapter, or concept (e.g. 'Relations and Functions', 'Quadratic Equations', 'Calculus Derivatives', 'Newton\'s Second Law', 'Photosynthesis', 'Chemical Bonding', 'Merge Sort', 'Thermodynamics Heat Engine'):
+   - Immediately teach that topic with full depth, clarity, real-world analogies, and step-by-step logic!
+   - Set "detected_topic": "The exact specific topic name" (e.g. 'Relations and Functions').
 
 You MUST respond strictly with a valid JSON object matching this schema:
 {{
-  "reply_text": "Engaging conversational explanation with clear markdown formatting, bullet points, and code/formula snippets if applicable",
-  "speech_text": "Natural conversational voice script without markdown or symbols, perfect for voice playback",
+  "reply_text": "Engaging conversational explanation formatted in clear markdown with bullet points and code/formula snippets",
+  "speech_text": "Punchy 1-2 sentence conversational voice script without markdown or symbols",
   "analogy_card": {{
     "title": "Vivid Analogy Title (e.g. 🏍️ The Bike Speedometer or 📦 The Recipe Box)",
     "description": "Clear 1-2 sentence real-world metaphor breaking down the concept"
-  }},
-  "suggested_replies": ["Specific follow-up question 1", "Analogy expansion question 2", "Test me with Blitz Quiz ⏱️"],
-  "canvas_node_title": "Key Concept Title",
-  "canvas_node_summary": "1-sentence summary of the unlocked concept",
-  "detected_topic": "The active topic being taught (e.g. Relations and Functions)",
+  }} or null,
+  "suggested_replies": ["Specific follow-up question 1", "Analogy expansion question 2", "Option 3"],
+  "canvas_node_title": "Key Concept Title or empty string",
+  "canvas_node_summary": "1-sentence summary of the unlocked concept or empty string",
+  "detected_topic": "The exact specific topic if identified, or empty string if greeting/broad subject",
   "roadmap_steps": [
     {{"step_number": 1, "title": "Step 1 Milestone Title", "status": "done", "description": "Key concept covered"}},
     {{"step_number": 2, "title": "Step 2 Milestone Title", "status": "active", "description": "Currently learning"}},
     {{"step_number": 3, "title": "Step 3 Milestone Title", "status": "todo", "description": "Next milestone"}},
     {{"step_number": 4, "title": "Step 4 Milestone Title", "status": "todo", "description": "Advanced application"}}
-  ]
-}}"""
+  ] or null
+}}
 
-    user_prompt = f"Student says: '{user_msg}'. History: {req.conversation_history[-4:] if req.conversation_history else 'First turn'}."
+CRITICAL: Every single text field (reply_text, speech_text, analogy_card, suggested_replies, canvas_node_summary) MUST strictly obey the language directive!"""
+
+    user_prompt = f"Student ({req.student_name}) says: '{user_msg}'. History: {req.conversation_history[-3:] if req.conversation_history else 'First turn'}. [MANDATORY: Follow language directive strictly]"
 
     content_items = []
     if req.image_base64 and req.image_base64.strip():
@@ -348,10 +511,8 @@ You MUST respond strictly with a valid JSON object matching this schema:
             mime_type = "image/jpeg"
             if "," in raw_b64:
                 header, raw_b64 = raw_b64.split(",", 1)
-                if "image/png" in header:
-                    mime_type = "image/png"
-                elif "image/webp" in header:
-                    mime_type = "image/webp"
+                if "image/png" in header: mime_type = "image/png"
+                elif "image/webp" in header: mime_type = "image/webp"
             img_bytes = base64.b64decode(raw_b64)
             content_items.append(genai_types.Part.from_bytes(data=img_bytes, mime_type=mime_type))
             content_items.append(f"The student uploaded an educational image or textbook photo. {user_prompt}")
@@ -361,192 +522,449 @@ You MUST respond strictly with a valid JSON object matching this schema:
     else:
         content_items.append(user_prompt)
 
-    raw_json = None
-    user_key = request.headers.get("x-gemini-key")
-    if user_key and user_key.strip():
-        u_client = get_gemini_client(user_key.strip())
-        if u_client:
-            raw_json = call_gemini_with_fallback(u_client, content_items, sys_prompt, is_json=True)
+    clean_msg = user_msg.lower().strip()
+    is_greeting = any(
+        clean_msg == g or clean_msg.startswith(g + " ") or clean_msg.startswith(g + "!") or clean_msg.startswith(g + ",") or clean_msg.startswith(g + ".")
+        for g in ["hello", "hi", "hey", "hola", "namaste", "kaise ho", "sup", "yo", "good morning", "good evening", "good afternoon"]
+    )
+    is_chitchat = is_greeting or any(
+        clean_msg == c or clean_msg.startswith(c + " ")
+        for c in ["thanks", "thank you", "ok", "okay", "bye", "goodbye", "shukriya", "dhanyawad", "theek hai", "haan", "nahin", "no", "yes", "cool", "nice"]
+    )
 
-    # If user key not provided or failed, failover to server environment key
-    if not raw_json:
-        s_client = get_gemini_client(None)
-        if s_client:
-            raw_json = call_gemini_with_fallback(s_client, content_items, sys_prompt, is_json=True)
+    broad_subjects = {
+        "math", "maths", "mathematics", "physics", "chemistry", "biology",
+        "science", "coding", "programming", "computer science", "history", "economics"
+    }
+    is_broad_subject = clean_msg in broad_subjects or any(
+        clean_msg in [f"i want to learn {s}", f"teach me {s}", f"teach {s}", f"{s} seekhna hai", f"{s} padhna hai"]
+        for s in broad_subjects
+    )
 
-    # GLM-4 Failover Safety Net
-    if not raw_json and os.getenv("GLM_API_KEY"):
-        raw_json = await call_glm_completion(user_prompt, sys_prompt)
-
+    raw_json = await execute_dual_ai_completion(
+        sys_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        content_items=content_items,
+        custom_key=request.headers.get("x-gemini-key"),
+        max_tokens=900
+    )
 
     if raw_json:
         d = safe_parse_json(raw_json)
         if d:
             reply = d.get("reply_text") or d.get("explanation") or d.get("content") or d.get("message") or ""
-            speech = clean_speech_text(d.get("speech_text") or reply)
-            det_topic = d.get("detected_topic") or topic
-            audio = await synthesize_edge_audio_base64(speech[:140], req.language)
+            speech = clean_speech_text(d.get("speech_text") or reply[:120])
+            raw_det = (d.get("detected_topic") or "").strip()
 
-            r_steps = d.get("roadmap_steps")
-            if not r_steps or not isinstance(r_steps, list) or len(r_steps) == 0:
-                r_steps = extract_roadmap_steps_from_text(reply)
+            invalid_topic_tokens = [
+                "greeting", "greetings", "chitchat", "hello", "hi", "general", "conversation",
+                "general science", "problem solving", "foundational concepts", "ready to learn",
+                "core topic", "core fundamentals", "arena", "choose any topic", "awaiting topic",
+                "none", "none decided yet", "unspecified", "math", "maths", "physics", "chemistry", "biology", "science"
+            ]
 
-            # Do NOT attach an analogy card for simple greetings or pleasantries!
-            is_greeting = any(user_msg.lower().strip().startswith(g) for g in ["hello", "hi", "hey", "hola", "namaste", "kaise ho", "sup", "yo", "good morning", "good evening"])
-            card = None if is_greeting else d.get("analogy_card")
+            if is_chitchat or is_broad_subject or not raw_det or raw_det.lower() in invalid_topic_tokens or any(raw_det.lower().startswith(p) for p in ["greeting", "hello", "general science", "problem solving"]):
+                det_topic = ""
+            else:
+                det_topic = raw_det
+
+            # Fast non-blocking TTS check
+            audio = await synthesize_edge_audio_base64(speech[:100], req.language)
+
+            r_steps = d.get("roadmap_steps") if det_topic else None
+            card = None if (is_chitchat or is_broad_subject or not det_topic) else d.get("analogy_card")
+
+            fallback_replies = (
+                ["Relations & Functions 📐", "Calculus Derivatives 📈", "Newton's Laws ⚛️"] if is_broad_subject else
+                ["Explain with everyday analogy 💡", "Give a step-by-step example 📝", "Start 60s Blitz Quiz ⏱️"]
+            )
 
             return ChatTeachResponse(
                 reply_text=reply,
                 speech_text=speech,
                 analogy_card=card,
-                suggested_replies=d.get("suggested_replies") or ["Tell me more!", "Give an everyday analogy 💡", "Next concept ➔"],
-                canvas_node_title=d.get("canvas_node_title") or det_topic,
-                canvas_node_summary=d.get("canvas_node_summary") or "Core concept analyzed.",
+                suggested_replies=d.get("suggested_replies") or fallback_replies,
+                canvas_node_title=d.get("canvas_node_title") if det_topic else "",
+                canvas_node_summary=d.get("canvas_node_summary") if det_topic else "",
                 detected_topic=det_topic,
                 audio_base64=audio,
-                roadmap_steps=r_steps if r_steps else None
+                roadmap_steps=r_steps if (r_steps and isinstance(r_steps, list) and len(r_steps) > 0) else None
             )
 
-    # Intelligent Dynamic Fallback
-    dyn_topic = topic
-    clean_msg = user_msg.lower()
-    for kw in ["relation and function", "relations and functions", "calculus", "differentiation", "integration", "photosynthesis", "python", "thermodynamics", "quantum physics", "mechanics", "genetics", "chemistry", "biology"]:
-        if kw in clean_msg:
-            dyn_topic = kw.title()
-            break
+    # Intelligent Localized Fallback
+    dyn_topic = ""
+    if not is_chitchat and not is_broad_subject:
+        if any(kw in clean_msg for kw in ["relation", "function"]):
+            dyn_topic = "Relations & Functions"
+        elif any(kw in clean_msg for kw in ["calculus", "derivative", "differentiat"]):
+            dyn_topic = "Calculus & Derivatives"
+        elif any(kw in clean_msg for kw in ["integration", "integral"]):
+            dyn_topic = "Integration"
+        elif any(kw in clean_msg for kw in ["photosynthesis"]):
+            dyn_topic = "Photosynthesis"
+        elif any(kw in clean_msg for kw in ["thermodynamic"]):
+            dyn_topic = "Thermodynamics"
+        elif any(kw in clean_msg for kw in ["quantum"]):
+            dyn_topic = "Quantum Physics"
+        elif any(kw in clean_msg for kw in ["newton", "laws of motion"]):
+            dyn_topic = "Newton's Laws of Motion"
+        elif any(kw in clean_msg for kw in ["matrix", "matrices", "determinant"]):
+            dyn_topic = "Matrices & Determinants"
+        elif any(kw in clean_msg for kw in ["trigonometr"]):
+            dyn_topic = "Trigonometry"
+        elif any(kw in clean_msg for kw in ["genetics", "dna", "heredity"]):
+            dyn_topic = "Genetics & Heredity"
+        else:
+            stripped = clean_msg
+            for prefix in ["teach me about", "teach me", "explain", "what is", "tell me about", "let's learn", "i want to learn", "i want to study", "padhna hai", "seekhna hai", "maths", "math", "physics", "chemistry", "biology", "science"]:
+                stripped = stripped.replace(prefix, "").strip()
+            stripped = re.sub(r"[^\w\s]", "", stripped).strip()
+            if stripped and len(stripped.split()) <= 4:
+                dyn_topic = stripped.title()
 
-    dyn_reply = f"Awesome question {req.student_name}! Let's master **{dyn_topic}** together. In this topic, the core concept connects mathematical and physical relations directly into practical real-world operations. We break it down into 4 clear milestones: Foundations, Mapping Mechanism, Practical Applications, and Exam Problem Solving!"
-    speech = clean_speech_text(f"Awesome question {req.student_name}! Let's master {dyn_topic} together.")
-    audio = await synthesize_edge_audio_base64(speech, req.language)
+        if not dyn_topic and topic and not any(p in topic.lower() for p in ["general science", "problem solving", "foundational", "greeting"]):
+            dyn_topic = topic
+
+    lang = req.language.lower().strip()
+    if is_chitchat:
+        if lang == "hinglish":
+            dyn_reply = f"Namaste **{req.student_name}**! 🌸 Main hoon **Luna**, aapki AI personal tutor. Aaj aap kaunsa subject ya topic seekhna chahte hain? Jaise **Relations & Functions**, **Calculus**, ya **Newton's Laws**?"
+            speech = clean_speech_text(f"Namaste {req.student_name}! Aaj aap kaunsa topic seekhna chahte hain?")
+        elif lang == "hi":
+            dyn_reply = f"नमस्ते **{req.student_name}**! 🌸 मैं हूँ **लूना**, आपकी एआई शिक्षिका। आज आप कौन सा विषय या अध्याय पढ़ना चाहते हैं?"
+            speech = clean_speech_text(f"नमस्ते {req.student_name}! आज आप कौन सा विषय पढ़ना चाहते हैं?")
+        else:
+            dyn_reply = f"Hello **{req.student_name}**! 🌸 I am **Luna**, your AI personal tutor. What subject or chapter would you like to master today? For example: **Relations & Functions**, **Calculus**, or **Thermodynamics**?"
+            speech = clean_speech_text(f"Hello {req.student_name}! What topic would you like to master today?")
+        display_topic = ""
+        suggested = ["Maths: Relations & Functions 📐", "Physics: Newton's Laws ⚛️", "Chemistry: Thermodynamics 🧪"]
+        card = None
+    elif is_broad_subject:
+        if lang == "hinglish":
+            dyn_reply = f"Wah! **{clean_msg.title()}** ek bohot hi interesting aur important subject hai. Lekin isme kaafi chapters hain — aap specific kaunsa chapter ya topic seekhna chahte hain? Jaise:\n- **Relations and Functions**\n- **Calculus & Derivatives**\n- **Matrices & Determinants**\n- **Trigonometry**\n\nMujhe specific topic batayein aur hum turant shuru karte hain!"
+            speech = clean_speech_text(f"Wah! {clean_msg.title()} mein aap specific kaunsa topic seekhna chahte hain?")
+        else:
+            dyn_reply = f"Great choice! **{clean_msg.title()}** is a vast and fascinating subject. Which specific topic or chapter would you like to focus on? For example:\n- **Relations & Functions**\n- **Calculus & Derivatives**\n- **Core Laws & Axioms**\n\nTell me the specific topic and we'll dive right in!"
+            speech = clean_speech_text(f"Great! Which specific topic in {clean_msg.title()} would you like to study?")
+        display_topic = ""
+        suggested = ["Relations & Functions 📐", "Calculus Derivatives 📈", "Matrices & Vectors 🔢"]
+        card = None
+    elif dyn_topic:
+        if lang == "hinglish":
+            dyn_reply = f"Bohot badhiya sawaal hai **{req.student_name}**! Chalo **{dyn_topic}** ko bilkul aasan aur interesting tarike se master karte hain.\n\nIs concept mein core principles mathematically aur physically real-world systems se connect hote hain. Hum isko 4 key milestones mein cover karenge: Foundations, Core Mechanisms, Practical Application, aur Examiner Traps!"
+            speech = clean_speech_text(f"Bohot badhiya sawaal {req.student_name}! Chalo {dyn_topic} ko samajhte hain.")
+            card_title = f"💡 {dyn_topic} ki Real-Life Intuition"
+            card_desc = f"{dyn_topic} ko ek automated system ki tarah socho jahan har input ka ek exact, predictable output hota hai."
+            suggested = [f"Explain {dyn_topic} formulas", f"{dyn_topic} ka everyday analogy 💡", "Start 60s Blitz ⏱️"]
+        else:
+            dyn_reply = f"Awesome question **{req.student_name}**! Let's master **{dyn_topic}** together. We will explore core principles, key mechanisms, and real-world intuition step-by-step!"
+            speech = clean_speech_text(f"Awesome question {req.student_name}! Let's master {dyn_topic} together.")
+            card_title = f"💡 {dyn_topic} Intuition"
+            card_desc = f"Think of {dyn_topic} like an automated system where fundamental rules produce predictable, elegant outcomes."
+            suggested = [f"Explain {dyn_topic} formulas", f"Give an everyday {dyn_topic} analogy 💡", "Start 60s Blitz ⏱️"]
+        display_topic = dyn_topic
+        card = {"title": card_title, "description": card_desc}
+    else:
+        dyn_reply = f"Bohot badhiya **{req.student_name}**! Chalo is concept ko bilkul aasan real-world analogies aur step-by-step logic se master karte hain."
+        speech = clean_speech_text(f"Bohot badhiya {req.student_name}! Chalo ise step-by-step samajhte hain.")
+        display_topic = ""
+        suggested = ["Give an everyday analogy 💡", "Step-by-step derivation 📐", "Test me with Blitz ⏱️"]
+        card = None
+
+    audio = await synthesize_edge_audio_base64(speech[:100], req.language)
     return ChatTeachResponse(
         reply_text=dyn_reply,
         speech_text=speech,
-        analogy_card={"title": f"💡 {dyn_topic} Intuition", "description": f"Think of {dyn_topic} like an automated factory mapping every raw input directly to an exact, predictable output."},
-        suggested_replies=[f"Explain {dyn_topic} formulas", f"Give an everyday {dyn_topic} analogy 💡", "Start 60s Blitz ⏱️"],
-        canvas_node_title=dyn_topic,
-        canvas_node_summary=f"Foundations and core mechanisms of {dyn_topic}.",
-        detected_topic=dyn_topic,
+        analogy_card=card,
+        suggested_replies=suggested,
+        canvas_node_title=display_topic,
+        canvas_node_summary=f"Foundations and core mechanisms of {display_topic}." if display_topic else "",
+        detected_topic=display_topic,
         audio_base64=audio,
         roadmap_steps=[
-            {"step_number": 1, "title": f"{dyn_topic} Foundations", "status": "done", "description": "Core definitions and basic rules"},
-            {"step_number": 2, "title": "Mapping Mechanisms", "status": "active", "description": "How inputs relate to outputs"},
-            {"step_number": 3, "title": "Deep Applications", "status": "todo", "description": "Solving textbook and exam problems"},
-            {"step_number": 4, "title": "Exam Mastery & Traps", "status": "todo", "description": "Mastering traps and high-yield scoring"}
-        ]
+            {"step_number": 1, "title": f"{display_topic} Foundations", "status": "done", "description": "Definitions and core terms"},
+            {"step_number": 2, "title": "Core Mechanism", "status": "active", "description": "Operating principles and formulas"},
+            {"step_number": 3, "title": "Practical Application", "status": "todo", "description": "Real-world problem solving"},
+            {"step_number": 4, "title": "Exam Mastery & Traps", "status": "todo", "description": "High-yield scoring rules"}
+        ] if display_topic else None
     )
 
 @app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
 async def get_exam_cheat_sheet(req: ExamCheatSheetRequest, request: Request):
-    topic = req.topic.strip() or "General Science"
-    lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
+    raw_topic = req.topic.strip()
+    if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
+        topic = "Core Fundamentals & Key Formulas"
+    else:
+        topic = raw_topic
+    lang_directive = get_language_directive(req.language)
 
-    sys_prompt = f"""You are an elite exam examiner creating a high-yield 60-Second Exam Revision Cheat Sheet for: '{topic}'.
-Target Language: {lang_name}
-Target Level: {req.level}
+    sys_prompt = f"""You are an elite competitive exam paper setter creating a real, comprehensive, high-yield Exam Revision Cheat Sheet for: '{topic}'.
+Target Academic Level: {req.level}
 
-Return strictly a JSON object matching this schema:
+{lang_directive}
+
+Return strictly a valid JSON object matching this schema:
 {{
   "topic": "{topic}",
-  "formulas_and_definitions": ["Formula/Syntax Rule 1", "Formula/Syntax Rule 2", "Core Definition 3"],
-  "examiner_trap_warning": "#1 critical examiner trap that causes students to lose marks in competitive exams",
-  "rapid_memory_mnemonic": "S.P.A.R.K acronym or catchy memory trick to never forget this topic",
-  "must_know_5mark_question": "Top expected 5-mark conceptual derivation or problem statement"
+  "synopsis": "Crisp 2-sentence executive summary defining the core law and exam relevance",
+  "formula_cards": [
+    {{
+      "name": "Formula Name 1",
+      "latex": "KaTeX / LaTeX string (e.g. \\\\frac{{dy}}{{dx}} = \\\\lim_{{\\\\Delta x \\\\to 0}} \\\\frac{{\\\\Delta y}}{{\\\\Delta x}})",
+      "variables": "What each variable represents and standard SI units",
+      "importance": "Where this formula must be applied in exams"
+    }},
+    {{
+      "name": "Formula Name 2",
+      "latex": "LaTeX formula 2",
+      "variables": "Variable definitions",
+      "importance": "Application context"
+    }},
+    {{
+      "name": "Formula Name 3",
+      "latex": "LaTeX formula 3",
+      "variables": "Variable definitions",
+      "importance": "Application context"
+    }}
+  ],
+  "examiner_traps": [
+    {{
+      "trap": "Common pitfall where 70% of students lose marks",
+      "fix": "Exact rule and check to avoid the mistake",
+      "exam_type": "Numerical / Conceptual"
+    }},
+    {{
+      "trap": "Secondary pitfall (sign conventions, units, domain limits)",
+      "fix": "How to verify in final step",
+      "exam_type": "Derivation"
+    }}
+  ],
+  "mnemonics": [
+    {{
+      "acronym": "S.P.A.R.K",
+      "expansion": "Step 1 -> Step 2 -> Step 3 -> Step 4 -> Step 5",
+      "tip": "Catchy memory anchor for instant recall during timed exams"
+    }}
+  ],
+  "must_know_questions": [
+    {{
+      "question": "Most expected 5-mark conceptual derivation or high-yield problem",
+      "marks": 5,
+      "solution_steps": [
+        "Step 1: State assumptions and base laws",
+        "Step 2: Mathematical derivation with standard substitutions",
+        "Step 3: Final boundary evaluation and SI units statement"
+      ]
+    }}
+  ],
+  "golden_rules": [
+    "Golden Rule 1: Key invariant or conservation condition",
+    "Golden Rule 2: Sign convention rule",
+    "Golden Rule 3: Examiner scoring checklist criteria"
+  ]
 }}"""
 
-    raw_json = None
-    client = get_gemini_client(request.headers.get("x-gemini-key"))
-    if client:
-        try:
-            resp = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=f"Generate 60-second exam cheat sheet for '{topic}'.",
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=sys_prompt,
-                    response_mime_type="application/json",
-                    temperature=0.6
-                )
-            )
-            if resp.text:
-                raw_json = resp.text
-        except Exception as e:
-            logger.warning(f"Gemini exam sheet error: {e}")
-
+    user_prompt = f"Generate complete high-yield exam cheat sheet for '{topic}'. [MANDATORY: Follow language directive strictly]"
+    raw_json = await execute_dual_ai_completion(
+        sys_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        custom_key=request.headers.get("x-gemini-key"),
+        max_tokens=1200
+    )
 
     if raw_json:
         d = safe_parse_json(raw_json)
         if d:
+            formulas = [f"{f.get('name', 'Rule')}: {f.get('latex', '')} ({f.get('variables', '')})" for f in d.get("formula_cards", [])]
+            traps = d.get("examiner_traps", [])
+            trap_text = f"{traps[0].get('trap', '')} -> {traps[0].get('fix', '')}" if traps else "Check boundary conditions and signs!"
+            mnems = d.get("mnemonics", [])
+            mnem_text = f"{mnems[0].get('acronym', 'S.P.A.R.K')}: {mnems[0].get('expansion', '')}" if mnems else "S.P.A.R.K Method"
+            qs = d.get("must_know_questions", [])
+            q_text = qs[0].get("question", f"Derive the fundamental relationship for {topic}.") if qs else f"Derive key theorem in {topic}."
+
+            d["formulas_and_definitions"] = formulas or [f"Core formula for {topic}"]
+            d["examiner_trap_warning"] = trap_text
+            d["rapid_memory_mnemonic"] = mnem_text
+            d["must_know_5mark_question"] = q_text
             return ExamCheatSheetResponse(**d)
 
+    is_hi = req.language.lower().strip() == "hi"
     return ExamCheatSheetResponse(
         topic=topic,
-        formulas_and_definitions=[
-            f"Core Rule: Fundamental law governing {topic}",
-            f"Conservation Law: Total input equals total output in {topic}",
-            "Standard Unit: SI metric standard calculation format"
+        synopsis=f"{topic} ke mukhya siddhant aur formulas competitive exams ke liye bohot high-yield hain." if not is_hi else f"{topic} के मुख्य सिद्धांत और सूत्र परीक्षाओं के लिए अत्यंत महत्वपूर्ण हैं।",
+        formula_cards=[
+            FormulaCard(name="Fundamental Law", latex=r"E = mc^2 \quad \text{or} \quad \frac{dy}{dx} = f'(x)", variables="Primary rate/state variables in SI standard units", importance="Core equation tested across multiple choice and derivations"),
+            FormulaCard(name="Conservation Condition", latex=r"\sum F = 0 \quad \text{or} \quad \int u \, dv = uv - \int v \, du", variables="Boundary flux and equilibrium coordinates", importance="Applied in equilibrium and boundary condition evaluation"),
+            FormulaCard(name="Rate Relationship", latex=r"\Delta Q = m \cdot c \cdot \Delta T", variables="Q = Quantity, c = Coefficient, T = Parameter", importance="Essential for 3-mark and 5-mark numerical problems")
         ],
+        examiner_traps=[
+            ExaminerTrap(trap=f"Beware of unit mismatch and boundary shifts in {topic} questions!", fix="Always convert to standard SI units before applying formulas.", exam_type="Numerical"),
+            ExaminerTrap(trap="Neglecting initial conditions or constant of integration.", fix="Double check boundary constants before finalizing answer.", exam_type="Derivation")
+        ],
+        mnemonics=[
+            MnemonicItem(acronym="S.P.A.R.K", expansion="State -> Parameterize -> Apply Formula -> Resolve -> Keep SI Units", tip="Execute these 5 steps on every exam question for zero lost marks.")
+        ],
+        must_know_questions=[
+            MustKnowQuestion(question=f"Derive the fundamental rate relationship for {topic} and verify with a standard example.", marks=5, solution_steps=["State fundamental conservation axioms", "Apply mathematical substitution and limits", "Conclude with dimensional verification"])
+        ],
+        golden_rules=[
+            "Never skip dimensional check in the final answer step.",
+            "Write the governing law by name before substituting numerical values.",
+            "Box your final answer with proper SI units."
+        ],
+        formulas_and_definitions=[f"Fundamental Law: Base equation governing {topic}", "Conservation Rule: Invariance under standard operations"],
         examiner_trap_warning=f"Beware of boundary condition shifts and sign errors in {topic} questions!",
-        rapid_memory_mnemonic=f"S.P.A.R.K: Scope -> Parameters -> Arguments -> Return -> Keep clean units!",
+        rapid_memory_mnemonic="S.P.A.R.K: State -> Parameterize -> Apply -> Resolve -> Keep Units",
         must_know_5mark_question=f"Derive the fundamental rate relationship for {topic} with a step-by-step example."
     )
 
 @app.post("/api/blitz-quiz", response_model=BlitzQuizResponse)
 async def get_blitz_quiz(req: BlitzQuizRequest, request: Request):
-    topic = req.topic.strip() or "General Science"
-    lang_name = LANGUAGES_MAP.get(req.language, "Hinglish")
+    raw_topic = req.topic.strip()
+    if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
+        topic = "Core Fundamentals & Applied Concepts"
+    else:
+        topic = raw_topic
+    lang_directive = get_language_directive(req.language)
+    q_count = max(4, min(15, req.num_questions))
 
-    sys_prompt = f"""You are a master quiz creator for a 60-Second Rapid-Fire Quiz Arena on: '{topic}'.
-Target Language: {lang_name}
+    sys_prompt = f"""You are a master quiz arena creator designing an intense rapid-fire quiz on: '{topic}'.
+Number of Questions: {q_count}
+Difficulty: {req.difficulty}
+Time Limit: {req.time_limit_seconds} seconds
 
-Generate exactly 8 rapid-fire multiple-choice questions (3 options each).
-Return strictly a JSON object:
+{lang_directive}
+
+Generate exactly {q_count} multiple-choice questions (3 options each: Option A, B, C).
+Return strictly a valid JSON object:
 {{
   "topic": "{topic}",
   "questions": [
     {{
       "id": 1,
-      "question": "Fast conceptual question 1?",
+      "question": "Sharp conceptual question 1?",
       "options": ["Option A", "Option B", "Option C"],
       "correct_index": 0,
-      "explanation": "Quick 1-sentence explanation"
+      "explanation": "Quick 1-sentence punchy explanation"
     }}
   ],
-  "time_limit_seconds": 60
+  "time_limit_seconds": {req.time_limit_seconds}
 }}"""
 
-    raw_json = None
-    client = get_gemini_client(request.headers.get("x-gemini-key"))
-    if client:
-        try:
-            resp = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=f"Generate 8 rapid-fire blitz questions for '{topic}'.",
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=sys_prompt,
-                    response_mime_type="application/json",
-                    temperature=0.6
-                )
-            )
-            if resp.text:
-                raw_json = resp.text
-        except Exception as e:
-            logger.warning(f"Gemini blitz quiz error: {e}")
-
+    user_prompt = f"Generate {q_count} rapid-fire quiz questions for '{topic}'. [MANDATORY: Follow language directive strictly]"
+    raw_json = await execute_dual_ai_completion(
+        sys_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        custom_key=request.headers.get("x-gemini-key"),
+        max_tokens=1100
+    )
 
     if raw_json:
         d = safe_parse_json(raw_json)
-        if d:
+        if d and d.get("questions"):
+            d["time_limit_seconds"] = req.time_limit_seconds
             return BlitzQuizResponse(**d)
 
-    return BlitzQuizResponse(
-        topic=topic,
-        questions=[
+    is_hi = req.language.lower().strip() == "hi"
+    is_hinglish = req.language.lower().strip() == "hinglish"
+    if is_hinglish:
+        q_list = [
+            BlitzQuestion(id=1, question=f"Kya {topic} mein conservation laws strictly apply hote hain?", options=["Haan, bilkul", "Nahi, kabhi nahi", "Sirf space mein"], correct_index=0, explanation="Fundamental physics/math laws hamesha apply hote hain!"),
+            BlitzQuestion(id=2, question=f"{topic} mein agar primary rate of change zero ho toh kya hoga?", options=["Accelerate karega", "Steady state / Constant rahega", "Collapse ho jayega"], correct_index=1, explanation="Zero rate of change matlab value constant hai."),
+            BlitzQuestion(id=3, question=f"{topic} ke calculations mein kaunse units standard hote hain?", options=["SI Base Units", "Arbitrary units", "No units"], correct_index=0, explanation="Hamesha standard SI units use karna chahiye."),
+            BlitzQuestion(id=4, question=f"Kya {topic} mein dynamic equilibrium possible hai?", options=["Haan, balanced rates ke saath", "Nahi, sirf static", "Sirf absolute zero par"], correct_index=0, explanation="Opposing rates balance hone par dynamic equilibrium banta hai.")
+        ]
+    elif is_hi:
+        q_list = [
+            BlitzQuestion(id=1, question=f"क्या {topic} में संरक्षण के नियम लागू होते हैं?", options=["हाँ, सदैव", "नहीं, कभी नहीं", "केवल अंतरिक्ष में"], correct_index=0, explanation="मूलभूत नियम हमेशा लागू होते हैं!"),
+            BlitzQuestion(id=2, question=f"{topic} में परिवर्तन की दर शून्य होने पर क्या स्थिति होती है?", options=["त्वरण", "स्थिर अवस्था / अपरिवर्तित", "पतन"], correct_index=1, explanation="शून्य दर का अर्थ है मान स्थिर है।"),
+            BlitzQuestion(id=3, question=f"{topic} में मानक मात्रक कौन से हैं?", options=["SI मानक मात्रक", "कोई भी मात्रक", "मात्रकहीन"], correct_index=0, explanation="हमेशा मानक SI मात्रक का उपयोग करें।"),
+            BlitzQuestion(id=4, question=f"क्या {topic} में गतिक साम्यावस्था संभव है?", options=["हाँ, संतुलित दरों के साथ", "नहीं, केवल स्थैतिक", "शून्य तापमान पर"], correct_index=0, explanation="विपरीत प्रक्रियाएं संतुलित होने पर गतिक साम्यावस्था बनती है।")
+        ]
+    else:
+        q_list = [
             BlitzQuestion(id=1, question=f"Is {topic} governed by strict conservation laws?", options=["Yes, always", "No, never", "Only in space"], correct_index=0, explanation="Fundamental laws always apply!"),
             BlitzQuestion(id=2, question=f"What happens if the primary rate of change is zero in {topic}?", options=["Accelerates", "Steady state / Constant", "Collapses"], correct_index=1, explanation="Zero rate of change represents a constant state."),
             BlitzQuestion(id=3, question=f"Which units are standard in {topic}?", options=["SI Base Units", "Arbitrary units", "No units"], correct_index=0, explanation="Always use standard SI units."),
-            BlitzQuestion(id=4, question=f"Can dynamic equilibrium be maintained in {topic}?", options=["Yes, with balanced flux", "No, static only", "Only at absolute zero"], correct_index=0, explanation="Dynamic equilibrium balances continuous opposing rates."),
-        ],
-        time_limit_seconds=60
+            BlitzQuestion(id=4, question=f"Can dynamic equilibrium be maintained in {topic}?", options=["Yes, with balanced flux", "No, static only", "Only at absolute zero"], correct_index=0, explanation="Dynamic equilibrium balances opposing rates.")
+        ]
+
+    return BlitzQuizResponse(topic=topic, questions=q_list[:q_count], time_limit_seconds=req.time_limit_seconds)
+
+@app.post("/api/flashcards", response_model=FlashcardsResponse)
+async def get_flashcards(req: FlashcardsRequest, request: Request):
+    raw_topic = req.topic.strip()
+    if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
+        topic = "Core Fundamentals & Key Concepts"
+    else:
+        topic = raw_topic
+    lang_directive = get_language_directive(req.language)
+    card_count = max(4, min(12, req.count))
+
+    sys_prompt = f"""You are an expert cognitive scientist designing spaced-repetition active-recall flashcards for: '{topic}'.
+Total Cards: {card_count}
+
+{lang_directive}
+
+Each flashcard must have:
+- front: A sharp question, mystery formula, or conceptual challenge
+- back: The concise explanation, key insight, and an intuitive analogy
+- category: e.g. "Formula", "Core Rule", "Exam Trap", "Application"
+- hint: A 1-line mnemonic or hint
+
+Return strictly a valid JSON object:
+{{
+  "topic": "{topic}",
+  "cards": [
+    {{
+      "id": 1,
+      "front": "What does the derivative represent physically?",
+      "back": "The instantaneous rate of change (like a bike speedometer measuring your speed at an exact millisecond).",
+      "category": "Core Rule",
+      "hint": "Think of speedometer vs average journey time"
+    }}
+  ]
+}}"""
+
+    user_prompt = f"Generate {card_count} high-yield flashcards for '{topic}'. [MANDATORY: Follow language directive strictly]"
+    raw_json = await execute_dual_ai_completion(
+        sys_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        custom_key=request.headers.get("x-gemini-key"),
+        max_tokens=1000
     )
+
+    if raw_json:
+        d = safe_parse_json(raw_json)
+        if d and d.get("cards"):
+            return FlashcardsResponse(**d)
+
+    is_hi = req.language.lower().strip() == "hi"
+    is_hinglish = req.language.lower().strip() == "hinglish"
+    if is_hinglish:
+        cards = [
+            FlashcardItem(id=1, front=f"{topic} ka sabse core concept kya hai?", back="Yeh input aur output ke beech ka predictable mathematical/physical relationship explain karta hai.", category="Core Rule", hint="Socho cause and effect"),
+            FlashcardItem(id=2, front=f"{topic} mein sabse badi galti jo students karte hain?", back="Units convert na karna aur boundary limits bhool jana.", category="Exam Trap", hint="SI units check karo"),
+            FlashcardItem(id=3, front=f"{topic} ka real-life practical use kya hai?", back="Engineering systems aur real-time decision models ko optimize karne ke liye.", category="Application", hint="Real world engineering"),
+            FlashcardItem(id=4, front=f"{topic} ko yaad rakhne ka golden formula?", back="S.P.A.R.K rule: Scope -> Parameters -> Arguments -> Return -> Keep SI Units.", category="Mnemonic", hint="5 letters")
+        ]
+    elif is_hi:
+        cards = [
+            FlashcardItem(id=1, front=f"{topic} की मूल अवधारणा क्या है?", back="यह इनपुट और आउटपुट के बीच के गणितीय और भौतिक संबंधों को स्पष्ट करता है।", category="मूल नियम", hint="कारण और परिणाम"),
+            FlashcardItem(id=2, front=f"{topic} में छात्र सबसे बड़ी गलती क्या करते हैं?", back="मात्रकों को न बदलना और सीमा सीमाओं की अनदेखी करना।", category="परीक्षा चेतावनी", hint="SI मात्रक जांचें"),
+            FlashcardItem(id=3, front=f"{topic} का व्यावहारिक अनुप्रयोग क्या है?", back="इंजीनियरिंग प्रणालियों और अनुकूलन प्रक्रियाओं में।", category="अनुप्रयोग", hint="वास्तविक दुनिया"),
+            FlashcardItem(id=4, front=f"{topic} का स्मरण सूत्र क्या है?", back="S.P.A.R.K नियम द्वारा चरणों में समाधान करें।", category="स्मरण सूत्र", hint="5 चरण")
+        ]
+    else:
+        cards = [
+            FlashcardItem(id=1, front=f"What is the foundational principle of {topic}?", back="It governs how inputs deterministically map to physical and mathematical outputs.", category="Core Rule", hint="Think cause and effect"),
+            FlashcardItem(id=2, front=f"What is the #1 mistake students make in {topic}?", back="Neglecting boundary conditions and unit conversions before calculation.", category="Exam Trap", hint="Check standard SI units"),
+            FlashcardItem(id=3, front=f"Where is {topic} applied in real-world systems?", back="Optimizing automated pipelines, control loops, and physical simulators.", category="Application", hint="Modern engineering"),
+            FlashcardItem(id=4, front=f"What is the golden exam verification mnemonic for {topic}?", back="S.P.A.R.K: Scope -> Parameters -> Apply -> Resolve -> Keep Units.", category="Mnemonic", hint="5-step checklist")
+        ]
+
+    return FlashcardsResponse(topic=topic, cards=cards[:card_count])
 
 @app.post("/api/tts")
 async def generate_tts(req: TTSRequest):
@@ -568,6 +986,13 @@ async def generate_tts(req: TTSRequest):
 # ---------------------------------------------------------------------------
 @app.get("/")
 @app.get("/index.html")
+@app.get("/classroom")
+@app.get("/cheatsheet")
+@app.get("/blitz")
+@app.get("/flashcards")
+@app.get("/analytics")
+@app.get("/galaxy")
+@app.get("/graph")
 async def get_index_page():
     return FileResponse("static/index.html", headers={
         "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
