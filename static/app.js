@@ -514,11 +514,18 @@
     const displayName = studentProfile.name || "Student";
     const displayAvatar = studentProfile.avatar || "🎓";
 
-    // Update Header HUD
+    // Update Header HUD (Desktop & Mobile)
     if (sName) sName.textContent = displayName;
     if (sAvatar) sAvatar.textContent = displayAvatar;
     if (sXP) sXP.textContent = totalXP;
     if (sStreak) sStreak.textContent = currentStreak;
+
+    const sAvatarm = document.getElementById("profileAvatarHeaderMobile");
+    const sXPm = document.getElementById("totalXPDisplayMobile");
+    const sStreakm = document.getElementById("streakCountMobile");
+    if (sAvatarm) sAvatarm.textContent = displayAvatar;
+    if (sXPm) sXPm.textContent = totalXP;
+    if (sStreakm) sStreakm.textContent = currentStreak;
 
     // Update Student Journey View
     if (jName) jName.textContent = displayName;
@@ -3258,18 +3265,31 @@
       });
     });
 
-    // Language Dropdown
+    // Language Dropdown (Desktop & Mobile)
     const langSelect = document.getElementById("languageSelect");
+    const langSelectMobile = document.getElementById("languageSelectMobile");
+    
+    function applyLanguage(langVal, sourceEl) {
+      activeLanguage = langVal;
+      localStorage.setItem("clearmind_lang", activeLanguage);
+      if (langSelect && langSelect !== sourceEl) langSelect.value = activeLanguage;
+      if (langSelectMobile && langSelectMobile !== sourceEl) langSelectMobile.value = activeLanguage;
+      if (voiceRecognition && isVoiceCallActive) {
+        voiceRecognition.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
+      }
+      const label = (sourceEl && sourceEl.options && sourceEl.selectedIndex >= 0)
+        ? sourceEl.options[sourceEl.selectedIndex].text
+        : activeLanguage;
+      showToast("Language changed to " + label, "info");
+    }
+
     if (langSelect) {
       langSelect.value = activeLanguage;
-      langSelect.addEventListener("change", () => {
-        activeLanguage = langSelect.value;
-        localStorage.setItem("clearmind_lang", activeLanguage);
-        if (voiceRecognition && isVoiceCallActive) {
-          voiceRecognition.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
-        }
-        showToast("Language changed to " + langSelect.options[langSelect.selectedIndex].text, "info");
-      });
+      langSelect.addEventListener("change", () => applyLanguage(langSelect.value, langSelect));
+    }
+    if (langSelectMobile) {
+      langSelectMobile.value = activeLanguage;
+      langSelectMobile.addEventListener("change", () => applyLanguage(langSelectMobile.value, langSelectMobile));
     }
 
     // Sound FX Toggle (with icon sync & audio stop)
@@ -3316,6 +3336,7 @@
 
     // All buttons that open Profile Modal
     document.getElementById("headerProfileBtn")?.addEventListener("click", openProfile);
+    document.getElementById("headerProfileBtnMobile")?.addEventListener("click", openProfile);
     document.getElementById("dockSettingsBtn")?.addEventListener("click", openProfile);
     document.getElementById("editProfileJourneyBtn")?.addEventListener("click", openProfile);
     document.getElementById("brandLogoBtn")?.addEventListener("click", openProfile);

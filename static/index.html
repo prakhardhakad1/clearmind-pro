@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
   <title>ClearMind Pro — Conversational AI Tutor & What would you like to learn today?</title>
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#07080c" />
@@ -65,7 +65,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/style.css?v=29.0" />
+  <link rel="stylesheet" href="/style.css?v=31.0" />
   <!-- KaTeX for Scientific & Mathematical Formula Typography -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -82,73 +82,100 @@
   <!-- ========================================================================= -->
   <!-- TOP SECOND-BRAIN FLOATING GLASS NAVBAR                                    -->
   <!-- ========================================================================= -->
-  <header id="globalNavbar" class="sticky top-0 z-40 glass-strong border-b border-white/10 px-4 py-2.5 transition shadow-2xl">
-    <div class="max-w-[1800px] mx-auto flex items-center justify-between gap-3">
+  <header id="globalNavbar" class="sticky top-0 z-40 glass-strong border-b border-white/10 px-3 lg:px-4 py-2 lg:py-2.5 transition shadow-2xl">
+    <div class="max-w-[1800px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-3">
       
-      <!-- Brand & Project Identity -->
-      <div class="flex items-center gap-3 shrink-0">
-        <div class="relative group cursor-pointer" onclick="window.navigateToPage('classroom')">
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 p-0.5 shadow-lg shadow-violet-500/25 animate-glow flex items-center justify-center transition-transform group-hover:scale-105">
-            <div class="w-full h-full bg-[#050714]/90 rounded-[14px] flex items-center justify-center text-xl">
-              🌸
+      <!-- Top Row on Mobile / Left Group on Desktop -->
+      <div class="flex items-center justify-between w-full lg:w-auto gap-2">
+        <!-- Brand & Project Identity -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <div class="relative group cursor-pointer" onclick="window.navigateToPage('classroom')">
+            <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 p-0.5 shadow-lg shadow-violet-500/25 animate-glow flex items-center justify-center transition-transform group-hover:scale-105">
+              <div class="w-full h-full bg-[#050714]/90 rounded-[14px] flex items-center justify-center text-lg lg:text-xl">
+                🌸
+              </div>
             </div>
+            <div class="absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500/30 to-cyan-400/30 blur-md -z-10 opacity-75 group-hover:opacity-100 transition-opacity"></div>
           </div>
-          <div class="absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500/30 to-cyan-400/30 blur-md -z-10 opacity-75 group-hover:opacity-100 transition-opacity"></div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-sm lg:text-base font-bold tracking-tight text-white flex items-center gap-1">
+                ClearMind <span class="font-instrument-serif italic text-gradient text-lg lg:text-xl">Pro</span>
+              </h1>
+              <span class="hidden md:inline-flex text-[8px] lg:text-[9px] font-black uppercase tracking-wider bg-violet-950/80 text-violet-300 border border-violet-800/60 px-1.5 py-0.5 rounded-full">
+                Cognitive Twin
+              </span>
+            </div>
+            <p class="hidden sm:block text-[10px] lg:text-[11px] text-slate-400 font-medium">Dual Gemini 3.6 Flash & GLM-4 Engine • Neural Voice</p>
+          </div>
         </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-              ClearMind <span class="font-instrument-serif italic text-gradient text-xl">Pro</span>
-            </h1>
-            <span class="text-[9px] font-black uppercase tracking-wider bg-violet-950/80 text-violet-300 border border-violet-800/60 px-2 py-0.5 rounded-full">
-              Cognitive Twin
-            </span>
+
+        <!-- Mobile HUD Quick Badges (< lg) -->
+        <div class="flex lg:hidden items-center gap-1.5 shrink-0">
+          <!-- Language Selector Mobile -->
+          <select id="languageSelectMobile" class="glass border border-white/10 text-[11px] font-bold text-slate-200 rounded-xl px-2 py-1 focus:outline-none transition cursor-pointer">
+            <option value="hinglish" selected class="bg-[#0b0d22] text-white">🇮🇳 Hinglish</option>
+            <option value="en" class="bg-[#0b0d22] text-white">🇺🇸 English</option>
+            <option value="hi" class="bg-[#0b0d22] text-white">🇮🇳 Hindi</option>
+            <option value="es" class="bg-[#0b0d22] text-white">🇪🇸 Spanish</option>
+            <option value="fr" class="bg-[#0b0d22] text-white">🇫🇷 French</option>
+            <option value="de" class="bg-[#0b0d22] text-white">🇩🇪 German</option>
+            <option value="ja" class="bg-[#0b0d22] text-white">🇯🇵 Japanese</option>
+          </select>
+
+          <!-- Streak Pill Mobile -->
+          <div class="flex items-center gap-1 px-2 py-1 rounded-xl glass border border-amber-500/30 text-amber-400 text-[11px] font-extrabold" title="Daily Streak">
+            <span>🔥</span><span id="streakCountMobile">1</span>
           </div>
-          <p class="text-[11px] text-slate-400 font-medium">Dual Gemini 3.6 Flash & GLM-4 Engine • Neural Voice</p>
+
+          <!-- XP Pill Mobile -->
+          <div class="flex items-center gap-1 px-2 py-1 rounded-xl glass border border-violet-500/30 text-violet-300 text-[11px] font-extrabold" title="Total XP">
+            <span>⭐</span><span id="totalXPDisplayMobile">0</span>
+          </div>
+
+          <!-- Profile Button Mobile -->
+          <button id="headerProfileBtnMobile" class="flex items-center gap-1 p-1 rounded-xl glass-strong border border-white/10 text-white transition cursor-pointer">
+            <span id="profileAvatarHeaderMobile" class="text-sm">🎓</span>
+          </button>
         </div>
       </div>
 
-      <!-- Center: Dedicated Multi-Page Navigation Bar -->
-      <nav id="topWorkspaceNav" class="flex items-center gap-1 p-1 glass rounded-2xl border border-white/10 shadow-inner">
-        <button data-page-link="classroom" class="global-nav-link active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>🎓</span> <span class="hidden sm:inline">Classroom</span>
+      <!-- Center Nav: Horizontally Scrollable Pills on Mobile / Centered on Desktop -->
+      <nav id="topWorkspaceNav" class="w-full lg:w-auto flex items-center gap-1 p-1 glass rounded-2xl border border-white/10 shadow-inner overflow-x-auto scrollbar-none flex-nowrap shrink-0">
+        <button data-page-link="classroom" class="global-nav-link active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>🎓</span> <span>Classroom</span>
         </button>
-        <button data-page-link="cheatsheet" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>📑</span> <span class="hidden sm:inline">Exam Sheet</span>
+        <button data-page-link="cheatsheet" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>📑</span> <span>Exam Sheet</span>
         </button>
-        <button data-page-link="blitz" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>⚔️</span> <span class="hidden sm:inline">Blitz Arena</span>
+        <button data-page-link="blitz" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>⚔️</span> <span>Blitz Arena</span>
         </button>
-        <button data-page-link="flashcards" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>🎴</span> <span class="hidden sm:inline">3D Flashcards</span>
+        <button data-page-link="flashcards" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>🎴</span> <span>3D Flashcards</span>
         </button>
-        <button data-page-link="galaxy" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>🌌</span> <span class="hidden sm:inline">Galaxy</span>
+        <button data-page-link="galaxy" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>🌌</span> <span>Galaxy</span>
         </button>
-        <button data-page-link="analytics" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer">
-          <span>📊</span> <span class="hidden sm:inline">Analytics</span>
+        <button data-page-link="analytics" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>📊</span> <span>Analytics</span>
         </button>
       </nav>
 
-      <!-- Global Command Palette Trigger & Quick Search -->
-      <div class="hidden md:flex items-center gap-2 max-w-xs cursor-pointer">
+      <!-- Desktop-Only Search & Full Right HUD Controls -->
+      <div class="hidden lg:flex items-center gap-2 shrink-0">
         <button
           id="openCmdPaletteBtn"
-          class="flex items-center gap-2.5 px-3 py-1.5 glass border border-white/10 text-xs text-slate-400 hover:text-slate-200 hover:border-violet-500/50 rounded-xl transition cursor-pointer group w-full"
+          class="flex items-center gap-2.5 px-3 py-1.5 glass border border-white/10 text-xs text-slate-400 hover:text-slate-200 hover:border-violet-500/50 rounded-xl transition cursor-pointer group w-48"
           title="Open Command Palette (Ctrl+K or ⌘K)"
         >
           <span class="text-xs group-hover:text-violet-400 transition">🔍</span>
-          <span class="text-slate-400 group-hover:text-slate-200 truncate">Search, jump to, or ask...</span>
+          <span class="text-slate-400 group-hover:text-slate-200 truncate">Search or jump...</span>
           <kbd class="cmd-kbd text-[10px] px-1.5 py-0.5 rounded text-slate-400 font-mono ml-auto group-hover:border-violet-400/50">⌘K</kbd>
         </button>
-        <!-- Hidden input for backward compatibility with existing topic search listeners -->
         <input type="hidden" id="globalTopicSearchInput" />
-      </div>
 
-      <!-- Right HUD Controls: XP, Streak, Language, Profile -->
-      <div class="flex items-center gap-2 shrink-0">
-        
-        <!-- Language Selector -->
+        <!-- Language Selector Desktop -->
         <select id="languageSelect" class="glass border border-white/10 text-xs font-bold text-slate-200 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-violet-500 focus:outline-none transition cursor-pointer">
           <option value="hinglish" selected class="bg-[#0b0d22] text-white">🇮🇳 Hinglish</option>
           <option value="en" class="bg-[#0b0d22] text-white">🇺🇸 English</option>
@@ -159,29 +186,29 @@
           <option value="ja" class="bg-[#0b0d22] text-white">🇯🇵 Japanese</option>
         </select>
 
-        <!-- Daily Streak Counter -->
+        <!-- Daily Streak Counter Desktop -->
         <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-amber-500/30 text-amber-400 text-xs font-extrabold hover:border-amber-500/60 transition shimmer-badge" title="Daily Study Streak">
           <span>🔥</span>
           <span>Streak: <strong id="streakCount">1</strong></span>
         </div>
 
-        <!-- XP Counter -->
+        <!-- XP Counter Desktop -->
         <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-violet-500/30 text-violet-300 text-xs font-extrabold hover:border-violet-500/60 transition shimmer-badge" title="Total XP Earned">
           <span>⭐</span>
           <span>XP: <strong id="totalXPDisplay">0</strong></span>
         </div>
 
-        <!-- Sound FX Toggle -->
+        <!-- Sound FX Toggle Desktop -->
         <button id="soundToggleBtn" class="p-2 rounded-xl glass border border-white/10 text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Toggle Sound FX">
           🔊
         </button>
 
-        <!-- Keyboard Shortcuts Helper -->
+        <!-- Keyboard Shortcuts Helper Desktop -->
         <button id="shortcutsHelpBtn" class="p-2 rounded-xl glass border border-white/10 text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Keyboard Shortcuts (?)">
           ⌨️
         </button>
 
-        <!-- Student Profile Button -->
+        <!-- Student Profile Button Desktop -->
         <button id="headerProfileBtn" class="flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-xl glass-strong hover:border-violet-500/50 border border-white/10 text-xs font-bold text-white transition cursor-pointer">
           <span id="profileAvatarHeader" class="text-base">🎓</span>
           <span id="profileNameHeader" class="max-w-[120px] truncate">Student</span>
@@ -424,8 +451,8 @@
       <section id="rightCanvasSection" class="flex-1 glass-strong rounded-3xl border border-white/10 shadow-2xl flex flex-col overflow-hidden h-[calc(100vh-86px)]">
         
         <!-- Canvas Tab Switcher Bar -->
-        <div class="px-4 py-2.5 border-b border-white/10 bg-white/[0.02] flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
-          <div class="flex items-center gap-1.5">
+        <div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/10 bg-white/[0.02] flex items-center justify-between gap-2 overflow-x-auto scrollbar-none max-w-full">
+          <div class="flex items-center gap-1 sm:gap-1.5 shrink-0 overflow-x-auto scrollbar-none">
             <button data-canvas-tab="live" class="canvas-tab-btn active px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md shadow-violet-500/25 border border-white/10">
               <span>🗺️</span> <span>Live Canvas</span>
             </button>
@@ -446,12 +473,12 @@
             </button>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 shrink-0">
             <span id="canvasSyncIndicator" class="text-[10px] font-bold text-violet-300 bg-violet-950/80 border border-violet-500/30 px-3 py-1 rounded-full hidden sm:flex items-center gap-1.5 shadow-sm">
               <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
               Canvas Sync Active
             </span>
-            <button id="toggleFullscreenCanvasBtn" class="px-2.5 py-1 rounded-xl glass hover:bg-white/[0.08] text-slate-300 hover:text-white text-xs font-bold border border-white/10 transition flex items-center gap-1.5 cursor-pointer" title="Toggle Fullscreen Focus Canvas">
+            <button id="toggleFullscreenCanvasBtn" class="px-2.5 py-1 rounded-xl glass hover:bg-white/[0.08] text-slate-300 hover:text-white text-xs font-bold border border-white/10 transition hidden sm:flex items-center gap-1.5 cursor-pointer" title="Toggle Fullscreen Focus Canvas">
               <span id="fullscreenCanvasIcon">⛶</span>
               <span id="fullscreenCanvasLabel" class="hidden md:inline">Focus</span>
             </button>
@@ -1457,8 +1484,8 @@
   <!-- ========================================================================= -->
   <!-- STUDENT PROFILE MODAL                                                     -->
   <!-- ========================================================================= -->
-  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-obsidian-900 border border-purple-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl shadow-purple-950/50 space-y-4 ring-1 ring-purple-500/20">
+  <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4" style="box-sizing: border-box;">
+    <div class="bg-obsidian-900 border border-purple-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl shadow-purple-950/50 space-y-3 sm:space-y-4 ring-1 ring-purple-500/20 box-border" style="width: 100%; max-width: min(440px, calc(100vw - 24px)); box-sizing: border-box; margin: auto;">
       <div class="flex items-center justify-between border-b border-obsidian-800 pb-3">
         <div>
           <h3 id="profileModalTitle" class="text-sm font-extrabold text-white flex items-center gap-2">
@@ -1472,31 +1499,31 @@
       <div class="space-y-3">
         <div>
           <label class="text-xs font-bold text-slate-300">Choose Avatar:</label>
-          <div id="avatarPickerGrid" class="grid grid-cols-4 gap-2 mt-1.5">
-            <button data-avatar="👩" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">👩</button>
-            <button data-avatar="🧠" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🧠</button>
-            <button data-avatar="🚀" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🚀</button>
-            <button data-avatar="🔬" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🔬</button>
-            <button data-avatar="⚡" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">⚡</button>
-            <button data-avatar="🦉" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🦉</button>
-            <button data-avatar="🌟" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">🌟</button>
-            <button data-avatar="💡" class="avatar-btn p-2 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-2xl transition">💡</button>
+          <div id="avatarPickerGrid" class="grid grid-cols-4 gap-1.5 sm:gap-2 mt-1.5 w-full box-border">
+            <button data-avatar="👩" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">👩</button>
+            <button data-avatar="🧠" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🧠</button>
+            <button data-avatar="🚀" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🚀</button>
+            <button data-avatar="🔬" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🔬</button>
+            <button data-avatar="⚡" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">⚡</button>
+            <button data-avatar="🦉" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🦉</button>
+            <button data-avatar="🌟" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🌟</button>
+            <button data-avatar="💡" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">💡</button>
           </div>
         </div>
 
         <div>
           <label for="inputStudentName" class="text-xs font-bold text-slate-300">Your Name:</label>
-          <input type="text" id="inputStudentName" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" value="Prakhar" placeholder="e.g. Prakhar" />
+          <input type="text" id="inputStudentName" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border" value="Prakhar" placeholder="e.g. Prakhar" />
         </div>
 
         <div>
           <label for="inputStudentTopic" class="text-xs font-bold text-slate-300">What Subject or Topic do you want to learn?</label>
-          <input type="text" id="inputStudentTopic" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none" placeholder="e.g. Physics, Calculus, Organic Chemistry, Photosynthesis, Coding..." />
+          <input type="text" id="inputStudentTopic" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border" placeholder="e.g. Physics, Calculus, Organic Chemistry, Photosynthesis, Coding..." />
         </div>
 
         <div>
           <label for="inputStudyLevel" class="text-xs font-bold text-slate-300">Study Level:</label>
-          <select id="inputStudyLevel" class="mt-1 w-full bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+          <select id="inputStudyLevel" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border">
             <optgroup label="School Education" class="bg-obsidian-900 text-purple-300 font-bold">
               <option value="Class 1 - 2 (Primary School)">Class 1 - 2 (Primary School)</option>
               <option value="Class 3 - 5 (Elementary School)">Class 3 - 5 (Elementary School)</option>
@@ -1512,10 +1539,10 @@
           </select>
         </div>
 
-        </div>
+      </div>
 
       <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-800">
-        <button id="saveProfileBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition">
+        <button id="saveProfileBtn" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition min-h-[44px]">
           🚀 Save & Enter Classroom
         </button>
       </div>
