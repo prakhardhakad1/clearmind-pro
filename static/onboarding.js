@@ -883,6 +883,11 @@ window.OnboardingWizard = {
       if (btn) btn.style.display = 'none';
       const backBtn = document.getElementById('onboardingBackBtn');
       if (backBtn) backBtn.style.display = 'none';
+
+      // Auto-redirect to classroom after celebratory moment
+      setTimeout(() => {
+        window.location.href = '/classroom';
+      }, 1800);
     }, 650);
   }
 };
