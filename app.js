@@ -676,7 +676,7 @@
     // Update Persona Badge in Chat Stream Header
     const pBadge = document.getElementById("chatPersonaBadge");
     if (pBadge) {
-      const persona = localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor";
+      const persona = localStorage.getItem("clearmind_calibrated_persona") || calibrated.persona || studentProfile.persona || "mentor";
       const personaLabels = {
         strict: "⚡ Strict Examiner",
         socratic: "💡 Socratic Guide",
