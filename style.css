@@ -243,21 +243,21 @@ button:active:not(:disabled), .btn-tactile:active:not(:disabled) {
   box-shadow: 0 25px 50px -20px rgba(139, 92, 246, 0.3);
 }
 
-/* Galaxy Twinkle & Nebula Glow */
-@keyframes twinkle {
-  0%, 100% { opacity: 0.25; transform: scale(0.85); }
-  50% { opacity: 1; transform: scale(1.15); }
+/* 2D Topic Prerequisite & Mastery Dependency Tree */
+@keyframes weakNodePulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.4)); }
+  50% { filter: drop-shadow(0 0 12px rgba(244, 63, 94, 0.9)); }
 }
-.animate-twinkle {
-  animation: twinkle 3s ease-in-out infinite;
+.animate-weak-node {
+  animation: weakNodePulse 2s ease-in-out infinite;
 }
-
-@keyframes nebulaRotate {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
+.dependency-edge {
+  stroke-dasharray: 4;
+  animation: edgeFlow 30s linear infinite;
 }
-.animate-nebula {
-  animation: nebulaRotate 120s linear infinite;
+@keyframes edgeFlow {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
 }
 
 /* 3D Spaced-Repetition Flashcards */
@@ -483,7 +483,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   }
 
   /* Safe container width clamp */
-  #pageClassroom, #pageGalaxy, #pageCheatSheet, #workspacePages {
+  #pageClassroom, #pageCheatSheet, #workspacePages {
     max-width: 100vw !important;
     overflow-x: hidden !important;
     padding-left: 6px !important;
@@ -635,8 +635,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     display: none !important;
   }
 
-  /* Other pages (Exam, Blitz, Flashcards, Analytics, Galaxy) scroll vertically on mobile */
-  #pageGalaxy, #pageExam, #pageCheatSheet, #pageBlitz, #pageFlashcards, #pageAnalytics {
+  /* Other pages (Exam, Blitz, Flashcards, Analytics) scroll vertically on mobile */
+  #pageExam, #pageCheatSheet, #pageBlitz, #pageFlashcards, #pageAnalytics {
     overflow-y: auto !important;
     height: 100% !important;
     max-height: 100% !important;
@@ -824,3 +824,55 @@ body.fullscreen-canvas #rightCanvasSection {
   max-width: 100% !important;
   flex: 1 1 100% !important;
 }
+
+/* ========================================================================= */
+/* 3D MOTION CONCEPT STUDIO (SIGNBRIDGE AI INSPIRED)                         */
+/* ========================================================================= */
+.motion-stage-canvas {
+  cursor: grab;
+  touch-action: none;
+}
+.motion-stage-canvas:active {
+  cursor: grabbing;
+}
+
+.motion-hud-badge {
+  background: rgba(5, 7, 20, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.motion-transcript-capsule {
+  background: rgba(10, 13, 30, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.8), 0 0 20px rgba(168, 85, 247, 0.15);
+}
+
+.motion-phase-step.active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.18));
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.2);
+}
+
+.motion-phase-step.completed {
+  opacity: 0.75;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+@keyframes audioWavePulse {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+
+.audio-bar {
+  animation: audioWavePulse 1.2s ease-in-out infinite;
+}
+.audio-bar:nth-child(2) { animation-delay: 0.2s; }
+.audio-bar:nth-child(3) { animation-delay: 0.4s; }
+.audio-bar:nth-child(4) { animation-delay: 0.1s; }
+.audio-bar:nth-child(5) { animation-delay: 0.3s; }
+

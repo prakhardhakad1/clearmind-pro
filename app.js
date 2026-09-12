@@ -29,10 +29,15 @@
     localStorage.removeItem("clearmind_active_topic");
   }
 
-  // v19 clean greeting migration: clear old default Python conversation
-  if (!localStorage.getItem("clearmind_v19_ask_greeting")) {
+  // v20 clean slate migration: purge obsolete hardcoded legacy mock concepts & mock progress
+  if (!localStorage.getItem("clearmind_v20_clean_slate")) {
+    const existingConcepts = localStorage.getItem("clearmind_cognitive_concepts");
+    if (existingConcepts && (existingConcepts.includes("Recursion") || existingConcepts.includes("Backpropagation"))) {
+      localStorage.removeItem("clearmind_cognitive_concepts");
+    }
+    localStorage.removeItem("clearmind_missions");
     localStorage.removeItem("clearmind_conv_history");
-    localStorage.setItem("clearmind_v19_ask_greeting", "true");
+    localStorage.setItem("clearmind_v20_clean_slate", "true");
   }
 
   const rawProfile = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
@@ -52,7 +57,7 @@
       JSON.stringify({
         name: "",
         avatar: "🎓",
-        level: "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)"
+        level: ""
       })
   );
   const authUser = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
@@ -290,59 +295,30 @@
     },
 
     getInitialConcepts() {
+      // Clean dynamic initialization based on user's calibrated subjects
+      const calibrated = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+      const subjects = (calibrated.subjects && calibrated.subjects.length > 0)
+        ? calibrated.subjects
+        : (studentProfile.subjects || []);
+      if (!subjects || subjects.length === 0) {
+        return [];
+      }
       const palette = ["#a78bfa", "#f0abfc", "#22d3ee", "#34d399", "#fbbf24", "#fb7185", "#60a5fa", "#c084fc"];
-      const now = Date.now();
-      const raw = [
-        { id: "programming", name: "Programming", category: "CS", strength: 0.9, stability: 120, lastReview: now - 86400000 * 2, reviews: 42 },
-        { id: "variables", name: "Variables", category: "CS", strength: 0.95, stability: 200, lastReview: now - 86400000, reviews: 38 },
-        { id: "functions", name: "Functions", category: "CS", strength: 0.82, stability: 80, lastReview: now - 86400000 * 3, reviews: 28 },
-        { id: "loops", name: "Loops", category: "CS", strength: 0.88, stability: 110, lastReview: now - 86400000 * 2, reviews: 31 },
-        { id: "recursion", name: "Recursion", category: "CS", strength: 0.52, stability: 12, lastReview: now - 86400000 * 8, reviews: 7 },
-        { id: "objects", name: "Objects & OOP", category: "CS", strength: 0.78, stability: 65, lastReview: now - 86400000 * 4, reviews: 18 },
-        { id: "arrays", name: "Arrays & Lists", category: "CS", strength: 0.85, stability: 95, lastReview: now - 86400000 * 2, reviews: 24 },
-        { id: "graphs", name: "Graph Algorithms", category: "CS", strength: 0.38, stability: 6, lastReview: now - 86400000 * 12, reviews: 4 },
-        { id: "dp", name: "Dynamic Programming", category: "CS", strength: 0.28, stability: 4, lastReview: now - 86400000 * 14, reviews: 2 },
-        { id: "ml", name: "Machine Learning", category: "ML", strength: 0.72, stability: 40, lastReview: now - 86400000 * 4, reviews: 16 },
-        { id: "neural", name: "Neural Networks", category: "ML", strength: 0.45, stability: 9, lastReview: now - 86400000 * 9, reviews: 8 },
-        { id: "backprop", name: "Backpropagation", category: "ML", strength: 0.32, stability: 5, lastReview: now - 86400000 * 11, reviews: 3 },
-        { id: "attention", name: "Attention Mechanism", category: "ML", strength: 0.65, stability: 30, lastReview: now - 86400000 * 4, reviews: 12 },
-        { id: "llm", name: "Large Language Models", category: "ML", strength: 0.82, stability: 60, lastReview: now - 86400000 * 2, reviews: 22 },
-        { id: "embeddings", name: "Vector Embeddings", category: "ML", strength: 0.58, stability: 18, lastReview: now - 86400000 * 6, reviews: 9 },
-        { id: "calculus", name: "Calculus & Rates", category: "Math", strength: 0.64, stability: 25, lastReview: now - 86400000 * 5, reviews: 14 },
-        { id: "linalg", name: "Linear Algebra", category: "Math", strength: 0.55, stability: 16, lastReview: now - 86400000 * 8, reviews: 11 },
-        { id: "probability", name: "Probability & Bayes", category: "Math", strength: 0.68, stability: 35, lastReview: now - 86400000 * 4, reviews: 13 },
-        { id: "physics", name: "Conservation Laws", category: "Science", strength: 0.42, stability: 8, lastReview: now - 86400000 * 13, reviews: 5 },
-        { id: "quantum", name: "Quantum Mechanics", category: "Science", strength: 0.35, stability: 5, lastReview: now - 86400000 * 15, reviews: 3 }
-      ];
-
-      const connections = {
-        programming: ["variables", "functions", "loops", "objects", "arrays"],
-        variables: ["programming"],
-        functions: ["programming", "recursion"],
-        loops: ["programming"],
-        recursion: ["functions", "dp"],
-        objects: ["programming", "arrays"],
-        arrays: ["programming", "objects"],
-        graphs: ["dp", "recursion"],
-        dp: ["graphs", "recursion", "programming"],
-        ml: ["neural", "probability", "linalg", "calculus"],
-        neural: ["ml", "backprop", "attention"],
-        backprop: ["neural", "calculus"],
-        attention: ["neural", "llm", "embeddings"],
-        llm: ["attention", "embeddings", "ml"],
-        embeddings: ["llm", "linalg"],
-        calculus: ["backprop", "probability"],
-        linalg: ["embeddings", "neural", "ml"],
-        probability: ["ml", "calculus"],
-        physics: ["calculus"],
-        quantum: ["physics", "linalg"]
-      };
-
-      return raw.map((d, i) => ({
-        ...d,
-        color: palette[i % palette.length],
-        connections: connections[d.id] || []
-      }));
+      return subjects.map((s, i) => {
+        const sName = typeof s === "string" ? s : (s.name || "Core Subject");
+        const sId = sName.toLowerCase().replace(/[^a-z0-9]/g, "_").slice(0, 18);
+        return {
+          id: sId,
+          name: `${sName} Foundations`,
+          category: sName,
+          strength: 0.5,
+          stability: 1,
+          lastReview: 0,
+          reviews: 0,
+          color: palette[i % palette.length],
+          connections: []
+        };
+      });
     },
 
     loadConcepts() {
@@ -393,11 +369,11 @@
 
     getInitialMissions() {
       return [
-        { id: "m1", title: "Morning Focus", description: "Start an active study turn or search a topic.", xp: 25, progress: 1, done: false, icon: "🌅" },
-        { id: "m2", title: "Socratic Dialogue", description: "Have a deep multi-turn chat with AI Tutor Luna.", xp: 60, progress: 0.5, done: false, icon: "🌸" },
-        { id: "m3", title: "Fading Concepts Sprint", description: "Review 3 concepts predicted to fade.", xp: 45, progress: 0.66, done: false, icon: "📉" },
-        { id: "m4", title: "60s Blitz Battle", description: "Complete a Blitz Arena round with combo 2x+.", xp: 75, progress: 0, done: false, icon: "⚔️" },
-        { id: "m5", title: "Knowledge Galaxy", description: "Inspect concept relationships in Galaxy View.", xp: 50, progress: 0, done: false, icon: "🌌" }
+        { id: "m1", title: "Morning Focus", description: "Start an active study turn or search a topic.", xp: 25, progress: 0, done: false, icon: "🌅" },
+        { id: "m2", title: "Conceptual Dialogue", description: "Engage in an in-depth conversation with AI Tutor Luna.", xp: 60, progress: 0, done: false, icon: "🌸" },
+        { id: "m3", title: "Flashcard Mastery", description: "Review 3 concepts in spaced-repetition flashcards.", xp: 45, progress: 0, done: false, icon: "📉" },
+        { id: "m4", title: "Blitz Battle", description: "Complete a Blitz Arena round with combo 2x+.", xp: 75, progress: 0, done: false, icon: "⚔️" },
+        { id: "m5", title: "Prerequisite Tree", description: "Inspect topic prerequisite relationships in Analytics.", xp: 50, progress: 0, done: false, icon: "🕸️" }
       ];
     },
 
@@ -423,28 +399,24 @@
     },
 
     completeMission(id) {
-      const missions = this.loadMissions();
-      const m = missions.find((x) => x.id === id);
-      if (!m || m.done) return;
-      m.done = true;
-      m.progress = 1;
-      this.saveMissions(missions);
-      addXP(m.xp);
-      playSound("correct");
-      showToast(`🎯 Quest Completed: "${m.title}"! +${m.xp} XP`, "success");
-      if (typeof confetti === "function") {
-        confetti({ particleCount: 45, spread: 65, origin: { y: 0.8 } });
-      }
-      updateAnalyticsDashboard();
+      // Missions removed from platform
     },
 
     getMindHealth() {
       const concepts = this.loadConcepts();
+      if (concepts.length === 0 && totalXP === 0) {
+        return {
+          focusMinutes: 0,
+          confidence: 0,
+          curiosity: 0,
+          avgRetention: 0
+        };
+      }
       const retentions = concepts.map((c) => this.currentRetention(c));
-      const avgRetention = retentions.reduce((a, b) => a + b, 0) / (retentions.length || 1);
-      const sessionMinutes = Math.min(90, 35 + Math.floor(totalXP / 75));
-      const confidence = Math.min(100, Math.max(40, Math.round(avgRetention * 80 + (blitzBestCombo > 1 ? 15 : 5))));
-      const curiosity = Math.min(100, Math.max(50, Math.round(55 + (concepts.length * 1.5))));
+      const avgRetention = retentions.length > 0 ? retentions.reduce((a, b) => a + b, 0) / retentions.length : 0;
+      const sessionMinutes = Math.min(90, Math.floor(totalXP / 30));
+      const confidence = totalXP > 0 ? Math.min(100, Math.max(10, Math.round(avgRetention * 80 + (blitzBestCombo > 1 ? 15 : 5)))) : 0;
+      const curiosity = totalXP > 0 ? Math.min(100, Math.max(20, Math.round(30 + (concepts.length * 4)))) : 0;
       return {
         focusMinutes: sessionMinutes,
         confidence,
@@ -835,42 +807,34 @@
       return;
     }
 
-    if (sub) sub.textContent = `${activeTopic} Path`;
+    if (sub) sub.textContent = `${activeTopic} Roadmap`;
 
-    let steps = [
-      { name: "Foundations & Terminology", status: "done" },
-      { name: "Core Principles & Mechanism", status: "active" },
-      { name: "Common Examiner Traps", status: "todo" },
-      { name: "Mastery & Blitz Verification", status: "todo" }
-    ];
+    let steps = [];
+    const savedChapters = JSON.parse(localStorage.getItem("clearmind_syllabus_chapters") || "[]");
+    if (savedChapters && savedChapters.length > 0) {
+      const matched = savedChapters.find(ch => 
+        (ch.subject && activeTopic.toLowerCase().includes(ch.subject.toLowerCase())) ||
+        (ch.name && activeTopic.toLowerCase().includes(ch.name.toLowerCase()))
+      );
+      if (matched && matched.topics && matched.topics.length > 0) {
+        steps = matched.topics.map((t, idx) => ({
+          name: t,
+          status: idx === 0 ? "active" : "todo"
+        }));
+      } else {
+        steps = savedChapters.slice(0, 5).map((ch, idx) => ({
+          name: ch.name,
+          status: idx === 0 ? "active" : "todo"
+        }));
+      }
+    }
 
-    if (activeTopic.toLowerCase().includes("calculus") || activeTopic.toLowerCase().includes("math")) {
+    if (steps.length === 0) {
       steps = [
-        { name: "Limits & Continuous Rates", status: "done" },
-        { name: "Derivatives & Power Rules", status: "active" },
-        { name: "Chain Rule & Examiner Traps", status: "todo" },
-        { name: "Integration & Real Applications", status: "todo" }
-      ];
-    } else if (activeTopic.toLowerCase().includes("python") || activeTopic.toLowerCase().includes("code")) {
-      steps = [
-        { name: "Variables & Data Types", status: "done" },
-        { name: "Functions & Parameters", status: "active" },
-        { name: "Loops & Data Structures", status: "todo" },
-        { name: "Algorithms & OOP Design", status: "todo" }
-      ];
-    } else if (activeTopic.toLowerCase().includes("physics")) {
-      steps = [
-        { name: "Vectors & Kinematics", status: "done" },
-        { name: "Newton's Laws & Free-Body Forces", status: "active" },
-        { name: "Conservation of Momentum & Energy", status: "todo" },
-        { name: "Wave Mechanics & Fields", status: "todo" }
-      ];
-    } else if (activeTopic.toLowerCase().includes("bio") || activeTopic.toLowerCase().includes("photo")) {
-      steps = [
-        { name: "Cellular Structure & Chloroplasts", status: "done" },
-        { name: "Light Reactions & ATP Synthesis", status: "active" },
-        { name: "Calvin Cycle & Biochemical Traps", status: "todo" },
-        { name: "Ecosystem Respiration Energy Flows", status: "todo" }
+        { name: `${activeTopic}: Core Principles`, status: "active" },
+        { name: `${activeTopic}: Problem Solving & Derivations`, status: "todo" },
+        { name: `${activeTopic}: High-Yield Exam Traps`, status: "todo" },
+        { name: `${activeTopic}: Active Recall Verification`, status: "todo" }
       ];
     }
 
@@ -928,37 +892,12 @@
   window.navigateToPage = function (pageKey, pushState = true) {
     const key = (pageKey || "classroom").toLowerCase();
 
-    // Galaxy / Graph view opens dedicated cosmic galaxy page
+    // Galaxy / Graph view aliases directly to Analytics Dependency Tree
     if (key === "galaxy" || key === "graph") {
-      document.getElementById("pageClassroom")?.classList.add("hidden");
-      document.getElementById("pageGalaxy")?.classList.remove("hidden");
-
-      if (pushState && window.history && window.history.pushState) {
-        const cur = (window.location.pathname || "").toLowerCase();
-        if (cur !== "/galaxy" && cur !== "/graph") {
-          window.history.pushState({ page: "galaxy" }, "", "/galaxy");
-        }
-      }
-
-      // Update Top Nav
-      document.querySelectorAll(".global-nav-link").forEach((btn) => {
-        btn.classList.toggle("active", btn.getAttribute("data-page-link") === "galaxy");
-      });
-
-      // Update Dock
-      document.querySelectorAll(".dock-nav-btn").forEach((btn) => {
-        const isMatch = btn.getAttribute("data-dock-tab") === "galaxy";
-        if (isMatch) {
-          btn.classList.add("active", "bg-gradient-to-br", "from-violet-500", "to-fuchsia-500", "text-white", "shadow-lg", "shadow-violet-500/30");
-          btn.classList.remove("glass", "text-slate-400", "border-white/5");
-        } else {
-          btn.classList.remove("active", "bg-gradient-to-br", "from-violet-500", "to-fuchsia-500", "text-white", "shadow-lg", "shadow-violet-500/30");
-          btn.classList.add("glass", "text-slate-400", "border-white/5");
-        }
-      });
-
-      playSound("navigate");
-      renderKnowledgeGalaxy();
+      window.switchCanvasTab("journey", pushState);
+      setTimeout(() => {
+        document.getElementById("bentoDependencyTreeCard")?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
       return;
     }
 
@@ -968,6 +907,7 @@
     else if (key === "blitz") tab = "blitz";
     else if (key === "flashcards") tab = "flashcards";
     else if (key === "analytics" || key === "journey") tab = "journey";
+    else if (key === "motion" || key === "studio") tab = "motion";
     else if (key === "voice") tab = "voice";
     else tab = "live";
 
@@ -981,15 +921,18 @@
     if (normKey === "cheatsheet") mappedKey = "exam";
     if (normKey === "analytics") mappedKey = "journey";
     if (normKey === "canvas") mappedKey = "live";
+    if (normKey === "motion" || normKey === "studio") mappedKey = "motion";
 
-    // Route galaxy to navigateToPage
+    // Route galaxy to journey
     if (normKey === "galaxy" || normKey === "graph") {
-      window.navigateToPage("galaxy", pushState);
+      window.switchCanvasTab("journey", pushState);
+      setTimeout(() => {
+        document.getElementById("bentoDependencyTreeCard")?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
       return;
     }
 
-    // Ensure Classroom is visible and Galaxy is hidden
-    document.getElementById("pageGalaxy")?.classList.add("hidden");
+    // Ensure Classroom is visible
     document.getElementById("pageClassroom")?.classList.remove("hidden");
 
     // Adapt mobile split-pane view
@@ -1017,7 +960,8 @@
       "viewCanvasBlitz",
       "viewCanvasFlashcards",
       "viewCanvasVoice",
-      "viewCanvasJourney"
+      "viewCanvasJourney",
+      "viewCanvasMotion"
     ];
     allViews.forEach((id) => {
       document.getElementById(id)?.classList.add("hidden");
@@ -1030,7 +974,8 @@
       blitz: "viewCanvasBlitz",
       flashcards: "viewCanvasFlashcards",
       voice: "viewCanvasVoice",
-      journey: "viewCanvasJourney"
+      journey: "viewCanvasJourney",
+      motion: "viewCanvasMotion"
     };
     const targetId = viewMap[mappedKey] || "viewCanvasLive";
     const targetEl = document.getElementById(targetId);
@@ -1041,7 +986,7 @@
     // =========================================================================
     // DEDICATED FULL-WIDTH STUDIO vs CLASSROOM SPLIT-VIEW
     // When in Classroom (Live / Voice): show Split-View with Luna Chat!
-    // When in Exam Cheat Sheet, Blitz Battle, 3D Flashcards, or Analytics:
+    // When in Exam Cheat Sheet, Blitz Battle, 3D Flashcards, Analytics, or 3D Motion Studio:
     // HIDE the left chat section completely so the canvas is an uncluttered, 100% full-width studio!
     // =========================================================================
     const chatSection = document.getElementById("leftChatSection");
@@ -1069,7 +1014,7 @@
           if (label) label.textContent = "Focus";
         }
       } else {
-        // Full-Width Dedicated Studio (Exam Sheet, Blitz Arena, Flashcards, Analytics)
+        // Full-Width Dedicated Studio (Exam Sheet, Blitz Arena, Flashcards, Analytics, 3D Motion Studio)
         chatSection.classList.add("hidden");
         if (splitter) {
           splitter.classList.add("hidden");
@@ -1094,7 +1039,8 @@
       blitz: "/blitz",
       flashcards: "/flashcards",
       voice: "/classroom",
-      journey: "/analytics"
+      journey: "/analytics",
+      motion: "/motion"
     };
     const targetPath = pathMap[mappedKey] || "/classroom";
     if (pushState && window.history && window.history.pushState) {
@@ -1124,7 +1070,8 @@
       blitz: "blitz",
       flashcards: "flashcards",
       voice: "classroom",
-      journey: "analytics"
+      journey: "analytics",
+      motion: "motion"
     };
     const currentNav = navKeyMap[mappedKey] || "classroom";
     document.querySelectorAll(".global-nav-link").forEach((btn) => {
@@ -1156,6 +1103,8 @@
       loadFlashcardsDeck(false);
     } else if (mappedKey === "journey") {
       updateAnalyticsDashboard();
+    } else if (mappedKey === "motion") {
+      initMotionStudio();
     } else if (mappedKey === "voice") {
       startVoiceCall();
     }
@@ -1172,6 +1121,8 @@
       window.switchCanvasTab("flashcards", false);
     } else if (raw === "analytics" || raw === "journey") {
       window.switchCanvasTab("journey", false);
+    } else if (raw === "motion" || raw === "studio") {
+      window.switchCanvasTab("motion", false);
     } else if (raw === "galaxy" || raw === "graph") {
       window.navigateToPage("galaxy", false);
     } else {
@@ -2619,7 +2570,7 @@
     const aBestCombo = document.getElementById("analyticsBestCombo");
     const aReviewed = document.getElementById("analyticsFlashcardsReviewed");
 
-    const displayName = studentProfile.name || "Prakhar";
+    const displayName = studentProfile.name || "Student";
     const displayAvatar = studentProfile.avatar || "🎓";
 
     if (jName) jName.textContent = displayName;
@@ -2663,148 +2614,21 @@
     if (aBestCombo) aBestCombo.textContent = `${blitzBestCombo}x`;
     if (aReviewed) aReviewed.textContent = String(flashcardState.cardsReviewed || flashcardState.masteredCards.size || 0);
 
-    // Update Mind Health Circular SVG Gauges (Circumference C = 2 * pi * 24 ~= 150.8)
-    const mh = CognitiveEngine.getMindHealth();
-
-    // 1. Focus Span Dial (up to 90 min)
-    const fRing = document.getElementById("mindHealthFocusRing");
-    const fText = document.getElementById("mindHealthFocusText");
-    const fVal = document.getElementById("mindHealthFocusVal");
-    const fBar = document.getElementById("mindHealthFocusBar");
-    const focusMinutes = mh.focusMinutes || 0;
-    const focusPct = Math.min(100, Math.max(0, Math.round((focusMinutes / 90) * 100)));
-    const focusOffset = 150.8 * (1 - focusPct / 100);
-    if (fRing) fRing.style.strokeDashoffset = focusOffset.toFixed(1);
-    if (fText) fText.textContent = `${focusMinutes}m`;
-    if (fVal) fVal.textContent = `${focusMinutes}m / 90m`;
-    if (fBar) fBar.style.width = `${focusPct}%`;
-
-    // 2. Confidence (Recall Accuracy) Dial
-    const cRing = document.getElementById("mindHealthConfidenceRing");
-    const cText = document.getElementById("mindHealthConfidenceText");
-    const cVal = document.getElementById("mindHealthConfidenceVal");
-    const cBar = document.getElementById("mindHealthConfidenceBar");
-    const confPct = Math.min(100, Math.max(0, mh.confidence || 0));
-    const confOffset = 150.8 * (1 - confPct / 100);
-    if (cRing) cRing.style.strokeDashoffset = confOffset.toFixed(1);
-    if (cText) cText.textContent = `${confPct}%`;
-    if (cVal) cVal.textContent = `${confPct}%`;
-    if (cBar) cBar.style.width = `${confPct}%`;
-
-    // 3. Curiosity Dial
-    const qRing = document.getElementById("mindHealthCuriosityRing");
-    const qText = document.getElementById("mindHealthCuriosityText");
-    const qVal = document.getElementById("mindHealthCuriosityVal");
-    const qBar = document.getElementById("mindHealthCuriosityBar");
-    const curPct = Math.min(100, Math.max(0, mh.curiosity || 0));
-    const curOffset = 150.8 * (1 - curPct / 100);
-    if (qRing) qRing.style.strokeDashoffset = curOffset.toFixed(1);
-    if (qText) qText.textContent = `${curPct}%`;
-    if (qVal) qVal.textContent = `${curPct}%`;
-    if (qBar) qBar.style.width = `${curPct}%`;
-
-    renderDailyMissions();
-    renderPredictedToFade();
     renderHeatmap();
     renderJourneyMilestones();
+    renderConceptDependencyGraph();
   }
 
   function renderDailyMissions() {
-    const list = document.getElementById("dailyMissionsList");
-    const progText = document.getElementById("dailyMissionsProgress");
-    if (!list) return;
-
-    const missions = CognitiveEngine.loadMissions();
-    const completedCount = missions.filter((m) => m.done).length;
-    if (progText) progText.textContent = `${completedCount}/${missions.length} Completed`;
-
-    list.innerHTML = missions.map((m) => {
-      const isDone = m.done;
-      return `
-        <div class="p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${isDone ? 'glass border-white/5 opacity-60' : 'bento-card border-white/10 hover:border-violet-500/40 shadow-sm'}">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="text-xl shrink-0">${m.icon || '🎯'}</span>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold ${isDone ? 'line-through text-slate-400' : 'text-white'}">${escapeHtml(m.title)}</span>
-                <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-950/80 text-amber-300 border border-amber-800/80">+${m.xp} XP</span>
-              </div>
-              <p class="text-[11px] text-slate-400 truncate mt-0.5">${escapeHtml(m.description)}</p>
-              <div class="w-28 h-1.5 bg-black/40 rounded-full mt-1.5 overflow-hidden border border-white/5">
-                <div class="h-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 rounded-full" style="width: ${Math.round((m.progress || 0) * 100)}%"></div>
-              </div>
-            </div>
-          </div>
-          <div>
-            ${isDone
-              ? `<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">✓ Claimed</span>`
-              : `<button onclick="window.claimMissionXP('${m.id}')" class="px-3 py-1.5 rounded-xl text-[10px] font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-95 text-white shadow-md shadow-violet-500/25 transition cursor-pointer">Claim XP</button>`
-            }
-          </div>
-        </div>
-      `;
-    }).join("");
+    // Missions removed from Analytics
   }
 
-  window.claimMissionXP = function(id) {
-    CognitiveEngine.completeMission(id);
+  window.claimMissionXP = function() {
+    // No-op
   };
 
   function renderPredictedToFade() {
-    const list = document.getElementById("predictedToFadeList");
-    if (!list) return;
-
-    const concepts = CognitiveEngine.loadConcepts();
-    const fading = CognitiveEngine.predictForgetting(concepts, 5);
-
-    if (!fading.length) {
-      list.innerHTML = `
-        <div class="p-4 rounded-xl glass border border-white/5 text-center space-y-1.5">
-          <div class="text-xl">✨</div>
-          <p class="text-xs font-bold text-emerald-300">Memory Curve Stable</p>
-          <p class="text-[10px] text-slate-400">All concept traces currently at optimal retention. No decay detected!</p>
-        </div>
-      `;
-      return;
-    }
-
-    list.innerHTML = fading.map((c) => {
-      const r = CognitiveEngine.currentRetention(c);
-      const isUrgent = r < 0.4;
-      const isSoon = r < 0.7;
-      const badgeClass = isUrgent
-        ? "bg-rose-950/80 text-rose-300 border-rose-800 animate-pulse"
-        : isSoon
-        ? "bg-amber-950/80 text-amber-300 border-amber-800"
-        : "bg-emerald-950/80 text-emerald-300 border-emerald-800";
-
-      const remainingDays = Math.max(1, Math.round((c.stability || 2) * Math.log(2) * r));
-      const countdownText = isUrgent ? "Review <24h" : `Review in ${remainingDays}d`;
-      const retPct = Math.round(r * 100);
-
-      return `
-        <div class="p-3.5 bento-card border border-white/10 hover:border-violet-500/30 rounded-xl flex items-center justify-between gap-3 text-xs transition group shadow-sm">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs text-white shrink-0 shadow-sm" style="background:${c.color || '#a78bfa'}">
-              ${escapeHtml((c.name || 'C').slice(0, 1))}
-            </div>
-            <div class="min-w-0">
-              <div class="font-bold text-white truncate group-hover:text-violet-300 transition">${escapeHtml(c.name)}</div>
-              <div class="text-[10px] text-slate-400 truncate">${c.category || 'STEM'} • ${c.reviews || 0} reviews</div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <div class="text-right hidden sm:block">
-              <span class="font-mono text-xs font-black ${isUrgent ? 'text-rose-400' : isSoon ? 'text-amber-400' : 'text-emerald-400'}">${retPct}%</span>
-              <span class="block text-[8px] uppercase font-bold text-slate-500">${countdownText}</span>
-            </div>
-            <button onclick="window.reviewFadingConcept('${escapeHtml(c.name)}')" class="px-2.5 py-1 glass hover:bg-violet-600 border border-white/10 hover:border-violet-500 text-violet-300 hover:text-white rounded-lg text-[10px] font-bold transition cursor-pointer">
-              Review ➔
-            </button>
-          </div>
-        </div>
-      `;
-    }).join("");
+    // Predicted to Fade removed from Analytics
   }
 
   window.reviewFadingConcept = function(conceptName) {
@@ -2879,56 +2703,42 @@
   }
 
   // =========================================================================
-  // GALAXY VIEW & KNOWLEDGE GRAPH RENDERING CONTROLLER
+  // 2D TOPIC PREREQUISITE & MASTERY DEPENDENCY TREE CONTROLLER
   // =========================================================================
-  let galaxyState = {
-    mode: "cosmic",
+  let dependencyTreeState = {
     selectedNodeId: null,
     activeCategory: "all"
   };
 
-  function initGalaxyWorkspace() {
-    const cosmicBtn = document.getElementById("galaxyModeCosmicBtn");
-    const graphBtn = document.getElementById("galaxyModeGraphBtn");
-    const cosmicView = document.getElementById("galaxyCosmicContainer");
-    const graphView = document.getElementById("galaxyGraphContainer");
-
-    if (cosmicBtn && graphBtn) {
-      cosmicBtn.onclick = () => {
-        galaxyState.mode = "cosmic";
-        cosmicBtn.className = "px-3 py-1.5 rounded-lg font-bold bg-purple-600 text-white shadow-sm transition";
-        graphBtn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition";
-        cosmicView?.classList.remove("hidden");
-        graphView?.classList.add("hidden");
-        renderKnowledgeGalaxy();
-      };
-      graphBtn.onclick = () => {
-        galaxyState.mode = "graph";
-        graphBtn.className = "px-3 py-1.5 rounded-lg font-bold bg-purple-600 text-white shadow-sm transition";
-        cosmicBtn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition";
-        graphView?.classList.remove("hidden");
-        cosmicView?.classList.add("hidden");
-        renderKnowledgeGraph();
+  function initDependencyTreeWorkspace() {
+    // 1-Click Action: Ask Luna in Classroom
+    const startSocraticBtn = document.getElementById("inspectorStartSocraticBtn");
+    if (startSocraticBtn) {
+      startSocraticBtn.onclick = () => {
+        const concepts = CognitiveEngine.loadConcepts();
+        const found = concepts.find((c) => c.id === dependencyTreeState.selectedNodeId) || concepts[0];
+        if (found) {
+          activeTopic = found.name;
+          localStorage.setItem("clearmind_active_topic", activeTopic);
+          const chatTopic = document.getElementById("chatActiveTopic");
+          if (chatTopic) chatTopic.textContent = activeTopic;
+          window.navigateToPage("classroom");
+          if (typeof window.askLunaStep === "function") {
+            window.askLunaStep(`Explain the core intuition and foundational prerequisites for ${found.name}`);
+          }
+        } else {
+          window.navigateToPage("classroom");
+        }
       };
     }
 
-    document.querySelectorAll(".graph-cat-btn").forEach((btn) => {
-      btn.onclick = () => {
-        document.querySelectorAll(".graph-cat-btn").forEach((b) => {
-          b.className = "graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-obsidian-850 text-slate-300 hover:text-white transition";
-        });
-        btn.className = "graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-obsidian-950 transition";
-        galaxyState.activeCategory = btn.getAttribute("data-cat") || "all";
-        renderKnowledgeGraph();
-      };
-    });
-
+    // 1-Click Action: Practice in Flashcards
     const reviewBtn = document.getElementById("inspectorReviewBtn");
     if (reviewBtn) {
       reviewBtn.onclick = () => {
-        if (galaxyState.selectedNodeId) {
+        if (dependencyTreeState.selectedNodeId) {
           const concepts = CognitiveEngine.loadConcepts();
-          const found = concepts.find((c) => c.id === galaxyState.selectedNodeId);
+          const found = concepts.find((c) => c.id === dependencyTreeState.selectedNodeId);
           if (found) {
             activeTopic = found.name;
             localStorage.setItem("clearmind_active_topic", activeTopic);
@@ -2939,15 +2749,68 @@
         window.navigateToPage("flashcards");
       };
     }
+
+    // Initial render
+    renderConceptDependencyGraph();
   }
 
-  function renderKnowledgeGalaxy() {
-    const concepts = CognitiveEngine.loadConcepts();
-    const starfield = document.getElementById("galaxyConceptStars");
-    const bgStarsContainer = document.getElementById("galaxyTwinklingStars");
-    if (!starfield) return;
+  function updateDependencyCategoryFilters(allConcepts) {
+    const filtersContainer = document.getElementById("graphCategoryFilters");
+    if (!filtersContainer) return;
 
-    // Advance quest: Concept Galaxy Exploration
+    const categories = Array.from(new Set(allConcepts.map((c) => c.category || "General").filter(Boolean)));
+    if (categories.length === 0) {
+      filtersContainer.innerHTML = `<button data-cat="all" class="graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-obsidian-950 transition cursor-pointer">All</button>`;
+      return;
+    }
+
+    let filterHtml = `
+      <button data-cat="all" class="graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold ${
+        dependencyTreeState.activeCategory === "all" ? "bg-white text-obsidian-950" : "bg-obsidian-850 text-slate-300 hover:text-white"
+      } transition cursor-pointer">All</button>
+    `;
+
+    categories.forEach((cat) => {
+      const isActive = dependencyTreeState.activeCategory.toLowerCase() === cat.toLowerCase();
+      filterHtml += `
+        <button data-cat="${escapeHtml(cat)}" class="graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold ${
+          isActive ? "bg-white text-obsidian-950" : "bg-obsidian-850 text-slate-300 hover:text-white"
+        } transition cursor-pointer">${escapeHtml(cat)}</button>
+      `;
+    });
+
+    filtersContainer.innerHTML = filterHtml;
+
+    filtersContainer.querySelectorAll(".graph-cat-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const cat = btn.getAttribute("data-cat") || "all";
+        dependencyTreeState.activeCategory = cat;
+        filtersContainer.querySelectorAll(".graph-cat-btn").forEach((b) => {
+          b.className = "graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-obsidian-850 text-slate-300 hover:text-white transition cursor-pointer";
+        });
+        btn.className = "graph-cat-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-obsidian-950 transition cursor-pointer";
+        renderConceptDependencyGraph();
+      };
+    });
+  }
+
+  function renderConceptDependencyGraph() {
+    const svg = document.getElementById("knowledgeGraphSvg");
+    const countBadge = document.getElementById("graphNodeCountBadge");
+    if (!svg) return;
+
+    const allConcepts = CognitiveEngine.loadConcepts();
+    if (!allConcepts || allConcepts.length === 0) {
+      svg.innerHTML = `
+        <text x="500" y="320" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="14" font-weight="600" font-family="'Plus Jakarta Sans', sans-serif">
+          No concepts loaded yet. Complete onboarding or set your syllabus to generate your dependency tree.
+        </text>
+      `;
+      if (countBadge) countBadge.textContent = "0 Nodes";
+      return;
+    }
+
+    // Advance quest: Concept Mastery & Dependency Exploration
     const missions = CognitiveEngine.loadMissions();
     const m5 = missions.find((m) => m.id === "m5");
     if (m5 && !m5.done && m5.progress < 1) {
@@ -2956,215 +2819,1330 @@
       CognitiveEngine.completeMission("m5");
     }
 
-    if (bgStarsContainer && !bgStarsContainer.hasChildNodes()) {
-      let starsHtml = "";
-      for (let i = 0; i < 120; i++) {
-        const top = Math.random() * 100;
-        const left = Math.random() * 100;
-        const size = (Math.random() * 1.5 + 0.5).toFixed(1);
-        const delay = (Math.random() * 4).toFixed(1);
-        const dur = (Math.random() * 3 + 2).toFixed(1);
-        starsHtml += `<div class="absolute rounded-full bg-white/70 pointer-events-none" style="top:${top}%; left:${left}%; width:${size}px; height:${size}px; animation: twinkle ${dur}s ease-in-out infinite; animation-delay: ${delay}s;"></div>`;
-      }
-      bgStarsContainer.innerHTML = starsHtml;
+    updateDependencyCategoryFilters(allConcepts);
+
+    const activeCat = (dependencyTreeState.activeCategory || "all").toLowerCase();
+    const filtered = activeCat === "all"
+      ? allConcepts
+      : allConcepts.filter((c) => (c.category || "").toLowerCase() === activeCat);
+
+    if (countBadge) countBadge.textContent = `${filtered.length} Nodes`;
+
+    if (filtered.length === 0) {
+      svg.innerHTML = `
+        <text x="500" y="320" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="14" font-weight="600" font-family="'Plus Jakarta Sans', sans-serif">
+          No concepts found for category "${escapeHtml(dependencyTreeState.activeCategory)}".
+        </text>
+      `;
+      return;
     }
 
-    const now = Date.now();
-    let brightCount = 0;
-    let fadingCount = 0;
-    const categoriesSet = new Set();
-
-    const cx = 50;
-    const cy = 50;
-    let conceptHtml = "";
-
-    concepts.forEach((c, i) => {
-      categoriesSet.add(c.category);
-      const r = CognitiveEngine.currentRetention(c, now);
-      if (r >= 0.7) brightCount++;
-      if (r < 0.4) fadingCount++;
-
-      const angle = i * 0.62 + 0.3;
-      const radius = 8 + (i / concepts.length) * 38;
-      const left = cx + Math.cos(angle) * radius;
-      const top = cy + Math.sin(angle) * (radius * 0.85);
-      const size = Math.round(6 + (c.strength || 0.5) * 16);
-      const glowOpacity = (0.25 + r * 0.55).toFixed(2);
-
-      conceptHtml += `
-        <div class="absolute group cursor-pointer -translate-x-1/2 -translate-y-1/2"
-             style="top:${top.toFixed(2)}%; left:${left.toFixed(2)}%; z-index:10;"
-             onclick="selectGalaxyConcept('${c.id}')"
-             title="${escapeHtml(c.name)} (${c.category}) — ${(r * 100).toFixed(0)}% retained">
-          <div class="absolute inset-0 rounded-full blur-md pointer-events-none transition-all duration-300 group-hover:scale-150"
-               style="background:${c.color}; opacity:${glowOpacity}; width:${size * 3}px; height:${size * 3}px; transform:translate(-33%, -33%);"></div>
-          <div class="rounded-full relative transition-transform duration-200 group-hover:scale-125 border border-white/60 shadow-lg"
-               style="width:${size}px; height:${size}px; background:${c.color}; box-shadow: 0 0 ${size * 1.5}px ${c.color};"></div>
-          <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-xl bg-obsidian-950/95 border border-obsidian-750 text-[11px] text-white opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-2xl z-30">
-            <div class="font-extrabold flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full" style="background:${c.color}"></span>
-              ${escapeHtml(c.name)}
-            </div>
-            <div class="text-[10px] text-slate-400">
-              ${c.category} • <strong class="${r < 0.4 ? 'text-rose-400' : r < 0.7 ? 'text-amber-400' : 'text-emerald-400'}">${(r * 100).toFixed(0)}% retained</strong>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-
-    starfield.innerHTML = conceptHtml;
-
-    const sStars = document.getElementById("galaxyStatStars");
-    const sBright = document.getElementById("galaxyStatBright");
-    const sFading = document.getElementById("galaxyStatFading");
-    const sCat = document.getElementById("galaxyStatCategories");
-    if (sStars) sStars.textContent = String(concepts.length);
-    if (sBright) sBright.textContent = String(brightCount);
-    if (sFading) sFading.textContent = String(fadingCount);
-    if (sCat) sCat.textContent = String(categoriesSet.size);
-  }
-
-  window.selectGalaxyConcept = function(id) {
-    const concepts = CognitiveEngine.loadConcepts();
-    const c = concepts.find((x) => x.id === id);
-    if (!c) return;
-    galaxyState.selectedNodeId = id;
-    galaxyState.mode = "graph";
-    document.getElementById("galaxyModeGraphBtn")?.click();
-    updateGraphInspector(c, concepts);
-  };
-
-  function renderKnowledgeGraph() {
-    const concepts = CognitiveEngine.loadConcepts();
-    const svg = document.getElementById("knowledgeGraphSvg");
-    if (!svg) return;
-
-    const cat = galaxyState.activeCategory;
-    const filtered = cat === "all" ? concepts : concepts.filter((c) => c.category === cat);
-    const filteredIds = new Set(filtered.map((c) => c.id));
-
-    const categoryCenters = {
-      CS: { cx: 280, cy: 260 },
-      ML: { cx: 750, cy: 260 },
-      Math: { cx: 280, cy: 680 },
-      Science: { cx: 750, cy: 680 }
-    };
-
-    const byCategory = {};
-    const layoutNodes = filtered.map((c) => {
-      const center = categoryCenters[c.category] || { cx: 500, cy: 450 };
-      const idx = (byCategory[c.category] = (byCategory[c.category] || 0) + 1);
-      const angle = (idx * 2.39996) + Math.PI;
-      const radius = 70 + idx * 28;
-      const x = Math.round(center.cx + Math.cos(angle) * radius);
-      const y = Math.round(center.cy + Math.sin(angle) * radius);
-      const r = CognitiveEngine.currentRetention(c);
-      return {
-        ...c,
-        x,
-        y,
-        retention: r,
-        radius: Math.round(18 + (c.strength || 0.5) * 22)
-      };
-    });
-
-    const nodeMap = Object.fromEntries(layoutNodes.map((n) => [n.id, n]));
-
-    let edgesSvg = "";
+    // Topological Depth DAG Layout
+    const nodeMap = new Map();
     filtered.forEach((c) => {
-      const from = nodeMap[c.id];
-      if (!from) return;
-      (c.connections || []).forEach((targetId) => {
-        if (!filteredIds.has(targetId)) return;
-        const to = nodeMap[targetId];
-        if (!to) return;
-        const isHighlighted = galaxyState.selectedNodeId && (galaxyState.selectedNodeId === c.id || galaxyState.selectedNodeId === targetId);
-        const strokeColor = isHighlighted ? "rgba(168, 85, 247, 0.85)" : "rgba(255, 255, 255, 0.12)";
-        const strokeWidth = isHighlighted ? 2.5 : 1;
-        edgesSvg += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
+      nodeMap.set(c.id, {
+        ...c,
+        inPrereqs: [],
+        outDependents: [],
+        depth: 0
       });
     });
 
+    // Build directed adjacency: if A is in B's connections, A is prerequisite for B (A -> B)
+    filtered.forEach((c) => {
+      const prereqs = c.connections || [];
+      prereqs.forEach((pId) => {
+        if (nodeMap.has(pId) && pId !== c.id) {
+          nodeMap.get(pId).outDependents.push(c.id);
+          nodeMap.get(c.id).inPrereqs.push(pId);
+        }
+      });
+    });
+
+    // Calculate depth iteratively
+    let changed = true;
+    let iter = 0;
+    while (changed && iter < 12) {
+      changed = false;
+      iter++;
+      filtered.forEach((c) => {
+        const node = nodeMap.get(c.id);
+        if (!node) return;
+        let maxPDepth = -1;
+        node.inPrereqs.forEach((pId) => {
+          const p = nodeMap.get(pId);
+          if (p && p.depth > maxPDepth) {
+            maxPDepth = p.depth;
+          }
+        });
+        if (maxPDepth !== -1 && node.depth !== maxPDepth + 1) {
+          node.depth = maxPDepth + 1;
+          changed = true;
+        }
+      });
+    }
+
+    const maxDepth = Math.max(0, ...Array.from(nodeMap.values()).map((n) => n.depth));
+    const depthGroups = {};
+    for (let d = 0; d <= maxDepth; d++) depthGroups[d] = [];
+    nodeMap.forEach((n) => {
+      depthGroups[n.depth].push(n);
+    });
+
+    // Position nodes along X (depth) and Y (spread within depth)
+    const leftMargin = 120;
+    const rightMargin = 880;
+    const topMargin = 90;
+    const bottomMargin = 590;
+    const widthSpan = maxDepth > 0 ? (rightMargin - leftMargin) / maxDepth : 0;
+
+    for (let d = 0; d <= maxDepth; d++) {
+      const group = depthGroups[d];
+      const x = maxDepth === 0 ? 500 : leftMargin + d * widthSpan;
+      const count = group.length;
+      group.forEach((node, idx) => {
+        const y = count === 1 ? 340 : topMargin + (idx / (count - 1)) * (bottomMargin - topMargin);
+        node.x = Math.round(x);
+        node.y = Math.round(y);
+        node.retention = CognitiveEngine.currentRetention(node);
+        node.radius = 22;
+      });
+    }
+
+    // Render SVG Defs (Markers for directed prerequisite arrows)
+    let svgDefs = `
+      <defs>
+        <marker id="arrowhead-normal" markerWidth="8" markerHeight="6" refX="28" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="rgba(168, 85, 247, 0.6)" />
+        </marker>
+        <marker id="arrowhead-highlight" markerWidth="8" markerHeight="6" refX="28" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#c084fc" />
+        </marker>
+        <marker id="arrowhead-weak" markerWidth="8" markerHeight="6" refX="28" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f43f5e" />
+        </marker>
+      </defs>
+    `;
+
+    // Render Edges (Prerequisite Directed Flow)
+    let edgesSvg = "";
+    nodeMap.forEach((node) => {
+      node.inPrereqs.forEach((pId) => {
+        const prereq = nodeMap.get(pId);
+        if (!prereq) return;
+
+        const isWeakGap = prereq.retention < 0.4;
+        const isHighlighted = dependencyTreeState.selectedNodeId &&
+          (dependencyTreeState.selectedNodeId === node.id || dependencyTreeState.selectedNodeId === prereq.id);
+
+        let strokeColor = "rgba(255, 255, 255, 0.15)";
+        let strokeWidth = 1.5;
+        let markerId = "arrowhead-normal";
+        let strokeDash = "";
+
+        if (isWeakGap) {
+          strokeColor = "rgba(244, 63, 94, 0.75)";
+          strokeWidth = 2;
+          markerId = "arrowhead-weak";
+          strokeDash = 'stroke-dasharray="4,4" class="dependency-edge"';
+        } else if (isHighlighted) {
+          strokeColor = "rgba(192, 132, 252, 0.9)";
+          strokeWidth = 2.5;
+          markerId = "arrowhead-highlight";
+        }
+
+        const midX = (prereq.x + node.x) / 2;
+        edgesSvg += `
+          <path d="M ${prereq.x} ${prereq.y} C ${midX} ${prereq.y}, ${midX} ${node.y}, ${node.x} ${node.y}"
+                fill="none"
+                stroke="${strokeColor}"
+                stroke-width="${strokeWidth}"
+                marker-end="url(#${markerId})"
+                ${strokeDash} />
+        `;
+      });
+    });
+
+    // Render Nodes
     let nodesSvg = "";
-    layoutNodes.forEach((n) => {
-      const isSelected = galaxyState.selectedNodeId === n.id;
-      const isConnected = galaxyState.selectedNodeId
-        ? concepts.find((x) => x.id === galaxyState.selectedNodeId)?.connections?.includes(n.id)
+    nodeMap.forEach((n) => {
+      const isSelected = dependencyTreeState.selectedNodeId === n.id;
+      const isConnected = dependencyTreeState.selectedNodeId
+        ? (n.inPrereqs.includes(dependencyTreeState.selectedNodeId) || n.outDependents.includes(dependencyTreeState.selectedNodeId))
         : false;
-      const opacity = galaxyState.selectedNodeId && !isSelected && !isConnected ? 0.28 : 1;
+
+      const opacity = dependencyTreeState.selectedNodeId && !isSelected && !isConnected ? 0.35 : 1;
+      const isWeak = n.retention < 0.4;
+      const isMastered = n.retention >= 0.7;
+
+      // Status indicator ring color
+      const statusColor = isWeak ? "#f43f5e" : isMastered ? "#10b981" : "#f59e0b";
+      const weakClass = isWeak ? 'class="animate-weak-node"' : "";
 
       nodesSvg += `
-        <g style="opacity:${opacity}; cursor:pointer;" onclick="selectGraphNode('${n.id}')">
-          <circle cx="${n.x}" cy="${n.y}" r="${n.radius + 10}" fill="${n.color}" opacity="${(0.15 + n.retention * 0.4).toFixed(2)}" filter="blur(6px)" />
-          <circle cx="${n.x}" cy="${n.y}" r="${n.radius}" fill="${n.color}" stroke="${isSelected ? '#ffffff' : 'rgba(255,255,255,0.3)'}" stroke-width="${isSelected ? 3.5 : 1.5}" />
-          <text x="${n.x}" y="${n.y + n.radius + 16}" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-size="11" font-weight="700" font-family="'Plus Jakarta Sans', sans-serif">
+        <g style="opacity:${opacity}; cursor:pointer;" onclick="selectDependencyNode('${n.id}')">
+          <!-- Background Glow -->
+          <circle cx="${n.x}" cy="${n.y}" r="${n.radius + 10}" fill="${statusColor}" opacity="${isSelected ? '0.35' : isWeak ? '0.25' : '0.12'}" filter="blur(8px)" />
+          
+          <!-- Outer Status Ring -->
+          <circle cx="${n.x}" cy="${n.y}" r="${n.radius + 4}" fill="none" stroke="${statusColor}" stroke-width="${isSelected ? '2.5' : '1.5'}" stroke-dasharray="${isWeak ? '3,3' : 'none'}" ${weakClass} />
+
+          <!-- Core Node Circle -->
+          <circle cx="${n.x}" cy="${n.y}" r="${n.radius}" fill="${n.color || '#8b5cf6'}" stroke="${isSelected ? '#ffffff' : 'rgba(255,255,255,0.4)'}" stroke-width="${isSelected ? 3 : 1.5}" />
+
+          <!-- Inner Retention Progress Arc/Dot -->
+          <circle cx="${n.x + n.radius - 6}" cy="${n.y - n.radius + 6}" r="4.5" fill="${statusColor}" stroke="#0b0f19" stroke-width="1.5" />
+
+          <!-- Label -->
+          <text x="${n.x}" y="${n.y + n.radius + 16}" text-anchor="middle" fill="${isSelected ? '#ffffff' : 'rgba(255,255,255,0.85)'}" font-size="11" font-weight="${isSelected ? '800' : '700'}" font-family="'Plus Jakarta Sans', sans-serif">
             ${escapeHtml(n.name)}
           </text>
         </g>
       `;
     });
 
-    svg.innerHTML = edgesSvg + nodesSvg;
+    svg.innerHTML = svgDefs + edgesSvg + nodesSvg;
 
-    if (galaxyState.selectedNodeId && nodeMap[galaxyState.selectedNodeId]) {
-      updateGraphInspector(nodeMap[galaxyState.selectedNodeId], concepts);
-    } else if (filtered.length > 0 && !galaxyState.selectedNodeId) {
-      updateGraphInspector(filtered[0], concepts);
+    // Auto-select or inspect node
+    if (dependencyTreeState.selectedNodeId && nodeMap.has(dependencyTreeState.selectedNodeId)) {
+      updateDependencyInspector(nodeMap.get(dependencyTreeState.selectedNodeId), allConcepts);
+    } else if (filtered.length > 0) {
+      // Find the first weak node or default to the first node
+      const firstWeak = Array.from(nodeMap.values()).find((n) => n.retention < 0.4);
+      const chosen = firstWeak || filtered[0];
+      dependencyTreeState.selectedNodeId = chosen.id;
+      updateDependencyInspector(nodeMap.get(chosen.id) || chosen, allConcepts);
     }
   }
 
-  window.selectGraphNode = function(id) {
-    const concepts = CognitiveEngine.loadConcepts();
-    const node = concepts.find((c) => c.id === id);
+  window.selectDependencyNode = function(id) {
+    const allConcepts = CognitiveEngine.loadConcepts();
+    const node = allConcepts.find((c) => c.id === id);
     if (!node) return;
-    galaxyState.selectedNodeId = id;
-    renderKnowledgeGraph();
-    updateGraphInspector(node, concepts);
+    dependencyTreeState.selectedNodeId = id;
+    renderConceptDependencyGraph();
+    updateDependencyInspector(node, allConcepts);
     playSound("click");
   };
 
-  function updateGraphInspector(node, allConcepts) {
+  // Backwards compatibility aliases
+  window.selectGraphNode = window.selectDependencyNode;
+  window.selectGalaxyConcept = window.selectDependencyNode;
+
+  function updateDependencyInspector(node, allConcepts) {
     const nameEl = document.getElementById("inspectorNodeName");
     const catEl = document.getElementById("inspectorNodeCategory");
-    const strVal = document.getElementById("inspectorStrengthVal");
-    const strBar = document.getElementById("inspectorStrengthBar");
+    const diagBanner = document.getElementById("inspectorDiagnosticBanner");
+    const diagIcon = document.getElementById("inspectorDiagIcon");
+    const diagTitle = document.getElementById("inspectorDiagTitle");
+    const diagMsg = document.getElementById("inspectorDiagMessage");
+
     const retVal = document.getElementById("inspectorRetentionVal");
     const retBar = document.getElementById("inspectorRetentionBar");
+    const strVal = document.getElementById("inspectorStrengthVal");
+    const strBar = document.getElementById("inspectorStrengthBar");
     const revVal = document.getElementById("inspectorReviewsVal");
     const conVal = document.getElementById("inspectorConnectionsVal");
     const pillsEl = document.getElementById("inspectorLinkedPills");
 
     if (!node) return;
     const r = CognitiveEngine.currentRetention(node);
+    const strength = node.strength !== undefined ? node.strength : 0.5;
 
     if (nameEl) nameEl.textContent = node.name;
-    if (catEl) catEl.textContent = `Domain: ${node.category} • Ebbinghaus memory decay modeling active.`;
-    if (strVal) strVal.textContent = `${Math.round((node.strength || 0.5) * 100)}%`;
-    if (strBar) strBar.style.width = `${Math.round((node.strength || 0.5) * 100)}%`;
-    if (retVal) retVal.textContent = `${Math.round(r * 100)}% (${r < 0.4 ? 'Urgent' : r < 0.7 ? 'Review Soon' : 'Stable'})`;
-    if (retBar) retBar.style.width = `${Math.round(r * 100)}%`;
-    if (revVal) revVal.textContent = String(node.reviews || 0);
-    if (conVal) conVal.textContent = String((node.connections || []).length);
+    if (catEl) catEl.textContent = `Domain: ${node.category || "General"} • Ebbinghaus memory decay modeling active.`;
 
+    if (retVal) {
+      const statusLabel = r < 0.4 ? "Prerequisite Gap" : r < 0.7 ? "Developing" : "Mastered";
+      retVal.textContent = `${Math.round(r * 100)}% (${statusLabel})`;
+    }
+    if (retBar) retBar.style.width = `${Math.round(r * 100)}%`;
+
+    if (strVal) strVal.textContent = `${Math.round(strength * 100)}%`;
+    if (strBar) strBar.style.width = `${Math.round(strength * 100)}%`;
+
+    if (revVal) revVal.textContent = String(node.reviews || 0);
+
+    const directPrereqs = (node.connections || []).map((pId) => allConcepts.find((x) => x.id === pId)).filter(Boolean);
+    if (conVal) conVal.textContent = String(directPrereqs.length);
+
+    // Prerequisite Gap Diagnosis
+    const weakPrereq = directPrereqs.find((p) => CognitiveEngine.currentRetention(p) < 0.4);
+    if (weakPrereq) {
+      const pRet = Math.round(CognitiveEngine.currentRetention(weakPrereq) * 100);
+      if (diagBanner) diagBanner.className = "p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-[11px] space-y-1";
+      if (diagIcon) diagIcon.textContent = "⚠️";
+      if (diagTitle) {
+        diagTitle.textContent = "Prerequisite Gap Detected!";
+        diagTitle.className = "font-bold text-rose-300";
+      }
+      if (diagMsg) {
+        diagMsg.innerHTML = `Foundational prerequisite <strong>${escapeHtml(weakPrereq.name)}</strong> has decayed to <strong>${pRet}%</strong> retention. Master it first before attempting <strong>${escapeHtml(node.name)}</strong>.`;
+        diagMsg.className = "text-rose-200 text-[10px] leading-relaxed";
+      }
+    } else if (r < 0.4) {
+      if (diagBanner) diagBanner.className = "p-3 rounded-xl bg-amber-950/60 border border-amber-800/80 text-[11px] space-y-1";
+      if (diagIcon) diagIcon.textContent = "📉";
+      if (diagTitle) {
+        diagTitle.textContent = "Cognitive Decay Alert";
+        diagTitle.className = "font-bold text-amber-300";
+      }
+      if (diagMsg) {
+        diagMsg.innerHTML = `Memory trace for <strong>${escapeHtml(node.name)}</strong> is weakening (${Math.round(r * 100)}%). Ask Luna for an intuitive refresher or review via flashcards.`;
+        diagMsg.className = "text-amber-200 text-[10px] leading-relaxed";
+      }
+    } else if (r >= 0.7) {
+      if (diagBanner) diagBanner.className = "p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-[11px] space-y-1";
+      if (diagIcon) diagIcon.textContent = "✅";
+      if (diagTitle) {
+        diagTitle.textContent = "Prerequisites Solid";
+        diagTitle.className = "font-bold text-emerald-300";
+      }
+      if (diagMsg) {
+        diagMsg.innerHTML = `Foundational mastery is rock solid (${Math.round(r * 100)}%). Ready for advanced derivations and blitz battle!`;
+        diagMsg.className = "text-emerald-200 text-[10px] leading-relaxed";
+      }
+    } else {
+      if (diagBanner) diagBanner.className = "p-3 rounded-xl bg-purple-950/40 border border-purple-800/40 text-[11px] space-y-1";
+      if (diagIcon) diagIcon.textContent = "🌱";
+      if (diagTitle) {
+        diagTitle.textContent = "Developing Mastery";
+        diagTitle.className = "font-bold text-purple-300";
+      }
+      if (diagMsg) {
+        diagMsg.innerHTML = `Concept is progressing well (${Math.round(r * 100)}%). Reinforce with 1-2 practice reviews.`;
+        diagMsg.className = "text-slate-300 text-[10px] leading-relaxed";
+      }
+    }
+
+    // Direct Prerequisite Pills
     if (pillsEl) {
-      const connections = node.connections || [];
-      if (!connections.length) {
-        pillsEl.innerHTML = '<span class="text-xs text-slate-500 italic">No connected nodes</span>';
+      if (!directPrereqs.length) {
+        pillsEl.innerHTML = '<span class="text-xs text-slate-500 italic">No foundational prerequisites (Root Concept)</span>';
       } else {
-        pillsEl.innerHTML = connections.map((cId) => {
-          const target = allConcepts.find((x) => x.id === cId);
-          const tName = target ? target.name : cId;
-          const tColor = target ? target.color : "#a855f7";
+        pillsEl.innerHTML = directPrereqs.map((prereq) => {
+          const pR = CognitiveEngine.currentRetention(prereq);
+          const dotColor = pR < 0.4 ? "#f43f5e" : pR < 0.7 ? "#f59e0b" : "#10b981";
           return `
-            <button onclick="selectGraphNode('${cId}')" class="px-2.5 py-1 bg-obsidian-900 hover:bg-obsidian-800 border border-obsidian-750 text-xs font-bold text-slate-300 rounded-lg flex items-center gap-1.5 transition">
-              <span class="w-1.5 h-1.5 rounded-full" style="background:${tColor}"></span>
-              ${escapeHtml(tName)}
+            <button onclick="selectDependencyNode('${prereq.id}')" class="px-2.5 py-1 bg-obsidian-900 hover:bg-obsidian-800 border border-obsidian-750 text-xs font-bold text-slate-300 rounded-lg flex items-center gap-1.5 transition cursor-pointer">
+              <span class="w-1.5 h-1.5 rounded-full" style="background:${dotColor}"></span>
+              ${escapeHtml(prereq.name)}
             </button>
           `;
         }).join("");
       }
     }
+  }
+
+  // =========================================================================
+  // 3D MOTION CONCEPT STUDIO (SIGNBRIDGE AI INSPIRED)
+  // Real-Time Spatial Kinematics & Socratic Simulation Engine
+  // =========================================================================
+  const MOTION_MODELS = {
+    dna: {
+      id: "dna",
+      tag: "DNA_DOUBLE_HELIX",
+      title: "DNA Double Helix Unwinding & Replication",
+      domain: "Molecular Biology & Genetics",
+      summary: "Spatial visualization of right-handed B-DNA unwinding by helicase enzyme at the replication fork.",
+      formulaTag: "Watson-Crick & Chargaff Axiom",
+      formulaKatex: "\\text{bp} = \\{A \\cdot\\cdot T, \\; G \\cdot\\cdot\\cdot C\\}, \\quad \\Delta G^{\\circ}_{\\text{unwind}} > 0",
+      lunaInsight: "Notice how the A-T pair has only 2 hydrogen bonds, whereas G-C has 3! That's why helicase unzips DNA much faster at A-T rich promoter sites like the TATA box.",
+      speechText: "DNA is a right-handed double helix. Nitrogenous base pairs Adenine-Thymine and Guanine-Cytosine are bound by hydrogen bonds at the core. As helicase advances, it unzips the strands to form the replication fork.",
+      phases: [
+        {
+          num: 1,
+          title: "Double Helix Architecture",
+          desc: "Intact 3D antiparallel strands with 10 base-pairs per helical turn and major/minor grooves.",
+          transcript: "Phase 1: Intact right-handed B-DNA double helix. Antiparallel sugar-phosphate backbones wind around base pairs."
+        },
+        {
+          num: 2,
+          title: "Helicase Cleavage & Unzipping",
+          desc: "Helicase enzyme cleaves weak hydrogen bonds between complementary nucleotides from the 5' to 3' fork.",
+          transcript: "Phase 2: Helicase breaks hydrogen bonds. Notice the strands pulling apart into a distinct Y-shaped replication fork."
+        },
+        {
+          num: 3,
+          title: "Template Stabilization",
+          desc: "Single-stranded binding proteins stabilize open strands, preparing templates for DNA Polymerase III synthesis.",
+          transcript: "Phase 3: Separated single strands are stabilized as templates for leading and lagging strand synthesis."
+        }
+      ]
+    },
+    motor: {
+      id: "motor",
+      tag: "DC_MOTOR_LORENTZ",
+      title: "DC Electric Motor & Magnetic Torque",
+      domain: "Electromagnetism & Mechanics",
+      summary: "Visualizing Fleming's Left-Hand Rule, magnetic flux lines, and continuous torque rotation.",
+      formulaTag: "Lorentz Force & Biot-Savart Law",
+      formulaKatex: "\\vec{F} = I (\\vec{L} \\times \\vec{B}), \\quad \\tau = N I A B \\sin\\theta",
+      lunaInsight: "At perpendicular angles (90°), torque is maximized (sin 90° = 1). The split-ring commutator reverses current every 180° so the coil keeps spinning in one direction without stalling!",
+      speechText: "In a DC motor, magnetic flux flows from North to South. By Fleming's Left Hand Rule, current in the wire loop generates magnetic forces that produce continuous rotational torque.",
+      phases: [
+        {
+          num: 1,
+          title: "Uniform Magnetic Flux Field",
+          desc: "Static magnetic B-field lines stream steadily from the North pole (Red) to the South pole (Blue).",
+          transcript: "Phase 1: Uniform magnetic flux lines span between North and South poles across the central armature."
+        },
+        {
+          num: 2,
+          title: "Lorentz Force & Torque Generation",
+          desc: "Current traversing opposite coil arms experiences equal and opposite magnetic forces: F = I(L × B).",
+          transcript: "Phase 2: Current flows through the coil. Opposite vertical forces create a couple that drives rotational torque."
+        },
+        {
+          num: 3,
+          title: "Commutator Current Reversal",
+          desc: "As the coil passes perpendicular inertia, the split-ring commutator flips current direction to prevent counter-torque.",
+          transcript: "Phase 3: The commutator flips current at 180 degrees, keeping rotation unidirectional and smooth."
+        }
+      ]
+    },
+    electron: {
+      id: "electron",
+      tag: "QUANTUM_WAVE_ORBITAL",
+      title: "Quantum Electron Probability Cloud",
+      domain: "Quantum Chemistry & Atomic Physics",
+      summary: "Spatial probability density |ψ(r, θ, φ)|² of electrons in 1s spherical and 2p dumbbell atomic orbitals.",
+      formulaTag: "Schrödinger Wave Equation",
+      formulaKatex: "-\\frac{\\hbar^2}{2m}\\nabla^2\\psi + V\\psi = E\\psi, \\quad P(r) = 4\\pi r^2 |\\psi|^2",
+      lunaInsight: "Electrons do not orbit like miniature planets! They exist as quantum probability waves. The denser the particle cloud, the higher the probability of finding the electron upon measurement.",
+      speechText: "Electrons exist as quantum wavefunctions rather than fixed trajectories. The spatial probability density dictates where the electron is most likely to interact.",
+      phases: [
+        {
+          num: 1,
+          title: "Spherical 1s Ground State",
+          desc: "Radially symmetric wave with zero angular nodes. Probability density is highest near the atomic nucleus.",
+          transcript: "Phase 1: Ground state 1s orbital. Spherically symmetric probability density centered on the dense nucleus."
+        },
+        {
+          num: 2,
+          title: "Dumbbell 2p Nodal Plane",
+          desc: "Angular momentum (l=1) produces twin lobes with an exact zero-probability nodal plane separating them.",
+          transcript: "Phase 2: Excited 2p state with dumbbell lobes. The central nodal plane has zero probability of electron presence."
+        },
+        {
+          num: 3,
+          title: "Quantum Wave Superposition",
+          desc: "Dynamic phase oscillation showing probability wave breathing and orbital hybridization.",
+          transcript: "Phase 3: Quantum wave breathing. Harmonic oscillations illustrate electron orbital transitions."
+        }
+      ]
+    },
+    vector: {
+      id: "vector",
+      tag: "VECTOR_CROSS_PRODUCT",
+      title: "3D Vector Cross Product (A × B = C)",
+      domain: "Vector Calculus & Spatial Mechanics",
+      summary: "Interactive demonstration of C = A × B, Right-Hand Rule orientation, and parallelogram surface area.",
+      formulaTag: "Cross Product Determinant",
+      formulaKatex: "\\vec{A} \\times \\vec{B} = |\\vec{A}||\\vec{B}|\\sin\\theta \\, \\hat{n} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ A_x & A_y & A_z \\\\ B_x & B_y & B_z \\end{vmatrix}",
+      lunaInsight: "The magnitude of the cross product equals the area of the parallelogram formed by A and B. When the angle theta is 0 or 180 degrees (parallel vectors), the cross product drops to zero!",
+      speechText: "The vector cross product produces a third vector perpendicular to both input vectors, with magnitude equal to the area of the spanned parallelogram.",
+      phases: [
+        {
+          num: 1,
+          title: "Coplanar Vectors A & B",
+          desc: "Vector A (Cyan) and Vector B (Fuchsia) define a variable plane with angle theta in 3D coordinate space.",
+          transcript: "Phase 1: Vectors A (Cyan) and B (Fuchsia) form an angle in 3D space, defining the reference plane."
+        },
+        {
+          num: 2,
+          title: "Parallelogram Area Sweep",
+          desc: "The shaded planar surface represents magnitude |A||B|sin(theta), dynamically altering with angle sweep.",
+          transcript: "Phase 2: The highlighted parallelogram area directly represents the scalar magnitude of the cross product."
+        },
+        {
+          num: 3,
+          title: "Right-Hand Orthogonal Vector C",
+          desc: "Resultant Vector C (Gold) shoots perpendicularly upward, satisfying the Right-Hand Rule: C = A × B.",
+          transcript: "Phase 3: Vector C (Gold) emerges strictly orthogonal to both A and B, governed by the right-hand rule."
+        }
+      ]
+    },
+    robot: {
+      id: "robot",
+      tag: "ROBOTIC_ARM_KINEMATICS",
+      title: "3-Axis Articulated Robotic Arm Kinematics",
+      domain: "Robotics & Spatial Kinematics",
+      summary: "Forward and inverse kinematics with Denavit-Hartenberg parameter matrices across rotational joints.",
+      formulaTag: "Denavit-Hartenberg Forward Kinematics",
+      formulaKatex: "^{i-1}T_i = \\text{Rot}_z(\\theta_i) \\text{Trans}_z(d_i) \\text{Trans}_x(a_i) \\text{Rot}_x(\\alpha_i)",
+      lunaInsight: "Each joint transformation matrix multiplies sequentially: T_03 = T_01 * T_12 * T_23. This computes the exact end-effector gripper position in 3D space!",
+      speechText: "Forward kinematics calculates the 3D position of the robot's gripper by multiplying rotation and translation transformation matrices along each joint.",
+      phases: [
+        {
+          num: 1,
+          title: "Base Azimuth Yaw Rotation",
+          desc: "Pedestal turntable rotates horizontally around the Z-axis, orienting the workspace azimuth (theta 1).",
+          transcript: "Phase 1: Base turntable yaw rotation sweeps the entire articulated robotic arm in the azimuth plane."
+        },
+        {
+          num: 2,
+          title: "Shoulder Boom Pitch Elevation",
+          desc: "Primary shoulder joint modulates pitch angle (theta 2) to overcome gravity and extend reach.",
+          transcript: "Phase 2: Shoulder joint elevates the main boom, extending vertical reach and workspace radius."
+        },
+        {
+          num: 3,
+          title: "Elbow & End-Effector Trajectory",
+          desc: "Forearm joint flexes (theta 3) to orient precision dual-finger claw gripper onto coordinate targets.",
+          transcript: "Phase 3: Elbow joint articulates the end-effector gripper along a precision spatial path."
+        }
+      ]
+    }
+  };
+
+  let motionStudioState = {
+    currentModelKey: "dna",
+    isPlaying: true,
+    speed: 1.0,
+    currentPhaseIndex: 0,
+    animTime: 0,
+    isInitialized: false,
+    scene: null,
+    camera: null,
+    renderer: null,
+    controls: null,
+    activeModelGroup: null,
+    lastFrameTime: performance.now(),
+    frameCount: 0,
+    lastFpsUpdate: performance.now()
+  };
+
+  function initMotionStudio() {
+    setupMotionUIControls();
+    loadMotionModel(motionStudioState.currentModelKey);
+
+    if (!motionStudioState.isInitialized) {
+      initThreeJsEngine();
+    }
+  }
+
+  function setupMotionUIControls() {
+    // Model Selector Tabs
+    document.querySelectorAll(".motion-model-btn").forEach((btn) => {
+      btn.onclick = () => {
+        const modelKey = btn.getAttribute("data-model");
+        if (!modelKey || !MOTION_MODELS[modelKey]) return;
+
+        document.querySelectorAll(".motion-model-btn").forEach((b) => {
+          b.className = "motion-model-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition cursor-pointer shrink-0";
+        });
+        btn.className = "motion-model-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-obsidian-950 shadow-md transition cursor-pointer shrink-0";
+
+        loadMotionModel(modelKey);
+        playSound("click");
+      };
+    });
+
+    // Play / Pause Toggle
+    const playPauseBtn = document.getElementById("motionPlayPauseBtn");
+    const playPauseIcon = document.getElementById("motionPlayPauseIcon");
+    const playPauseLabel = document.getElementById("motionPlayPauseLabel");
+    if (playPauseBtn && !playPauseBtn.dataset.wired) {
+      playPauseBtn.dataset.wired = "true";
+      playPauseBtn.onclick = () => {
+        motionStudioState.isPlaying = !motionStudioState.isPlaying;
+        if (playPauseIcon) playPauseIcon.textContent = motionStudioState.isPlaying ? "⏸️" : "▶️";
+        if (playPauseLabel) playPauseLabel.textContent = motionStudioState.isPlaying ? "Pause" : "Play";
+        playSound("click");
+      };
+    }
+
+    // Speed Controls (0.5x, 1x, 2x)
+    document.querySelectorAll(".motion-speed-btn").forEach((btn) => {
+      if (!btn.dataset.wired) {
+        btn.dataset.wired = "true";
+        btn.onclick = () => {
+          document.querySelectorAll(".motion-speed-btn").forEach((b) => {
+            b.className = "motion-speed-btn px-2 py-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer";
+          });
+          btn.className = "motion-speed-btn active px-2 py-1 rounded-lg bg-white/15 text-white transition cursor-pointer";
+          const spd = parseFloat(btn.getAttribute("data-speed") || "1.0");
+          motionStudioState.speed = spd;
+          playSound("click");
+        };
+      }
+    });
+
+    // Reset Camera Button
+    const resetCamBtn = document.getElementById("motionResetCamBtn");
+    if (resetCamBtn && !resetCamBtn.dataset.wired) {
+      resetCamBtn.dataset.wired = "true";
+      resetCamBtn.onclick = () => {
+        if (motionStudioState.camera && motionStudioState.controls) {
+          motionStudioState.camera.position.set(0, 2.8, 8.5);
+          motionStudioState.controls.target.set(0, 0, 0);
+          motionStudioState.controls.update();
+          playSound("click");
+        }
+      };
+    }
+
+    // Neural Voice Narration Button
+    const speakBtn = document.getElementById("motionSpeakBtn");
+    if (speakBtn && !speakBtn.dataset.wired) {
+      speakBtn.dataset.wired = "true";
+      speakBtn.onclick = () => {
+        const model = MOTION_MODELS[motionStudioState.currentModelKey];
+        if (model && typeof playLunaVoice === "function") {
+          playLunaVoice(model.speechText, speakBtn);
+        }
+      };
+    }
+
+    // Ask Luna in Split Classroom Action Button
+    const askClassroomBtn = document.getElementById("motionAskClassroomBtn");
+    if (askClassroomBtn && !askClassroomBtn.dataset.wired) {
+      askClassroomBtn.dataset.wired = "true";
+      askClassroomBtn.onclick = () => {
+        const model = MOTION_MODELS[motionStudioState.currentModelKey];
+        if (model) {
+          activeTopic = model.title;
+          localStorage.setItem("clearmind_active_topic", activeTopic);
+          const chatTopic = document.getElementById("chatActiveTopic");
+          if (chatTopic) chatTopic.textContent = activeTopic;
+          window.navigateToPage("classroom");
+          if (typeof window.askLunaStep === "function") {
+            window.askLunaStep(`Can you explain the physical mechanism and first-principles intuition behind ${model.title}?`);
+          }
+        }
+      };
+    }
+  }
+
+  function loadMotionModel(modelKey) {
+    const model = MOTION_MODELS[modelKey];
+    if (!model) return;
+
+    motionStudioState.currentModelKey = modelKey;
+    motionStudioState.currentPhaseIndex = 0;
+    motionStudioState.animTime = 0;
+
+    // Update Header & Socratic Info
+    const domEl = document.getElementById("motionModelDomain");
+    const titEl = document.getElementById("motionModelTitle");
+    const sumEl = document.getElementById("motionModelSummary");
+    const tagEl = document.getElementById("motionHudModelTag");
+    const fTagEl = document.getElementById("motionFormulaTag");
+    const fKatexEl = document.getElementById("motionFormulaKatex");
+    const insightEl = document.getElementById("motionLunaInsight");
+
+    if (domEl) domEl.textContent = model.domain;
+    if (titEl) titEl.textContent = model.title;
+    if (sumEl) sumEl.textContent = model.summary;
+    if (tagEl) tagEl.textContent = `MODEL: ${model.tag}`;
+    if (fTagEl) fTagEl.textContent = model.formulaTag;
+    if (insightEl) insightEl.innerHTML = `"${escapeHtml(model.lunaInsight)}"`;
+
+    if (fKatexEl) {
+      if (typeof katex !== "undefined" && typeof katex.renderToString === "function") {
+        try {
+          fKatexEl.innerHTML = katex.renderToString(model.formulaKatex, { displayMode: true, throwOnError: false });
+        } catch (e) {
+          fKatexEl.textContent = model.formulaKatex;
+        }
+      } else {
+        fKatexEl.textContent = model.formulaKatex;
+      }
+    }
+
+    // Render 3-Phase Steps
+    renderMotionPhaseSteps(model, 0);
+    updateMotionTranscript(model, 0);
+
+    // Rebuild 3D Model in Three.js Scene
+    if (motionStudioState.scene) {
+      buildThreeJsModel(modelKey);
+    }
+  }
+
+  function renderMotionPhaseSteps(model, activePhaseIdx) {
+    const list = document.getElementById("motionPhaseStepsList");
+    if (!list) return;
+
+    list.innerHTML = model.phases.map((ph, idx) => {
+      const isActive = idx === activePhaseIdx;
+      const isPast = idx < activePhaseIdx;
+      const borderCls = isActive
+        ? "active border-purple-500/70 bg-purple-950/30 text-white shadow-md shadow-purple-500/15"
+        : isPast
+        ? "completed border-emerald-800/40 bg-emerald-950/20 text-slate-300 opacity-80"
+        : "border-white/10 bg-white/[0.02] text-slate-400";
+      const icon = isPast ? "✓" : isActive ? "▶" : String(ph.num);
+      const iconBg = isActive ? "bg-purple-600 text-white" : isPast ? "bg-emerald-600 text-white" : "bg-white/10 text-slate-400";
+
+      return `
+        <div class="motion-phase-step p-2.5 rounded-xl border transition-all duration-300 flex items-start gap-2.5 ${borderCls}">
+          <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${iconBg}">
+            ${icon}
+          </span>
+          <div class="min-w-0 flex-1">
+            <h5 class="text-xs font-bold text-white flex items-center justify-between">
+              <span>Phase ${ph.num}: ${escapeHtml(ph.title)}</span>
+              ${isActive ? '<span class="text-[9px] font-mono text-cyan-400 animate-pulse">ACTIVE</span>' : ''}
+            </h5>
+            <p class="text-[11px] text-slate-300 mt-0.5 leading-relaxed">${escapeHtml(ph.desc)}</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function updateMotionTranscript(model, phaseIdx) {
+    const phase = model.phases[phaseIdx] || model.phases[0];
+    const phEl = document.getElementById("motionTranscriptPhase");
+    const txEl = document.getElementById("motionTranscriptText");
+    if (phEl) phEl.textContent = `Phase ${phase.num}: ${phase.title}`;
+    if (txEl) txEl.textContent = phase.transcript;
+  }
+
+  function initThreeJsEngine() {
+    const container = document.getElementById("motionStageContainer");
+    if (!container) return;
+
+    if (typeof THREE === "undefined") {
+      container.innerHTML = `
+        <div class="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 p-6 text-center">
+          <div class="text-3xl animate-spin">⚙️</div>
+          <p class="text-xs font-bold text-white">Initializing 3D Spatial Engine...</p>
+          <p class="text-[11px] text-slate-500">Loading Three.js spatial kinematics shaders.</p>
+        </div>
+      `;
+      setTimeout(() => initThreeJsEngine(), 250);
+      return;
+    }
+
+    container.innerHTML = "";
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 440;
+
+    // Three.js Scene Setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050714);
+    scene.fog = new THREE.FogExp2(0x050714, 0.035);
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    camera.position.set(0, 2.8, 8.5);
+
+    // WebGL Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(width, height);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // OrbitControls
+    let controls = null;
+    if (typeof THREE.OrbitControls !== "undefined") {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.maxDistance = 22;
+      controls.minDistance = 2.5;
+      controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't flip below perspective floor
+    }
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x312e81, 1.2);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    dirLight.position.set(6, 12, 8);
+    scene.add(dirLight);
+
+    const cyanPoint = new THREE.PointLight(0x06b6d4, 1.8, 20);
+    cyanPoint.position.set(-5, 3, -3);
+    scene.add(cyanPoint);
+
+    const purplePoint = new THREE.PointLight(0xa855f7, 1.8, 20);
+    purplePoint.position.set(5, -2, 3);
+    scene.add(purplePoint);
+
+    // Cybernetic Floor Grid (SignBridge AI Inspired)
+    const floorGrid = new THREE.GridHelper(20, 20, 0x8b5cf6, 0x1e1b4b);
+    floorGrid.position.y = -2.2;
+    scene.add(floorGrid);
+
+    // Model Group Mount
+    const activeModelGroup = new THREE.Group();
+    scene.add(activeModelGroup);
+
+    motionStudioState.scene = scene;
+    motionStudioState.camera = camera;
+    renderer.domElement.className = "w-full h-full block";
+    motionStudioState.renderer = renderer;
+    motionStudioState.controls = controls;
+    motionStudioState.activeModelGroup = activeModelGroup;
+    motionStudioState.isInitialized = true;
+
+    // Handle Container Resizing via ResizeObserver
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        if (!container || !renderer || !camera) return;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w > 0 && h > 0) {
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
+        }
+      });
+      ro.observe(container);
+    }
+
+    // Build Current Active Model
+    buildThreeJsModel(motionStudioState.currentModelKey);
+
+    // Main 60 FPS Render Loop
+    function animate(time) {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min((time - motionStudioState.lastFrameTime) / 1000, 0.1);
+      motionStudioState.lastFrameTime = time;
+
+      // Calculate FPS Counter
+      motionStudioState.frameCount++;
+      if (time - motionStudioState.lastFpsUpdate >= 500) {
+        const fps = Math.round((motionStudioState.frameCount * 1000) / (time - motionStudioState.lastFpsUpdate));
+        const fpsEl = document.getElementById("motionHudFps");
+        if (fpsEl) fpsEl.textContent = String(fps);
+        motionStudioState.frameCount = 0;
+        motionStudioState.lastFpsUpdate = time;
+      }
+
+      // Advance Motion Simulation Time
+      if (motionStudioState.isPlaying) {
+        motionStudioState.animTime += delta * motionStudioState.speed;
+      }
+
+      const t = motionStudioState.animTime;
+
+      // Update Phase Progression (9 second loop: 3s per phase)
+      const cycleLength = 9.0;
+      const normalizedTime = t % cycleLength;
+      const phaseIdx = Math.min(2, Math.floor(normalizedTime / 3.0));
+
+      if (phaseIdx !== motionStudioState.currentPhaseIndex) {
+        motionStudioState.currentPhaseIndex = phaseIdx;
+        const model = MOTION_MODELS[motionStudioState.currentModelKey];
+        if (model) {
+          renderMotionPhaseSteps(model, phaseIdx);
+          updateMotionTranscript(model, phaseIdx);
+        }
+      }
+
+      // Update 3D Kinematic Models
+      if (motionStudioState.activeModelGroup && motionStudioState.activeModelGroup.userData.updateFn) {
+        motionStudioState.activeModelGroup.userData.updateFn(t, delta);
+      }
+
+      if (controls) {
+        controls.update();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function clearThreeGroup(group) {
+    while (group.children.length > 0) {
+      const child = group.children[0];
+      group.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    }
+  }
+
+  function buildThreeJsModel(modelKey) {
+    const group = motionStudioState.activeModelGroup;
+    if (!group) return;
+
+    clearThreeGroup(group);
+
+    if (modelKey === "dna") {
+      buildDnaModel(group);
+    } else if (modelKey === "motor") {
+      buildMotorModel(group);
+    } else if (modelKey === "electron") {
+      buildElectronModel(group);
+    } else if (modelKey === "vector") {
+      buildVectorModel(group);
+    } else if (modelKey === "robot") {
+      buildRobotModel(group);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 1. MODEL: DNA DOUBLE HELIX UNWINDING & REPLICATION FORK
+  // -------------------------------------------------------------------------
+  function buildDnaModel(group) {
+    const strandRadius = 1.2;
+    const height = 4.8;
+    const numPairs = 28;
+    const baseColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b]; // A (Red), T (Blue), G (Emerald), C (Amber)
+
+    const rungs = [];
+    const backbonePointsA = [];
+    const backbonePointsB = [];
+
+    const sphereGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const strandMatA = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.3, metalness: 0.2 });
+    const strandMatB = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, metalness: 0.2 });
+
+    for (let i = 0; i < numPairs; i++) {
+      const tNorm = i / numPairs;
+      const y = (tNorm - 0.5) * height;
+      const angle = tNorm * Math.PI * 4;
+
+      const x1 = Math.cos(angle) * strandRadius;
+      const z1 = Math.sin(angle) * strandRadius;
+      const x2 = Math.cos(angle + Math.PI) * strandRadius;
+      const z2 = Math.sin(angle + Math.PI) * strandRadius;
+
+      // Backbone Nodes
+      const nodeA = new THREE.Mesh(sphereGeo, strandMatA);
+      nodeA.position.set(x1, y, z1);
+      group.add(nodeA);
+
+      const nodeB = new THREE.Mesh(sphereGeo, strandMatB);
+      nodeB.position.set(x2, y, z2);
+      group.add(nodeB);
+
+      // Base Pair Rung (Half A, Half B)
+      const colA = baseColors[i % 4];
+      const colB = baseColors[(i + 1) % 4];
+      const rungMatA = new THREE.MeshStandardMaterial({ color: colA, roughness: 0.4 });
+      const rungMatB = new THREE.MeshStandardMaterial({ color: colB, roughness: 0.4 });
+
+      const rungGeo = new THREE.CylinderGeometry(0.045, 0.045, 1, 8);
+      const halfRung1 = new THREE.Mesh(rungGeo, rungMatA);
+      const halfRung2 = new THREE.Mesh(rungGeo, rungMatB);
+
+      halfRung1.position.set((x1 * 0.5), y, (z1 * 0.5));
+      halfRung2.position.set((x2 * 0.5), y, (z2 * 0.5));
+
+      group.add(halfRung1);
+      group.add(halfRung2);
+
+      rungs.push({
+        nodeA,
+        nodeB,
+        halfRung1,
+        halfRung2,
+        baseX1: x1,
+        baseZ1: z1,
+        baseX2: x2,
+        baseZ2: z2,
+        y: y,
+        index: i
+      });
+    }
+
+    group.userData.updateFn = (t) => {
+      // Rotation around Y
+      group.rotation.y = t * 0.45;
+
+      // Helicase unzipping dynamic fork: upper half spreads out as time passes
+      const unwindProgress = 0.5 + 0.45 * Math.sin(t * 0.8);
+
+      rungs.forEach((r) => {
+        const ratio = r.index / numPairs;
+        if (ratio > 1 - unwindProgress) {
+          // Unwind / separate strands outward at the replication fork
+          const separationFactor = (ratio - (1 - unwindProgress)) * 2.2;
+          const spreadX1 = r.baseX1 * (1 + separationFactor * 1.5);
+          const spreadZ1 = r.baseZ1 * (1 + separationFactor * 1.5);
+          const spreadX2 = r.baseX2 * (1 + separationFactor * 1.5);
+          const spreadZ2 = r.baseZ2 * (1 + separationFactor * 1.5);
+
+          r.nodeA.position.set(spreadX1, r.y, spreadZ1);
+          r.nodeB.position.set(spreadX2, r.y, spreadZ2);
+
+          r.halfRung1.position.set(spreadX1 * 0.6, r.y, spreadZ1 * 0.6);
+          r.halfRung2.position.set(spreadX2 * 0.6, r.y, spreadZ2 * 0.6);
+
+          // Disconnect rungs at fork
+          r.halfRung1.scale.y = Math.max(0.2, 1 - separationFactor * 0.5);
+          r.halfRung2.scale.y = Math.max(0.2, 1 - separationFactor * 0.5);
+        } else {
+          // Intact double helix
+          r.nodeA.position.set(r.baseX1, r.y, r.baseZ1);
+          r.nodeB.position.set(r.baseX2, r.y, r.baseZ2);
+          r.halfRung1.position.set(r.baseX1 * 0.5, r.y, r.baseZ1 * 0.5);
+          r.halfRung2.position.set(r.baseX2 * 0.5, r.y, r.baseZ2 * 0.5);
+          r.halfRung1.scale.y = 1;
+          r.halfRung2.scale.y = 1;
+        }
+      });
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. MODEL: DC ELECTRIC MOTOR & LORENTZ FORCE
+  // -------------------------------------------------------------------------
+  function buildMotorModel(group) {
+    // North Pole (Red)
+    const poleGeo = new THREE.BoxGeometry(1.2, 2.5, 3.2);
+    const northMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6, roughness: 0.3 });
+    const northPole = new THREE.Mesh(poleGeo, northMat);
+    northPole.position.set(-2.8, 0, 0);
+    group.add(northPole);
+
+    // South Pole (Blue)
+    const southMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.6, roughness: 0.3 });
+    const southPole = new THREE.Mesh(poleGeo, southMat);
+    southPole.position.set(2.8, 0, 0);
+    group.add(southPole);
+
+    // Magnetic Flux Lines (Cyan Dashed Beams)
+    const fluxGroup = new THREE.Group();
+    for (let y = -0.8; y <= 0.8; y += 0.8) {
+      for (let z = -0.8; z <= 0.8; z += 0.8) {
+        const lineGeo = new THREE.CylinderGeometry(0.02, 0.02, 4.4, 6);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.45 });
+        const fluxLine = new THREE.Mesh(lineGeo, lineMat);
+        fluxLine.rotation.z = Math.PI / 2;
+        fluxLine.position.set(0, y, z);
+        fluxGroup.add(fluxLine);
+      }
+    }
+    group.add(fluxGroup);
+
+    // Rotating Armature Sub-group
+    const rotor = new THREE.Group();
+    group.add(rotor);
+
+    // Central Shaft Axle
+    const shaftGeo = new THREE.CylinderGeometry(0.08, 0.08, 4.2, 16);
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    rotor.add(shaft);
+
+    // Rectangular Copper Wire Loop
+    const copperMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.25 });
+    const loopW = 1.8;
+    const loopH = 2.4;
+
+    const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, loopH, 8), copperMat);
+    arm1.position.set(-loopW / 2, 0, 0);
+    rotor.add(arm1);
+
+    const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, loopH, 8), copperMat);
+    arm2.position.set(loopW / 2, 0, 0);
+    rotor.add(arm2);
+
+    const topCross = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, loopW, 8), copperMat);
+    topCross.rotation.z = Math.PI / 2;
+    topCross.position.set(0, loopH / 2, 0);
+    rotor.add(topCross);
+
+    const botCross = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, loopW, 8), copperMat);
+    botCross.rotation.z = Math.PI / 2;
+    botCross.position.set(0, -loopH / 2, 0);
+    rotor.add(botCross);
+
+    // Force Vector Arrows (Lorentz Force F = IL x B)
+    const arrowGeo = new THREE.ConeGeometry(0.14, 0.4, 8);
+    const forceMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+    const forceArrowLeft = new THREE.Mesh(arrowGeo, forceMat);
+    const forceArrowRight = new THREE.Mesh(arrowGeo, forceMat);
+
+    forceArrowLeft.position.set(-loopW / 2, 0.2, 0.6);
+    forceArrowRight.position.set(loopW / 2, -0.2, -0.6);
+    forceArrowRight.rotation.x = Math.PI;
+
+    rotor.add(forceArrowLeft);
+    rotor.add(forceArrowRight);
+
+    group.userData.updateFn = (t) => {
+      // Continuous armature rotation driven by torque
+      rotor.rotation.y = t * 2.2;
+
+      // Pulse magnetic flux opacity
+      fluxGroup.children.forEach((fl, idx) => {
+        fl.material.opacity = 0.35 + 0.2 * Math.sin(t * 3 + idx);
+      });
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. MODEL: QUANTUM ELECTRON PROBABILITY CLOUD
+  // -------------------------------------------------------------------------
+  function buildElectronModel(group) {
+    // Dense Central Nucleus (Cluster of Protons/Neutrons)
+    const nucleusGroup = new THREE.Group();
+    const pGeo = new THREE.SphereGeometry(0.16, 16, 16);
+    const pMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.3, roughness: 0.2 });
+    const nMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.3, roughness: 0.2 });
+
+    const nCoords = [
+      [0, 0, 0], [0.18, 0.12, 0], [-0.15, -0.1, 0.1],
+      [0.08, -0.15, -0.12], [-0.12, 0.16, -0.08], [0.12, -0.05, 0.15]
+    ];
+    nCoords.forEach((pos, idx) => {
+      const sphere = new THREE.Mesh(pGeo, idx % 2 === 0 ? pMat : nMat);
+      sphere.position.set(pos[0], pos[1], pos[2]);
+      nucleusGroup.add(sphere);
+    });
+    group.add(nucleusGroup);
+
+    // Quantum Wavefunction Particle Cloud (1000 probability points)
+    const particleCount = 1200;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const baseCoords = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      // Exponential radial probability distribution (1s orbital)
+      const u = Math.random();
+      const r = -Math.log(1 - u * 0.96) * 1.1 + 0.3;
+      const theta = Math.acos(2 * Math.random() - 1);
+      const phi = 2 * Math.PI * Math.random();
+
+      const x = r * Math.sin(theta) * Math.cos(phi);
+      const y = r * Math.sin(theta) * Math.sin(phi);
+      const z = r * Math.cos(theta);
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+
+      baseCoords.push({ r, theta, phi });
+    }
+
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const pMaterial = new THREE.PointsMaterial({
+      color: 0x22d3ee,
+      size: 0.065,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending
+    });
+    const particleCloud = new THREE.Points(geometry, pMaterial);
+    group.add(particleCloud);
+
+    // Orbiting Pilot Wave Ring with tracer
+    const ringGeo = new THREE.TorusGeometry(2.2, 0.02, 16, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.35 });
+    const orbitRing = new THREE.Mesh(ringGeo, ringMat);
+    orbitRing.rotation.x = Math.PI / 3;
+    group.add(orbitRing);
+
+    const electronSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    group.add(electronSphere);
+
+    group.userData.updateFn = (t) => {
+      // Rotate cloud
+      particleCloud.rotation.y = t * 0.25;
+      nucleusGroup.rotation.y = t * 0.4;
+
+      // Pulse probability density wave: morph between 1s sphere and 2p dumbbell
+      const waveFactor = 0.5 + 0.5 * Math.sin(t * 1.5);
+      const posAttr = particleCloud.geometry.attributes.position;
+
+      for (let i = 0; i < particleCount; i++) {
+        const bc = baseCoords[i];
+        // 2p dumbbell modulation factor: cos(theta)^2
+        const pMod = 1 + waveFactor * 0.8 * Math.cos(bc.theta) * Math.cos(bc.theta);
+        const currR = bc.r * pMod * (0.95 + 0.1 * Math.sin(t * 2 + bc.r * 2));
+
+        posAttr.setXYZ(
+          i,
+          currR * Math.sin(bc.theta) * Math.cos(bc.phi),
+          currR * Math.sin(bc.theta) * Math.sin(bc.phi),
+          currR * Math.cos(bc.theta)
+        );
+      }
+      posAttr.needsUpdate = true;
+
+      // Pilot electron tracing along ring
+      const eAngle = t * 3.5;
+      const ringRadius = 2.2;
+      const ex = Math.cos(eAngle) * ringRadius;
+      const ez = Math.sin(eAngle) * ringRadius;
+      electronSphere.position.set(ex, Math.sin(t * 2) * 0.4, ez);
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. MODEL: 3D VECTOR CROSS PRODUCT & RIGHT-HAND RULE
+  // -------------------------------------------------------------------------
+  function buildVectorModel(group) {
+    const origin = new THREE.Vector3(0, -0.5, 0);
+
+    // Vector A (Cyan, along X-axis)
+    const arrowA = new THREE.ArrowHelper(
+      new THREE.Vector3(1, 0, 0),
+      origin,
+      2.8,
+      0x06b6d4,
+      0.45,
+      0.22
+    );
+    group.add(arrowA);
+
+    // Vector B (Fuchsia, variable angle in X-Z plane)
+    const arrowB = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, 1),
+      origin,
+      2.4,
+      0xec4899,
+      0.45,
+      0.22
+    );
+    group.add(arrowB);
+
+    // Resultant Vector C = A x B (Gold, pointing along Y-axis)
+    const arrowC = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 1, 0),
+      origin,
+      2.8,
+      0xfbbf24,
+      0.5,
+      0.25
+    );
+    group.add(arrowC);
+
+    // Shaded Parallelogram Surface representing Area |A x B|
+    const planeGeo = new THREE.BufferGeometry();
+    const planeVertices = new Float32Array(6 * 3); // 2 triangles
+    planeGeo.setAttribute("position", new THREE.BufferAttribute(planeVertices, 3));
+
+    const planeMat = new THREE.MeshBasicMaterial({
+      color: 0xa855f7,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide
+    });
+    const planeMesh = new THREE.Mesh(planeGeo, planeMat);
+    group.add(planeMesh);
+
+    group.userData.updateFn = (t) => {
+      // Angle theta sweep between vectors A and B
+      const theta = Math.PI / 4 + (Math.PI / 3) * Math.sin(t * 1.2);
+      const bDir = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta)).normalize();
+      arrowB.setDirection(bDir);
+
+      // Resultant C = A x B
+      const aDir = new THREE.Vector3(1, 0, 0);
+      const cDir = new THREE.Vector3().crossVectors(aDir, bDir).normalize();
+      const crossMag = Math.abs(Math.sin(theta)) * 3.0;
+
+      arrowC.setDirection(cDir);
+      arrowC.setLength(Math.max(0.4, crossMag), 0.45, 0.22);
+
+      // Update Parallelogram 3D coordinates
+      const vA = new THREE.Vector3(2.8, -0.5, 0);
+      const vB = new THREE.Vector3(bDir.x * 2.4, -0.5, bDir.z * 2.4);
+      const vAB = new THREE.Vector3(vA.x + vB.x, -0.5, vA.z + vB.z);
+      const vO = new THREE.Vector3(0, -0.5, 0);
+
+      const pos = planeMesh.geometry.attributes.position;
+      // Triangle 1: O -> A -> AB
+      pos.setXYZ(0, vO.x, vO.y, vO.z);
+      pos.setXYZ(1, vA.x, vA.y, vA.z);
+      pos.setXYZ(2, vAB.x, vAB.y, vAB.z);
+      // Triangle 2: O -> AB -> B
+      pos.setXYZ(3, vO.x, vO.y, vO.z);
+      pos.setXYZ(4, vAB.x, vAB.y, vAB.z);
+      pos.setXYZ(5, vB.x, vB.y, vB.z);
+      pos.needsUpdate = true;
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. MODEL: 3-AXIS ARTICULATED ROBOTIC ARM KINEMATICS
+  // -------------------------------------------------------------------------
+  function buildRobotModel(group) {
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 });
+    const jointMat = new THREE.MeshStandardMaterial({ color: 0x8b5cf6, metalness: 0.5, roughness: 0.3 });
+    const cyanMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.5, roughness: 0.3 });
+
+    // Base Pedestal
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.5, 24), metalMat);
+    base.position.y = -1.9;
+    group.add(base);
+
+    // Yaw Joint 1 (Azimuth Turntable)
+    const yawJoint = new THREE.Group();
+    yawJoint.position.y = -1.6;
+    group.add(yawJoint);
+
+    const turntable = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.4, 24), jointMat);
+    yawJoint.add(turntable);
+
+    // Shoulder Pitch Joint 2
+    const shoulderJoint = new THREE.Group();
+    shoulderJoint.position.y = 0.3;
+    yawJoint.add(shoulderJoint);
+
+    const shoulderPivot = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), cyanMat);
+    shoulderJoint.add(shoulderPivot);
+
+    // Link 1 Boom Arm
+    const link1 = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 2.0, 16), metalMat);
+    link1.position.y = 1.0;
+    shoulderJoint.add(link1);
+
+    // Elbow Joint 3
+    const elbowJoint = new THREE.Group();
+    elbowJoint.position.y = 2.0;
+    shoulderJoint.add(elbowJoint);
+
+    const elbowPivot = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), jointMat);
+    elbowJoint.add(elbowPivot);
+
+    // Link 2 Forearm
+    const link2 = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 1.8, 16), metalMat);
+    link2.position.y = 0.9;
+    elbowJoint.add(link2);
+
+    // End-Effector Gripper Wrist
+    const gripperWrist = new THREE.Group();
+    gripperWrist.position.y = 1.8;
+    elbowJoint.add(gripperWrist);
+
+    const wrist = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.3), cyanMat);
+    gripperWrist.add(wrist);
+
+    // Dual-Finger Claws
+    const fingerMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.3 });
+    const claw1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.1), fingerMat);
+    const claw2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 0.1), fingerMat);
+
+    claw1.position.set(-0.16, 0.25, 0);
+    claw2.position.set(0.16, 0.25, 0);
+    gripperWrist.add(claw1);
+    gripperWrist.add(claw2);
+
+    group.userData.updateFn = (t) => {
+      // Forward kinematics harmonic joint oscillations
+      yawJoint.rotation.y = 0.8 * Math.sin(t * 0.9);
+      shoulderJoint.rotation.z = 0.4 * Math.sin(t * 1.2) - 0.2;
+      elbowJoint.rotation.z = 0.6 * Math.cos(t * 1.4) + 0.3;
+
+      // Gripper pinch action
+      const pinch = 0.08 * Math.sin(t * 3.0);
+      claw1.position.x = -0.16 + pinch;
+      claw2.position.x = 0.16 - pinch;
+    };
   }
 
   // =========================================================================
@@ -3909,8 +4887,8 @@
       { id: "nav-cheatsheet", cat: "Navigation", title: "Real Exam Cheat Sheet & PDF", desc: "Print-ready revision sheets, key equations, and pitfalls", icon: "📑", action: () => window.navigateToPage("cheatsheet") },
       { id: "nav-blitz", cat: "Navigation", title: "60-Second Blitz Battle Arena", desc: "Speed combat challenge with combo multipliers", icon: "⚔️", action: () => window.navigateToPage("blitz") },
       { id: "nav-flashcards", cat: "Navigation", title: "3D Spaced-Repetition Flashcards", desc: "Ebbinghaus memory decay deck with 3D card flips", icon: "🎴", action: () => window.navigateToPage("flashcards") },
-      { id: "nav-galaxy", cat: "Navigation", title: "3D Knowledge Galaxy", desc: "Interactive concept graph and topic clusters", icon: "🌌", action: () => window.navigateToPage("galaxy") },
-      { id: "nav-analytics", cat: "Navigation", title: "Student Analytics & Mind Health", desc: "Bento dashboard, mind meters, and study heatmap", icon: "📊", action: () => window.navigateToPage("analytics") },
+      { id: "nav-analytics", cat: "Navigation", title: "Student Analytics & Mastery", desc: "Bento dashboard, topic prerequisite tree, and study heatmap", icon: "📊", action: () => window.navigateToPage("analytics") },
+      { id: "nav-motion", cat: "Navigation", title: "3D Motion Concept Studio", desc: "Interactive Three.js STEM kinematics and spatial simulations (SignBridge AI)", icon: "🧊", action: () => window.navigateToPage("motion") },
 
       // AI Tutor Actions
       { id: "act-socratic", cat: "AI Actions", title: "Ask: Explain with Intuitive Analogies", desc: "Break down topic with everyday real-world examples", icon: "💡", action: () => { window.navigateToPage("classroom"); sendChatMessage("Can you explain the foundational intuition of this topic using simple real-world analogies?"); } },
@@ -4235,7 +5213,8 @@
     updateTeachingModeUI();
     updateAnalyticsDashboard();
     initEventListeners();
-    initGalaxyWorkspace();
+    initDependencyTreeWorkspace();
+    initMotionStudio();
     initSpotlightCards();
     initCommandPalette();
     initMobileAdaptiveSplitter();
@@ -4299,6 +5278,8 @@
       window.navigateToPage("flashcards", false);
     } else if (rawPath === "analytics" || rawPath === "journey") {
       window.navigateToPage("analytics", false);
+    } else if (rawPath === "motion" || rawPath === "studio") {
+      window.navigateToPage("motion", false);
     } else if (rawPath === "galaxy" || rawPath === "graph") {
       window.navigateToPage("galaxy", false);
     } else {

@@ -10,7 +10,7 @@ window.OnboardingWizard = {
   totalSteps: 5,
   academicDb: null,
   profile: {
-    user: { name: 'Prakhar', isGuest: true },
+    user: { name: '', isGuest: true },
     identity: 'school',
     subDetails: {},
     subjects: [],
@@ -87,7 +87,7 @@ window.OnboardingWizard = {
     document.querySelectorAll('[data-open-onboarding]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        this.open(window.AuthEngine?.currentUser || { name: 'Prakhar', isGuest: true });
+        this.open(window.AuthEngine?.currentUser || { name: '', isGuest: true });
       });
     });
 
@@ -181,7 +181,7 @@ window.OnboardingWizard = {
     if (user && user.name && user.name !== 'Guest Learner') {
       this.profile.user = user;
     } else {
-      this.profile.user = { name: 'Prakhar', isGuest: true };
+      this.profile.user = { name: (user && user.name) || '', isGuest: true };
     }
 
     const nameInput = document.getElementById('onboardingUserNameInput');
@@ -819,27 +819,41 @@ window.OnboardingWizard = {
       }
     }
 
-    // Persist calibrated persona, class, board, and subjects to backend SQLite DB
+    // Persist and auto-set curriculum via backend API
     const authUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
-    if (authUser && authUser.user_id) {
-      fetch('/api/auth/sync-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: authUser.user_id,
-          name: authUser.name || this.profile.user?.name,
-          persona: this.profile.persona,
-          identity: this.profile.identity,
-          level: this.profile.level,
-          board: this.profile.subDetails?.curriculum || 'CBSE',
-          daily_rhythm: this.profile.dailyRhythm,
-          target_goal: this.profile.targetGoal,
-          subjects: this.profile.subjects,
-          sub_details: this.profile.subDetails,
-          learning_styles: this.profile.learningStyles
-        })
-      }).catch(err => console.warn('Background profile sync:', err));
-    }
+    const autoSetPayload = {
+      user_id: authUser?.user_id || 'CMP-STUDENT',
+      name: this.profile.user?.name || authUser?.name || '',
+      identity: this.profile.identity,
+      level: this.profile.level,
+      board: this.profile.subDetails?.curriculum || 'CBSE',
+      stream: this.profile.subDetails?.streamTitle || this.profile.subDetails?.programTitle || '',
+      subjects: this.profile.subjects || [],
+      persona: this.profile.persona,
+      target_goal: this.profile.targetGoal,
+      sub_details: this.profile.subDetails
+    };
+
+    fetch('/api/curriculum/auto-set', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(autoSetPayload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.ok) {
+          if (data.chapters && data.chapters.length > 0) {
+            localStorage.setItem('clearmind_syllabus_chapters', JSON.stringify(data.chapters));
+          }
+          if (data.concepts && data.concepts.length > 0) {
+            localStorage.setItem('clearmind_cognitive_concepts', JSON.stringify(data.concepts));
+          }
+          if (data.active_topic) {
+            localStorage.setItem('clearmind_active_topic', data.active_topic);
+          }
+        }
+      })
+      .catch(err => console.warn('Curriculum auto-set error:', err));
 
     const telemetry = JSON.parse(localStorage.getItem('clearmind_onboarding_analytics') || '[]');
     telemetry.push({

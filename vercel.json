@@ -5,7 +5,7 @@
       "destination": "/api/index.py?_route=$1"
     },
     {
-      "source": "/(app|classroom|cheatsheet|blitz|flashcards|analytics|galaxy|graph)",
+      "source": "/(app|classroom|cheatsheet|blitz|flashcards|analytics|motion|studio|galaxy|graph)",
       "destination": "/static/app.html"
     },
     {

@@ -379,6 +379,44 @@ class ChatTeachResponse(BaseModel):
     audio_base64: Optional[str] = None
     roadmap_steps: Optional[List[Dict[str, Any]]] = None
 
+# Dynamic Curriculum Auto-Set Models
+class CurriculumAutoSetRequest(BaseModel):
+    user_id: Optional[str] = "CMP-STUDENT"
+    name: Optional[str] = ""
+    identity: str = "school"
+    level: str = "Class 12"
+    board: str = "CBSE"
+    stream: Optional[str] = None
+    subjects: List[Any] = []
+    persona: str = "mentor"
+    target_goal: Optional[str] = ""
+    sub_details: Optional[Dict[str, Any]] = None
+
+class ConceptNode(BaseModel):
+    id: str
+    name: str
+    category: str
+    strength: float = 0.5
+    stability: int = 1
+    lastReview: int = 0
+    reviews: int = 0
+    color: str = "#a78bfa"
+    connections: List[str] = []
+
+class SyllabusChapter(BaseModel):
+    id: str
+    subject: str
+    name: str
+    topics: List[str] = []
+    status: str = "todo"
+
+class CurriculumAutoSetResponse(BaseModel):
+    ok: bool = True
+    active_topic: str
+    chapters: List[SyllabusChapter]
+    concepts: List[ConceptNode]
+    summary: str
+
 # Real Comprehensive Exam Cheat Sheet
 class FormulaCard(BaseModel):
     name: str
@@ -1118,6 +1156,275 @@ async def sync_profile(req: SyncProfileRequest, background_tasks: BackgroundTask
     
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
 
+def build_fallback_curriculum(identity: str, level: str, board: str, stream: Optional[str], subjects: List[str]) -> Dict[str, Any]:
+    """Generates clean curriculum syllabus and 2D prerequisite tree based on academic taxonomy."""
+    palette = ["#a78bfa", "#f0abfc", "#22d3ee", "#34d399", "#fbbf24", "#fb7185", "#60a5fa"]
+    lower_subs = [s.lower() for s in subjects]
+    
+    is_class_10 = "10" in level or "secondary" in level.lower()
+    is_college_cse = any(x in s for s in lower_subs for x in ["computer", "data structure", "algorithm", "operating system", "python", "software"])
+    is_pcb = any("bio" in s for s in lower_subs) or "pcb" in (stream or "").lower()
+    
+    chapters = []
+    concepts = []
+    
+    if is_class_10:
+        chapters = [
+            {"id": "ch-1", "subject": "Mathematics", "name": "Real Numbers & Polynomials", "topics": ["Fundamental Theorem of Arithmetic", "Zeroes of Polynomials", "Quadratic Equations"], "status": "todo"},
+            {"id": "ch-2", "subject": "Mathematics", "name": "Triangles & Trigonometry", "topics": ["Similarity Theorems", "Trigonometric Ratios", "Trigonometric Identities"], "status": "todo"},
+            {"id": "ch-3", "subject": "Science", "name": "Chemical Reactions & Equations", "topics": ["Types of Chemical Reactions", "Oxidation & Reduction", "Acids, Bases & Salts"], "status": "todo"},
+            {"id": "ch-4", "subject": "Science", "name": "Light & Electricity", "topics": ["Reflection & Refraction", "Lens Formula & Power", "Ohm's Law & Circuit Analysis"], "status": "todo"}
+        ]
+        raw_concepts = [
+            ("real_numbers", "Real Numbers & Primes", "Mathematics", []),
+            ("polynomials", "Polynomials & Roots", "Mathematics", ["real_numbers"]),
+            ("quadratics", "Quadratic Equations", "Mathematics", ["polynomials"]),
+            ("trig_ratios", "Trigonometric Ratios", "Mathematics", ["quadratics"]),
+            ("chemical_eqs", "Chemical Equations & Balancing", "Science", []),
+            ("acids_bases", "Acids, Bases & Salts", "Science", ["chemical_eqs"]),
+            ("light_optics", "Light Reflection & Refraction", "Science", []),
+            ("electricity_ohm", "Ohm's Law & Circuits", "Science", ["light_optics"])
+        ]
+    elif is_college_cse:
+        chapters = [
+            {"id": "ch-1", "subject": "Data Structures", "name": "Linear Data Structures & Complexity", "topics": ["Asymptotic Big-O Analysis", "Arrays & Memory Alignment", "Singly & Doubly Linked Lists"], "status": "todo"},
+            {"id": "ch-2", "subject": "Algorithms", "name": "Recursion, Trees & Graphs", "topics": ["Divide & Conquer", "Binary Search Trees & AVL", "Graph Traversals (BFS/DFS)"], "status": "todo"},
+            {"id": "ch-3", "subject": "Operating Systems", "name": "Process Management & Concurrency", "topics": ["Process Lifecycle & PCB", "CPU Scheduling Algorithms", "Mutexes, Semaphores & Deadlocks"], "status": "todo"},
+            {"id": "ch-4", "subject": "Databases & Networks", "name": "Relational Modeling & Protocols", "topics": ["ER Models & Normalization", "Indexing & Transactions", "TCP/IP & Sockets"], "status": "todo"}
+        ]
+        raw_concepts = [
+            ("memory_pointers", "Memory Pointers & References", "Data Structures", []),
+            ("arrays_lists", "Arrays & Linked Lists", "Data Structures", ["memory_pointers"]),
+            ("stacks_queues", "Stacks & Queues", "Data Structures", ["arrays_lists"]),
+            ("recursion_dsa", "Recursion & Call Stacks", "Algorithms", ["stacks_queues"]),
+            ("trees_bst", "Binary Search Trees & Balancing", "Algorithms", ["recursion_dsa"]),
+            ("graphs_algo", "Graph Algorithms (BFS/DFS)", "Algorithms", ["trees_bst"]),
+            ("processes_threads", "Processes & Multithreading", "Operating Systems", ["memory_pointers"]),
+            ("sync_deadlocks", "Semaphores & Deadlock Prevention", "Operating Systems", ["processes_threads"])
+        ]
+    elif is_pcb:
+        chapters = [
+            {"id": "ch-1", "subject": "Biology / NEET", "name": "Cell Biology & Biomolecules", "topics": ["Cell Structure & Organelles", "Cell Cycle & Mitosis", "Proteins, Enzymes & Lipids"], "status": "todo"},
+            {"id": "ch-2", "subject": "Biology / NEET", "name": "Genetics & Molecular Biology", "topics": ["Mendelian Inheritance", "DNA Replication & Transcription", "Genetic Code & Translation"], "status": "todo"},
+            {"id": "ch-3", "subject": "Physics", "name": "Mechanics & Fluid Statics", "topics": ["Kinematics & Vectors", "Newton's Laws & Friction", "Viscosity & Bernoulli's Principle"], "status": "todo"},
+            {"id": "ch-4", "subject": "Chemistry", "name": "Structure of Atom & Chemical Bonding", "topics": ["Quantum Numbers & Orbitals", "Hybridization & VSEPR Theory", "Thermodynamics & Equilibrium"], "status": "todo"}
+        ]
+        raw_concepts = [
+            ("cell_structure", "Cell Organelles & Membranes", "Biology", []),
+            ("cell_cycle", "Mitosis & Meiosis", "Biology", ["cell_structure"]),
+            ("dna_transcription", "DNA Replication & Transcription", "Biology", ["cell_cycle"]),
+            ("mendel_genetics", "Mendelian Inheritance", "Biology", ["dna_transcription"]),
+            ("atomic_orbitals", "Atomic Orbitals & Quantum Numbers", "Chemistry", []),
+            ("chemical_bonds", "Chemical Bonding & VSEPR", "Chemistry", ["atomic_orbitals"]),
+            ("vectors_physics", "Vectors & Motion in 1D", "Physics", []),
+            ("newton_mechanics", "Newton's Laws & Momentum", "Physics", ["vectors_physics"])
+        ]
+    else: # Standard PCM / General STEM
+        s0 = subjects[0] if subjects else "Physics"
+        s1 = subjects[1] if len(subjects) > 1 else "Mathematics"
+        s2 = subjects[2] if len(subjects) > 2 else "Chemistry"
+        chapters = [
+            {"id": "ch-1", "subject": s0, "name": "Kinematics & Newton's Laws", "topics": ["Vectors & Coordinate Systems", "Equations of Motion", "Free-Body Diagrams & Friction"], "status": "todo"},
+            {"id": "ch-2", "subject": s1, "name": "Calculus & Limits", "topics": ["Intuitive Limits & Continuity", "Derivatives & Chain Rule", "Maxima & Minima Optimization"], "status": "todo"},
+            {"id": "ch-3", "subject": s2, "name": "Chemical Bonding & Structure", "topics": ["Lewis Structures & Formal Charge", "Hybridization & Molecular Geometry", "Intermolecular Forces"], "status": "todo"},
+            {"id": "ch-4", "subject": s0, "name": "Energy, Momentum & Collisions", "topics": ["Work-Energy Theorem", "Conservation of Linear Momentum", "Elastic & Inelastic Collisions"], "status": "todo"}
+        ]
+        raw_concepts = [
+            ("algebra_coords", "Algebra & Coordinate Systems", s1, []),
+            ("trig_foundations", "Trigonometric Identities", s1, ["algebra_coords"]),
+            ("limits_continuity", "Limits & Continuity", s1, ["trig_foundations"]),
+            ("derivatives_diff", "Derivatives & Rate of Change", s1, ["limits_continuity"]),
+            ("integrals_calc", "Definite & Indefinite Integrals", s1, ["derivatives_diff"]),
+            ("vectors_scalars", "Vectors & Vector Addition", s0, ["algebra_coords"]),
+            ("kinematics_1d", "1D & 2D Kinematics", s0, ["vectors_scalars"]),
+            ("newton_forces", "Newton's Laws & Free-Body Forces", s0, ["kinematics_1d"]),
+            ("work_energy_thm", "Work-Energy Theorem & Power", s0, ["newton_forces"]),
+            ("atomic_orbitals_gen", "Electronic Configurations & Orbitals", s2, []),
+            ("covalent_bonding", "Covalent Bonding & Hybridization", s2, ["atomic_orbitals_gen"])
+        ]
+    
+    for idx, (cid, cname, ccat, cconns) in enumerate(raw_concepts):
+        concepts.append({
+            "id": cid,
+            "name": cname,
+            "category": ccat,
+            "strength": 0.5,
+            "stability": 1,
+            "lastReview": 0,
+            "reviews": 0,
+            "color": palette[idx % len(palette)],
+            "connections": cconns
+        })
+        
+    active_topic = chapters[0]["topics"][0] if chapters and chapters[0].get("topics") else (chapters[0]["name"] if chapters else "Foundations")
+    return {
+        "ok": True,
+        "active_topic": active_topic,
+        "chapters": chapters,
+        "concepts": concepts,
+        "summary": f"Curriculum calibrated for {level} ({board}) with {len(subjects)} subjects."
+    }
+
+@app.post("/api/curriculum/auto-set", response_model=CurriculumAutoSetResponse)
+@app.post("/curriculum/auto-set", response_model=CurriculumAutoSetResponse)
+async def auto_set_curriculum(req: CurriculumAutoSetRequest, background_tasks: BackgroundTasks):
+    """
+    Intelligently auto-sets syllabus chapters, starting topic, and 2D prerequisite tree
+    tailored to the student's exact academic tier, grade, board, and selected subjects.
+    """
+    clean_subjects: List[str] = []
+    for s in (req.subjects or []):
+        if isinstance(s, str) and s.strip():
+            clean_subjects.append(s.strip())
+        elif isinstance(s, dict) and s.get("name"):
+            clean_subjects.append(str(s["name"]).strip())
+            
+    if not clean_subjects:
+        if req.stream and "pcm" in req.stream.lower():
+            clean_subjects = ["Physics", "Chemistry", "Mathematics"]
+        elif req.stream and "pcb" in req.stream.lower():
+            clean_subjects = ["Physics", "Chemistry", "Biology"]
+        elif "10" in req.level:
+            clean_subjects = ["Mathematics", "Science"]
+        else:
+            clean_subjects = ["Core Concepts", "Foundational Principles"]
+
+    curriculum_data = None
+    
+    # Try fast Dual-Engine AI race (Gemini 3.6 Flash / GLM-4 failover)
+    sys_prompt = f"""You are the ClearMind Pro Curriculum Engine.
+Generate an accurate, high-yield academic syllabus roadmap and a 2D prerequisite dependency tree for this student.
+Student Level: {req.level}
+Board/University: {req.board}
+Identity: {req.identity}
+Stream/Specialization: {req.stream or 'Standard'}
+Tracked Subjects: {', '.join(clean_subjects)}
+Target Milestone: {req.target_goal or 'Exams'}
+
+Return strictly a valid JSON object matching this schema:
+{{
+  "active_topic": "Specific starting topic name (e.g. 'Vectors & 1D Kinematics' or 'Limits & Continuity')",
+  "chapters": [
+    {{
+      "id": "ch-1",
+      "subject": "Subject Name",
+      "name": "Chapter Title",
+      "topics": ["Subtopic 1", "Subtopic 2", "Subtopic 3"],
+      "status": "todo"
+    }}
+  ],
+  "concepts": [
+    {{
+      "id": "slug_id",
+      "name": "Topic Name",
+      "category": "Subject Name",
+      "strength": 0.5,
+      "stability": 1,
+      "lastReview": 0,
+      "reviews": 0,
+      "color": "#a78bfa",
+      "connections": ["prerequisite_slug_id"]
+    }}
+  ],
+  "summary": "1-sentence summary of calibrated curriculum"
+}}
+CRITICAL RULES:
+1. 'concepts' MUST contain 8 to 14 foundational topics across the student's tracked subjects.
+2. 'connections' must represent genuine PREREQUISITES (e.g. 'derivatives' requires 'limits').
+3. Keep colors from ['#a78bfa', '#f0abfc', '#22d3ee', '#34d399', '#fbbf24', '#fb7185', '#60a5fa'].
+4. Strictly return JSON only."""
+
+    try:
+        user_prompt = f"Calibrate complete syllabus and prerequisite graph for {req.level} {req.board} ({', '.join(clean_subjects)})."
+        ai_resp = await asyncio.wait_for(execute_dual_ai_completion(sys_prompt, user_prompt, max_tokens=1800), timeout=5.5)
+        if ai_resp:
+            parsed = safe_parse_json(ai_resp)
+            if parsed and isinstance(parsed, dict) and parsed.get("chapters") and parsed.get("concepts"):
+                curriculum_data = {
+                    "ok": True,
+                    "active_topic": str(parsed.get("active_topic") or clean_subjects[0]),
+                    "chapters": parsed.get("chapters") or [],
+                    "concepts": parsed.get("concepts") or [],
+                    "summary": str(parsed.get("summary") or f"Calibrated for {req.level}")
+                }
+    except Exception as e:
+        logger.info(f"AI curriculum auto-set fallback triggered: {e}")
+
+    if not curriculum_data:
+        curriculum_data = build_fallback_curriculum(req.identity, req.level, req.board, req.stream, clean_subjects)
+
+    # Persist updated profile in SQLite & Turso Cloud
+    if req.user_id:
+        try:
+            now = datetime.utcnow().isoformat()
+            db_path = get_db_path()
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            if req.name and req.name.strip():
+                cursor.execute("UPDATE users SET name = ? WHERE user_id = ?", (req.name.strip(), req.user_id))
+            
+            subjects_json = json.dumps(clean_subjects)
+            sub_details_json = json.dumps(req.sub_details or {})
+            cursor.execute("""
+                INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    persona = excluded.persona,
+                    identity = excluded.identity,
+                    level = excluded.level,
+                    board = excluded.board,
+                    daily_rhythm = excluded.daily_rhythm,
+                    target_goal = excluded.target_goal,
+                    subjects = excluded.subjects,
+                    sub_details = excluded.sub_details,
+                    updated_at = excluded.updated_at
+            """, (
+                req.user_id,
+                req.persona or "mentor",
+                req.identity or "school",
+                req.level or "Class 12",
+                req.board or "CBSE",
+                "45 mins / day",
+                req.target_goal or "Exams",
+                subjects_json,
+                sub_details_json,
+                now
+            ))
+            conn.commit()
+            conn.close()
+            
+            turso_stmts = [{
+                "sql": """INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, updated_at)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          ON CONFLICT(user_id) DO UPDATE SET
+                              persona = excluded.persona,
+                              identity = excluded.identity,
+                              level = excluded.level,
+                              board = excluded.board,
+                              daily_rhythm = excluded.daily_rhythm,
+                              target_goal = excluded.target_goal,
+                              subjects = excluded.subjects,
+                              sub_details = excluded.sub_details,
+                              updated_at = excluded.updated_at""",
+                "args": [
+                    req.user_id,
+                    req.persona or "mentor",
+                    req.identity or "school",
+                    req.level or "Class 12",
+                    req.board or "CBSE",
+                    "45 mins / day",
+                    req.target_goal or "Exams",
+                    subjects_json,
+                    sub_details_json,
+                    now
+                ]
+            }]
+            turso_sync_records(turso_stmts)
+        except Exception as err:
+            logger.warning(f"Error persisting auto-set profile: {err}")
+
+    return CurriculumAutoSetResponse(**curriculum_data)
+
 @app.post("/api/admin/login")
 @app.post("/admin/login")
 async def admin_login(req: AdminLoginRequest):
@@ -1826,6 +2133,8 @@ async def get_landing_page():
 @app.get("/blitz")
 @app.get("/flashcards")
 @app.get("/analytics")
+@app.get("/motion")
+@app.get("/studio")
 @app.get("/galaxy")
 @app.get("/graph")
 async def get_classroom_page():
