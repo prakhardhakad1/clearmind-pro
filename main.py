@@ -571,9 +571,16 @@ def turso_sync_records(statements: List[Dict[str, Any]]) -> Optional[Dict[str, A
         })
         with urllib.request.urlopen(req, timeout=4) as resp:
             return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as he:
+        try:
+            err_msg = he.read().decode("utf-8")
+        except Exception:
+            err_msg = str(he)
+        logger.warning(f"Turso HTTPError {he.code}: {err_msg}")
+        return {"error": f"HTTP {he.code}: {err_msg}"}
     except Exception as e:
         logger.warning(f"Turso sync notice: {e}")
-        return None
+        return {"error": str(e)}
 
 def fetch_user_from_turso(login_id: str) -> Optional[Dict[str, Any]]:
     """Fetches user and persona from Turso Cloud on cold-start and caches into local SQLite."""
@@ -770,6 +777,21 @@ async def get_status():
         "engine": "Dual-Engine (Gemini 3.5 Flash + GLM-4 Flash Fast Race)",
         "voice": "Microsoft Edge Neural Voice"
     }
+
+@app.get("/api/test-turso")
+async def test_turso_endpoint():
+    try:
+        url_preview = TURSO_DB_URL[:25] + "..." if TURSO_DB_URL else "None"
+        token_len = len(TURSO_AUTH_TOKEN) if TURSO_AUTH_TOKEN else 0
+        sync_res = turso_sync_records([{"sql": "SELECT 1"}])
+        return {
+            "status": "ok",
+            "url_preview": url_preview,
+            "token_len": token_len,
+            "sync_res": sync_res
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/auth/register")
 @app.post("/auth/register")
