@@ -637,52 +637,6 @@ def init_db():
     except Exception as err:
         logger.warning(f"Local SQLite init notice: {err}")
 
-    # 2. Initialize Turso Cloud DB (Permanent Edge Storage in Mumbai)
-    if TURSO_PIPELINE_URL and TURSO_AUTH_TOKEN:
-        try:
-            db_execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT UNIQUE NOT NULL,
-                    name TEXT NOT NULL,
-                    email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    role TEXT DEFAULT 'student',
-                    created_at TEXT NOT NULL
-                );
-            """)
-            db_execute("""
-                CREATE TABLE IF NOT EXISTS user_profiles (
-                    user_id TEXT PRIMARY KEY,
-                    persona TEXT DEFAULT 'mentor',
-                    identity TEXT DEFAULT 'school',
-                    level TEXT DEFAULT 'Class 12',
-                    board TEXT DEFAULT 'CBSE',
-                    daily_rhythm TEXT DEFAULT '45 mins / day',
-                    target_goal TEXT DEFAULT 'Board & Entrance Exams',
-                    subjects TEXT DEFAULT '[]',
-                    sub_details TEXT DEFAULT '{}',
-                    learning_styles TEXT DEFAULT '[]',
-                    updated_at TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                );
-            """)
-            existing_admin = db_fetchone("SELECT user_id FROM users WHERE user_id = 'CMP-ADMIN' OR email = 'admin@clearmind.ai'")
-            if not existing_admin:
-                db_execute("""
-                    INSERT INTO users (user_id, name, email, password_hash, role, created_at)
-                    VALUES ('CMP-ADMIN', 'ClearMind Admin', 'admin@clearmind.ai', ?, 'admin', ?)
-                """, [admin_pwd_hash, now])
-                db_execute("""
-                    INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
-                    VALUES ('CMP-ADMIN', 'polymath', 'college', 'College / B.Tech CSE', 'Autonomous', '60m', 'System Architecture & Research', ?, ?)
-                """, [json.dumps(["AI & Machine Learning", "Operating Systems", "Advanced Mathematics"]), now])
-            else:
-                db_execute("UPDATE users SET password_hash = ? WHERE user_id = 'CMP-ADMIN' OR email = 'admin@clearmind.ai'", [admin_pwd_hash])
-            logger.info("Turso Cloud Database (Mumbai) initialized and synced successfully")
-        except Exception as e:
-            logger.error(f"Turso Cloud Database initialization failed: {e}")
-
 init_db()
 
 def hash_password(password: str) -> str:
