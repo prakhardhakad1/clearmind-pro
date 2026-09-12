@@ -10,7 +10,7 @@ window.OnboardingWizard = {
   totalSteps: 5,
   academicDb: null,
   profile: {
-    user: { name: '', isGuest: true },
+    user: { name: '', isGuest: false },
     identity: 'school',
     subDetails: {},
     subjects: [],
@@ -87,7 +87,12 @@ window.OnboardingWizard = {
     document.querySelectorAll('[data-open-onboarding]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        this.open(window.AuthEngine?.currentUser || { name: '', isGuest: true });
+        const user = window.AuthEngine?.currentUser;
+        if (!user || user.isGuest) {
+          window.AuthEngine?.openAuthModal('signup');
+          return;
+        }
+        this.open(user);
       });
     });
 
@@ -178,10 +183,10 @@ window.OnboardingWizard = {
   },
 
   open(user) {
-    if (user && user.name && user.name !== 'Guest Learner') {
+    if (user && user.name && user.name !== 'Guest Learner' && !user.isGuest) {
       this.profile.user = user;
     } else {
-      this.profile.user = { name: (user && user.name) || '', isGuest: true };
+      this.profile.user = { name: (user && user.name) || '', isGuest: false };
     }
 
     const nameInput = document.getElementById('onboardingUserNameInput');
@@ -653,7 +658,7 @@ window.OnboardingWizard = {
     const card = document.getElementById('calibrationSummaryCard');
     if (!card) return;
 
-    const studentName = this.profile.user?.name || 'Prakhar';
+    const studentName = this.profile.user?.name || 'Learner';
     const identity = this.profile.identity;
     let headerDetail = '';
 
@@ -772,7 +777,7 @@ window.OnboardingWizard = {
 
   launchApp() {
     this.profile.calibratedAt = new Date().toISOString();
-    this.profile.name = this.profile.user?.name || 'Prakhar';
+    this.profile.name = this.profile.user?.name || 'Learner';
     
     const personaAvatars = {
       mentor: '🎓',
@@ -933,10 +938,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.location.search.includes('onboard') || window.location.search.includes('recalibrate')) {
     setTimeout(() => {
       const savedUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
-      if (window.AuthEngine && !savedUser) {
-        window.AuthEngine.openAuthModal('signup');
+      if (!savedUser || savedUser.isGuest) {
+        if (window.AuthEngine) window.AuthEngine.openAuthModal('signup');
       } else {
-        window.OnboardingWizard.open(savedUser || { name: 'Learner', isGuest: true });
+        window.OnboardingWizard.open(savedUser);
       }
     }, 250);
   }

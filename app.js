@@ -95,7 +95,7 @@
     const currentPersona = localStorage.getItem("clearmind_calibrated_persona") || calibratedData.persona || "strict";
 
     // Set name & topic
-    if (nInp) nInp.value = studentProfile.name || calibratedData.user?.name || "Prakhar";
+    if (nInp) nInp.value = studentProfile.name || calibratedData.user?.name || "";
     if (tInp) tInp.value = activeTopic || calibratedData.activeTopic || "";
 
     // Set curriculum info
@@ -4577,7 +4577,7 @@
       const enteredName = nInp?.value.trim() || "";
       const chosenTopic = tInp?.value.trim() || "";
 
-      const finalName = (enteredName && enteredName.toLowerCase() !== "student") ? enteredName : (studentProfile.name || "Prakhar");
+      const finalName = (enteredName && enteredName.toLowerCase() !== "student") ? enteredName : (studentProfile.name || "Student");
 
       studentProfile.name = finalName;
       
@@ -5253,8 +5253,15 @@
       }
     }
 
-    // Mandatory Setup Check: If user has never completed setup or requested via URL
+    // Mandatory Auth Check: Guest access is temporarily disabled — require active Google or Email session
     const urlParams = new URLSearchParams(window.location.search);
+    const authUser = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
+    if ((!authUser || authUser.isGuest) && !urlParams.has("preview")) {
+      window.location.replace("/?login=1");
+      return;
+    }
+
+    // Mandatory Setup Check: If user has never completed setup or requested via URL
     const hasCompletedSetup = localStorage.getItem("clearmind_setup_completed");
 
     if (!hasCompletedSetup && !urlParams.has("preview")) {

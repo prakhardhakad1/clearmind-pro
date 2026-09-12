@@ -358,11 +358,11 @@ class AnalogyCard(BaseModel):
     description: str = Field(description="Clear explanation of the concept using everyday physical metaphor")
 
 class ChatTeachRequest(BaseModel):
-    topic: str = "Introduction to Python"
+    topic: str = ""
     message: str
     conversation_history: List[Dict[str, str]] = []
     language: str = "hinglish"
-    student_name: str = "Prakhar"
+    student_name: str = "Student"
     level: str = "College / University"
     mode: str = "direct" # "direct" or "socratic"
     persona: Optional[str] = "mentor"

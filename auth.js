@@ -15,13 +15,28 @@ window.AuthEngine = {
     this.checkSession();
     this.bindEvents();
     this.initGoogleGSI();
+
+    // Auto-open modal if URL specifies login, signin, or signup
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('login') || params.has('signin') || params.has('auth')) {
+      setTimeout(() => this.openAuthModal('signin'), 150);
+    } else if (params.has('signup')) {
+      setTimeout(() => this.openAuthModal('signup'), 150);
+    }
   },
 
   checkSession() {
     const saved = localStorage.getItem('clearmind_auth_user');
     if (saved) {
       try {
-        this.currentUser = JSON.parse(saved);
+        const user = JSON.parse(saved);
+        // Guest mode is temporarily disabled - purge legacy guest session
+        if (user && user.isGuest) {
+          localStorage.removeItem('clearmind_auth_user');
+          this.currentUser = null;
+        } else {
+          this.currentUser = user;
+        }
         this.updateNavUser();
       } catch (e) {
         this.currentUser = null;
@@ -251,89 +266,15 @@ window.AuthEngine = {
   },
 
   continueAsGuest() {
-    const hasSetup = localStorage.getItem('clearmind_setup_completed') === 'true';
-    const savedUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
-    if (hasSetup && savedUser) {
-      this.closeAuthModal();
-      window.location.href = '/classroom';
-      return;
-    }
-
-    // Generate an ephemeral Guest ID
-    const guestId = 'GUEST-' + Math.floor(1000 + Math.random() * 9000);
-    this.currentUser = {
-      user_id: guestId,
-      name: 'Guest Learner',
-      email: '',
-      isGuest: true,
-      role: 'guest',
-      createdAt: new Date().toISOString()
-    };
-    localStorage.setItem('clearmind_auth_user', JSON.stringify(this.currentUser));
-    
-    // Wipe old session topics & conversation
-    localStorage.removeItem('clearmind_conv_history');
-    localStorage.removeItem('clearmind_active_topic');
-    localStorage.removeItem('clearmind_canvas_nodes');
-
-    this.closeAuthModal();
-    this.updateNavUser();
-    
-    if (window.OnboardingWizard) {
-      window.OnboardingWizard.open(this.currentUser);
-    } else {
-      window.location.href = '/?onboard=1';
-    }
+    // Guest access is temporarily disabled
+    this.showError('Guest access is currently paused. Please sign in with Google or Email.');
+    this.openAuthModal('signup');
   },
 
-  async simulateGoogleAuth() {
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'Prakhar',
-          email: 'prakhardhakad1@gmail.com',
-          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        this.currentUser = {
-          user_id: data.user.user_id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          isGuest: false,
-          provider: 'google'
-        };
-        localStorage.setItem('clearmind_auth_user', JSON.stringify(this.currentUser));
-        this.updateNavUser();
-        this.closeAuthModal();
-
-        // Ephemeral Session Wipe
-        localStorage.removeItem('clearmind_conv_history');
-        localStorage.removeItem('clearmind_active_topic');
-        localStorage.removeItem('clearmind_canvas_nodes');
-
-        if (data.isNew) {
-          if (window.OnboardingWizard) {
-            window.OnboardingWizard.open(this.currentUser);
-          }
-        } else {
-          if (data.profile) {
-            localStorage.setItem('clearmind_profile', JSON.stringify(data.profile));
-            if (data.profile.persona) {
-              localStorage.setItem('clearmind_calibrated_persona', data.profile.persona);
-            }
-            localStorage.setItem('clearmind_setup_completed', 'true');
-          }
-          window.location.href = '/classroom';
-        }
-      }
-    } catch (e) {
-      console.warn('Simulated Google auth fallback:', e);
-    }
+  simulateGoogleAuth() {
+    // Clean fallback: no hardcoded dummy data
+    this.showError('Google Sign-In is initializing or unavailable. Please sign in with your email below.');
+    this.switchTab('signin');
   },
 
   async handleFormSubmit() {
