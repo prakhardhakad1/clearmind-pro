@@ -5,6 +5,10 @@
       "destination": "/api/index.py?_route=$1"
     },
     {
+      "source": "/(app|classroom|cheatsheet|blitz|flashcards|analytics|galaxy|graph)",
+      "destination": "/app.html"
+    },
+    {
       "source": "/((?!api/|.*\\..*).*)",
       "destination": "/index.html"
     }

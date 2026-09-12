@@ -561,6 +561,21 @@
       const pct = Math.min(100, Math.max(3, Math.round((totalXP / 4000) * 100)));
       jBar.style.width = `${pct}%`;
     }
+
+    // Update Persona Badge in Chat Stream Header
+    const pBadge = document.getElementById("chatPersonaBadge");
+    if (pBadge) {
+      const persona = localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor";
+      const personaLabels = {
+        strict: "⚡ Strict Examiner",
+        socratic: "💡 Socratic Guide",
+        polymath: "🔬 First-Principles",
+        hacker: "🚀 Exam Hacker",
+        feynman: "🧠 Feynman ELI5",
+        mentor: "🎓 Mentor"
+      };
+      pBadge.textContent = personaLabels[persona] || "🎓 Mentor";
+    }
   }
 
   // =========================================================================
@@ -1274,6 +1289,7 @@
           student_name: studentProfile.name || "Student",
           level: studentProfile.level || "College / University",
           mode: teachingMode,
+          persona: localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor",
           image_base64: imageBase64 || null
         })
       });
@@ -2999,41 +3015,57 @@
   }
 
   function getLocalizedGreeting(name) {
+    const persona = localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor";
+    const subjects = (studentProfile.subjects && studentProfile.subjects.length > 0)
+      ? studentProfile.subjects.map(s => s.name || s)
+      : [];
+
+    let customChips = [];
+    if (subjects.length > 0) {
+      subjects.slice(0, 3).forEach(s => customChips.push(`📚 Teach me ${s}`));
+    } else {
+      customChips.push(`⚛️ Physics: Newton's Laws of Motion`);
+      customChips.push(`📐 Math: Calculus & Derivatives`);
+      customChips.push(`🌿 Biology: Photosynthesis in Plants`);
+    }
+    customChips.push(`⚡ Quick Blitz Arena Test`);
+    customChips.push(`📋 1-Page Exam Cheat Sheet`);
+
+    const topicLabel = activeTopic || (subjects.length > 0 ? subjects[0] : (studentProfile.level || "your syllabus"));
+
     if (activeLanguage === "hinglish") {
+      const personaIntros = {
+        strict: `Understood, **${name}**! ⚡ Main hoon **Luna**, aapki **Strict Examiner**.\n\nAapka track **${topicLabel}** lock ho chuka hai. Zero fluff, pure exam rigor.\n\nKoi bhi tough problem, derivation ya exam trap pucho!`,
+        socratic: `Namaste **${name}**! 💡 Main hoon **Luna**, aapki **Socratic Guide**.\n\n**${topicLabel}** seekhne ke liye ready? Main direct answer nahi dungi—thought-provoking questions se aapko khud solution deduce karwaungi!`,
+        polymath: `Welcome **${name}**! 🔬 Main hoon **Luna**, **First-Principles Polymath** mode mein.\n\n**${topicLabel}** ke governing laws aur mathematical proofs ko fundamental science se derive karenge!`,
+        hacker: `Let's crack this, **${name}**! 🚀 Main hoon **Luna**, aapki **Blitz Exam Hacker**.\n\n**${topicLabel}** ke high-yield shortcuts, mnemonics aur scoring patterns ko master karte hain!`,
+        feynman: `Hey **${name}**! 🧠 Main hoon **Luna**, aapki **Feynman ELI5 Explainer**.\n\nNo heavy textbook jargon! **${topicLabel}** ka koi bhi complex concept bolo, main everyday simple metaphors se samjhaungi!`,
+        mentor: `Hey **${name}**! 🌸 Main hoon **Luna**, aapki AI personal tutor.\n\n**${topicLabel}** ka koi bhi topic, formula ya problem pucho—main step-by-step real-world analogies ke saath explain karungi!`
+      };
       return {
-        reply_text: `Hey **${name}**! 🌸 Main hoon **Luna**, aapki AI personal tutor.\n\n**Aaj aap kya seekhna chahte ho?**\n\nKoi bhi topic, formula ya problem pucho (ya 📷 button se textbook photo upload karo) — main step-by-step real-world analogies ke saath explain karungi!`,
-        speech_text: `Hey ${name}! Main hoon Luna, aapki personal tutor. Aaj aap kya seekhna chahte ho?`,
-        chips: [
-          `⚛️ Physics: Newton's Laws of Motion`,
-          `📐 Math: Calculus & Derivatives`,
-          `🌿 Biology: Photosynthesis in Plants`,
-          `💻 Programming: Python Functions`,
-          `⚡ Quick Blitz Arena Test`
-        ]
+        reply_text: personaIntros[persona] || personaIntros.mentor,
+        speech_text: `Hey ${name}! Main hoon Luna. Aaj ${topicLabel} mein kya seekhna chahte ho?`,
+        chips: customChips
       };
     } else if (activeLanguage === "hi") {
       return {
-        reply_text: `नमस्ते **${name}**! 🌸 मैं हूँ **लूना**, आपकी व्यक्तिगत AI शिक्षक।\n\n**आज आप क्या सीखना चाहते हैं?**\n\nकोई भी विषय, सूत्र या समस्या पूछें (या 📷 बटन से फोटो अपलोड करें) — मैं दैनिक जीवन के उदाहरणों के साथ समझाऊँगी!`,
-        speech_text: `नमस्ते ${name}! मैं हूँ लूना। आज आप क्या सीखना चाहते हैं?`,
-        chips: [
-          `⚛️ भौतिक विज्ञान: न्यूटन के नियम`,
-          `📐 गणित: अवकलन और कैलकुलस`,
-          `🌿 जीव विज्ञान: प्रकाश संश्लेषण`,
-          `💻 प्रोग्रामिंग: पायथन फंक्शन्स`,
-          `⚡ ब्लिट्ज़ क्विज़ टेस्ट`
-        ]
+        reply_text: `नमस्ते **${name}**! 🌸 मैं हूँ **लूना**, आपकी AI शिक्षक।\n\n**${topicLabel}** में आज आप क्या सीखना चाहते हैं?`,
+        speech_text: `नमस्ते ${name}! मैं हूँ लूना। आज क्या सीखना चाहते हैं?`,
+        chips: customChips
       };
     } else {
+      const personaIntrosEn = {
+        strict: `Welcome, **${name}**! ⚡ I am **Luna**, configured as your **Strict Examiner**.\n\nYour target track is set: **${topicLabel}**.\n\nAsk your toughest questions, upload past-paper problems, or tap a milestone below to test your mastery under strict exam standards.`,
+        socratic: `Greetings, **${name}**! 💡 I am **Luna**, your **Socratic Guide**.\n\nReady to master **${topicLabel}**? I won't just hand you answers; I'll ask probing questions that empower you to deduce core truths yourself.`,
+        polymath: `Welcome, **${name}**! 🔬 I am **Luna**, in **First-Principles Polymath** mode.\n\nWe will derive fundamental governing laws and math proofs for **${topicLabel}** from basic axioms. Where shall we begin?`,
+        hacker: `Ready to accelerate, **${name}**? 🚀 I am **Luna**, your **Blitz Exam Hacker**.\n\nHigh-yield patterns, speed formulas, and score shortcuts for **${topicLabel}**. Pick a topic or jump into a Blitz Battle!`,
+        feynman: `Hey there, **${name}**! 🧠 I am **Luna**, your **Feynman ELI5 Explainer**.\n\nZero academic jargon. Tell me any intimidating concept in **${topicLabel}**, and I'll break it down with simple, vivid metaphors!`,
+        mentor: `Hello **${name}**! 🌸 I am **Luna**, your personal AI tutor.\n\n**${topicLabel}** is loaded into your classroom workspace. What would you like to explore first?`
+      };
       return {
-        reply_text: `Hello **${name}**! 🌸 I am **Luna**, your personal AI tutor.\n\n**What would you like to learn today?**\n\nYou can ask about any subject, formula, or concept (or upload textbook photos with the 📷 button), or tap one of the popular topics below to begin!`,
-        speech_text: `Hello ${name}! I am Luna, your personal AI tutor. What would you like to learn today?`,
-        chips: [
-          `⚛️ Physics: Newton's Laws of Motion`,
-          `📐 Math: Differentiation & Calculus`,
-          `🌿 Biology: Photosynthesis & Plants`,
-          `💻 Computer Science & Programming`,
-          `⚡ Test me with Blitz Battle`
-        ]
+        reply_text: personaIntrosEn[persona] || personaIntrosEn.mentor,
+        speech_text: `Hello ${name}! I am Luna. What would you like to master in ${topicLabel} today?`,
+        chips: customChips
       };
     }
   }

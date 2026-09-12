@@ -361,6 +361,7 @@ class ChatTeachRequest(BaseModel):
     student_name: str = "Prakhar"
     level: str = "College / University"
     mode: str = "direct" # "direct" or "socratic"
+    persona: Optional[str] = "mentor"
     image_base64: Optional[str] = None
 
 class ChatTeachResponse(BaseModel):
@@ -488,12 +489,24 @@ async def chat_teach(req: ChatTeachRequest, request: Request):
         "TEACHING STYLE: Direct Master Educator. Provide deep, crystal-clear conceptual explanations, step-by-step math derivations, and real physical analogies."
     )
 
+    persona_directives = {
+        "strict": "ACTIVE PERSONA: Strict Examiner (⚡). Be razor-sharp, analytical, and rigorous. Do not spoon-feed. Challenge weak logic, identify subtle exam traps, and demand precise scientific/mathematical answers for top marks.",
+        "socratic": "ACTIVE PERSONA: Socratic Guide (💡). Do not provide flat answers directly. Ask probing, progressive questions that empower the student to deduce the solution themselves.",
+        "polymath": "ACTIVE PERSONA: First-Principles Polymath (🔬). Derive governing formulas and concepts from foundational axioms, laws of nature, and mathematical proofs using LaTeX/KaTeX.",
+        "hacker": "ACTIVE PERSONA: Blitz Exam Hacker (🚀). Focus on high-yield shortcuts, mental tricks, mnemonics, pattern recognition, and speed problem solving for competitive exams.",
+        "feynman": "ACTIVE PERSONA: Feynman ELI5 Explainer (🧠). Strip away all textbook jargon. Explain complex principles using intuitive, vivid analogies that anyone can immediately visualize.",
+        "mentor": "ACTIVE PERSONA: Encouraging Mentor (🎓). Be patient, warm, inspiring, and supportive. Build student confidence through step-by-step guidance and relatable analogies."
+    }
+    persona_text = persona_directives.get(req.persona or "mentor", persona_directives["mentor"])
+
     sys_prompt = f"""You are Luna, an elite world-class AI Master Teacher for ClearMind Pro.
 You teach students with warmth, high enthusiasm, deep pedagogical clarity, and vivid everyday real-world analogies.
 
 {lang_directive}
 
 {teaching_style}
+
+{persona_text}
 
 Student Name: {req.student_name}
 Target Academic Level: {req.level}
@@ -1024,13 +1037,23 @@ async def generate_tts(req: TTSRequest):
         raise HTTPException(status_code=500, detail="Voice synthesis failed")
 
 # ---------------------------------------------------------------------------
-# Static Web App Mounts
+# Static Web App Mounts & Dynamic Routing
 # ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# Root Landing Page
 @app.get("/")
 @app.get("/index.html")
+async def get_landing_page():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
+
+# ClearMind Pro Classroom Cockpit & Workspaces
+@app.get("/app")
 @app.get("/classroom")
 @app.get("/cheatsheet")
 @app.get("/blitz")
@@ -1038,13 +1061,33 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 @app.get("/analytics")
 @app.get("/galaxy")
 @app.get("/graph")
-async def get_index_page():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"), headers={
+async def get_classroom_page():
+    return FileResponse(os.path.join(STATIC_DIR, "app.html"), headers={
         "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
         "Pragma": "no-cache",
-        "Expires": "0",
-        "Clear-Site-Data": '"cache", "storage"'
+        "Expires": "0"
     })
+
+# Scripts & Styles
+@app.get("/landing.css")
+async def get_landing_css():
+    return FileResponse(os.path.join(STATIC_DIR, "landing.css"), media_type="text/css")
+
+@app.get("/landing.js")
+async def get_landing_js():
+    return FileResponse(os.path.join(STATIC_DIR, "landing.js"), media_type="application/javascript")
+
+@app.get("/onboarding.js")
+async def get_onboarding_js():
+    return FileResponse(os.path.join(STATIC_DIR, "onboarding.js"), media_type="application/javascript")
+
+@app.get("/auth.js")
+async def get_auth_js():
+    return FileResponse(os.path.join(STATIC_DIR, "auth.js"), media_type="application/javascript")
+
+@app.get("/academic_db.json")
+async def get_academic_db():
+    return FileResponse(os.path.join(STATIC_DIR, "academic_db.json"), media_type="application/json")
 
 @app.get("/app.js")
 async def get_app_js():

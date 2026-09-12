@@ -1,0 +1,264 @@
+{
+  "school": {
+    "grades": [
+      {
+        "id": "class_6",
+        "label": "Class 6 (Middle School)"
+      },
+      {
+        "id": "class_7",
+        "label": "Class 7 (Middle School)"
+      },
+      {
+        "id": "class_8",
+        "label": "Class 8 (Middle School)"
+      },
+      {
+        "id": "class_9",
+        "label": "Class 9 (High School - Secondary)"
+      },
+      {
+        "id": "class_10",
+        "label": "Class 10 (Board Exam Year)"
+      },
+      {
+        "id": "class_11",
+        "label": "Class 11 (Senior Secondary)"
+      },
+      {
+        "id": "class_12",
+        "label": "Class 12 (Board & Entrance Exams)"
+      }
+    ],
+    "streams": {
+      "science_pcm": {
+        "label": "Science (PCM - Physics, Chem, Math)",
+        "subjects": [
+          "Physics",
+          "Chemistry",
+          "Mathematics",
+          "Computer Science",
+          "English"
+        ]
+      },
+      "science_pcb": {
+        "label": "Science (PCB - Physics, Chem, Biology / NEET)",
+        "subjects": [
+          "Physics",
+          "Chemistry",
+          "Biology / NEET",
+          "English",
+          "Psychology"
+        ]
+      },
+      "commerce": {
+        "label": "Commerce",
+        "subjects": [
+          "Accountancy",
+          "Business Studies",
+          "Economics",
+          "Applied Mathematics",
+          "English"
+        ]
+      },
+      "humanities": {
+        "label": "Arts / Humanities",
+        "subjects": [
+          "Political Science",
+          "History",
+          "Geography",
+          "Economics",
+          "Psychology",
+          "Sociology"
+        ]
+      }
+    },
+    "general_subjects": [
+      "Science & Nature",
+      "Mathematics & Algebra",
+      "Social Studies",
+      "English Grammar & Literature",
+      "Computer Basics"
+    ]
+  },
+  "college": {
+    "programs": [
+      {
+        "id": "btech_cse",
+        "label": "B.Tech / B.E. - Computer Science & Engineering (CSE)",
+        "subjects": [
+          "Data Structures & Algorithms",
+          "Operating Systems",
+          "Database Management (DBMS)",
+          "Computer Networks",
+          "Theory of Computation",
+          "Artificial Intelligence & ML"
+        ]
+      },
+      {
+        "id": "btech_mech",
+        "label": "B.Tech / B.E. - Mechanical Engineering",
+        "subjects": [
+          "Engineering Thermodynamics",
+          "Fluid Mechanics",
+          "Strength of Materials (SOM)",
+          "Theory of Machines",
+          "Heat & Mass Transfer",
+          "Manufacturing Processes"
+        ]
+      },
+      {
+        "id": "btech_ece",
+        "label": "B.Tech / B.E. - Electronics & Communication (ECE / EEE)",
+        "subjects": [
+          "Signals & Systems",
+          "Digital Circuit Design",
+          "Microprocessors & Microcontrollers",
+          "Analog Electronics",
+          "Control Systems",
+          "Electromagnetic Theory"
+        ]
+      },
+      {
+        "id": "btech_civil",
+        "label": "B.Tech / B.E. - Civil Engineering",
+        "subjects": [
+          "Structural Analysis",
+          "Geotechnical & Soil Mechanics",
+          "Fluid Mechanics & Hydraulics",
+          "Reinforced Concrete Design",
+          "Surveying"
+        ]
+      },
+      {
+        "id": "bca_bsc_cs",
+        "label": "BCA / B.Sc Computer Science / IT",
+        "subjects": [
+          "Python Programming",
+          "Object-Oriented Programming (Java/C++)",
+          "Web Development (HTML/CSS/JS)",
+          "Database Systems",
+          "Software Engineering"
+        ]
+      },
+      {
+        "id": "medical_mbbs",
+        "label": "MBBS / Medical Sciences",
+        "subjects": [
+          "Human Gross Anatomy",
+          "Medical Physiology",
+          "Biochemistry",
+          "General Pathology",
+          "Pharmacology & Therapeutics",
+          "Microbiology"
+        ]
+      },
+      {
+        "id": "commerce_bcom_bba",
+        "label": "B.Com / BBA / Finance",
+        "subjects": [
+          "Financial Accounting",
+          "Corporate Finance",
+          "Marketing & Consumer Behavior",
+          "Business Law & Taxation",
+          "Managerial Economics"
+        ]
+      },
+      {
+        "id": "pure_sciences",
+        "label": "B.Sc / M.Sc Pure Sciences (Physics / Chemistry / Math)",
+        "subjects": [
+          "Classical & Quantum Mechanics",
+          "Electrodynamics",
+          "Organic Chemistry Mechanisms",
+          "Calculus & Real Analysis",
+          "Linear Algebra"
+        ]
+      }
+    ],
+    "years": [
+      "1st Year (Freshman)",
+      "2nd Year (Sophomore)",
+      "3rd Year (Junior)",
+      "4th Year / Final Year (Senior)"
+    ]
+  },
+  "self_learner": {
+    "domains": [
+      {
+        "id": "ai_ml",
+        "label": "AI, LLMs & Machine Learning",
+        "subjects": [
+          "Prompt Engineering & Agents",
+          "Machine Learning Fundamentals",
+          "Neural Networks & PyTorch",
+          "NLP & Transformers"
+        ]
+      },
+      {
+        "id": "fullstack",
+        "label": "Modern Full-Stack Development",
+        "subjects": [
+          "FastAPI & Async Python",
+          "React & Next.js",
+          "System Design & Scalability",
+          "PostgreSQL & Databases"
+        ]
+      },
+      {
+        "id": "data_science",
+        "label": "Data Science & Analytics",
+        "subjects": [
+          "Python for Data Analysis (Pandas)",
+          "SQL & BigQuery",
+          "Statistical Modeling",
+          "Business Intelligence & Dashboards"
+        ]
+      },
+      {
+        "id": "finance",
+        "label": "Economics & Quantitative Finance",
+        "subjects": [
+          "Financial Modeling",
+          "Algorithmic Trading",
+          "Cryptocurrency & Blockchain",
+          "Macroeconomics"
+        ]
+      }
+    ]
+  },
+  "parent": {
+    "focusAreas": [
+      {
+        "id": "foundation_math",
+        "label": "Foundation Mathematics & Mental Math",
+        "subjects": [
+          "Basic Arithmetic & Fractions",
+          "Word Problems",
+          "Visual Geometry",
+          "Logic Puzzles"
+        ]
+      },
+      {
+        "id": "foundation_science",
+        "label": "Science Curiosities & Experiments",
+        "subjects": [
+          "Solar System & Planets",
+          "Human Body & Health",
+          "Plant Life & Ecosystems",
+          "Everyday Physics"
+        ]
+      },
+      {
+        "id": "reading_vocab",
+        "label": "Language & Critical Reading",
+        "subjects": [
+          "Creative Writing",
+          "Vocabulary Expansion",
+          "Reading Comprehension",
+          "Speech & Debate"
+        ]
+      }
+    ]
+  }
+}
