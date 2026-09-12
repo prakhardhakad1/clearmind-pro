@@ -984,6 +984,9 @@ async def generate_tts(req: TTSRequest):
 # ---------------------------------------------------------------------------
 # Static Web App Mounts
 # ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 @app.get("/")
 @app.get("/index.html")
 @app.get("/classroom")
@@ -994,7 +997,7 @@ async def generate_tts(req: TTSRequest):
 @app.get("/galaxy")
 @app.get("/graph")
 async def get_index_page():
-    return FileResponse("static/index.html", headers={
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"), headers={
         "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
         "Pragma": "no-cache",
         "Expires": "0",
@@ -1003,25 +1006,25 @@ async def get_index_page():
 
 @app.get("/app.js")
 async def get_app_js():
-    return FileResponse("static/app.js", media_type="application/javascript", headers={
+    return FileResponse(os.path.join(STATIC_DIR, "app.js"), media_type="application/javascript", headers={
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache", "Expires": "0"
     })
 
 @app.get("/style.css")
 async def get_style_css():
-    return FileResponse("static/style.css", media_type="text/css", headers={
+    return FileResponse(os.path.join(STATIC_DIR, "style.css"), media_type="text/css", headers={
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache", "Expires": "0"
     })
 
 @app.get("/sw.js")
 async def get_sw_js():
-    return FileResponse("static/sw.js", media_type="application/javascript")
+    return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
 
 @app.get("/manifest.json")
 async def get_manifest():
-    return FileResponse("static/manifest.json", media_type="application/json")
+    return FileResponse(os.path.join(STATIC_DIR, "manifest.json"), media_type="application/json")
 
 # Mount /static directory
-app.mount("/static", StaticFiles(directory="static"), name="static_dir")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")
