@@ -671,8 +671,10 @@ def sync_turso_to_local_cache():
                 return
             conn = sqlite3.connect(get_db_path())
             cursor = conn.cursor()
+            turso_uids = []
             for r in rows:
                 v = [c.get("value") for c in r]
+                turso_uids.append(v[0])
                 cursor.execute("""
                     INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -682,6 +684,12 @@ def sync_turso_to_local_cache():
                         INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (v[0], v[6] or "mentor", v[7] or "school", v[8] or "Class 12", v[9] or "CBSE", v[10] or "45 mins / day", v[11] or "", v[12] or "[]", v[13] or "{}", v[14] or "[]", v[15] or ""))
+            
+            # If records were deleted from Turso, delete them from local cache as well
+            if turso_uids:
+                placeholders = ",".join(["?"] * len(turso_uids))
+                cursor.execute(f"DELETE FROM users WHERE user_id NOT IN ({placeholders})", turso_uids)
+                cursor.execute(f"DELETE FROM user_profiles WHERE user_id NOT IN ({placeholders})", turso_uids)
             conn.commit()
             conn.close()
     except Exception as e:
