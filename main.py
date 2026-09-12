@@ -22,6 +22,10 @@ import asyncio
 from typing import List, Optional, Dict, Any
 
 import urllib.parse
+import sqlite3
+import hashlib
+import secrets
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response as PlainResponse, JSONResponse
@@ -458,6 +462,115 @@ class TTSRequest(BaseModel):
     language: str = "hinglish"
 
 
+
+# ---------------------------------------------------------------------------
+# Database & Authentication Architecture (SQLite & User Session Engine)
+# ---------------------------------------------------------------------------
+def get_db_path() -> str:
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/clearmind.db"
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "clearmind.db")
+
+def init_db():
+    try:
+        db_path = get_db_path()
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'student',
+                created_at TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id TEXT PRIMARY KEY,
+                persona TEXT DEFAULT 'mentor',
+                identity TEXT DEFAULT 'school',
+                level TEXT DEFAULT 'Class 12',
+                board TEXT DEFAULT 'CBSE',
+                daily_rhythm TEXT DEFAULT '45 mins / day',
+                target_goal TEXT DEFAULT 'Board & Entrance Exams',
+                subjects TEXT DEFAULT '[]',
+                sub_details TEXT DEFAULT '{}',
+                learning_styles TEXT DEFAULT '[]',
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+        """)
+        # Seed default admin if not exists
+        cursor.execute("SELECT id FROM users WHERE email = 'admin@clearmind.ai'")
+        if not cursor.fetchone():
+            now = datetime.utcnow().isoformat()
+            cursor.execute("""
+                INSERT INTO users (user_id, name, email, password_hash, role, created_at)
+                VALUES (?, ?, ?, ?, 'admin', ?)
+            """, (
+                "CMP-ADMIN",
+                "ClearMind Admin",
+                "admin@clearmind.ai",
+                hashlib.sha256("admin123".encode("utf-8")).hexdigest(),
+                now
+            ))
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
+                VALUES (?, 'polymath', 'college', 'College / B.Tech CSE', 'Autonomous', '60m', 'System Architecture & Research', ?, ?)
+            """, (
+                "CMP-ADMIN",
+                json.dumps(["AI & Machine Learning", "Operating Systems", "Advanced Mathematics"]),
+                now
+            ))
+        conn.commit()
+        conn.close()
+        logger.info(f"Initialized SQLite database at {db_path}")
+    except Exception as err:
+        logger.error(f"Failed to initialize SQLite DB: {err}")
+
+init_db()
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.strip().encode("utf-8")).hexdigest()
+
+def generate_user_id() -> str:
+    num = secrets.randbelow(90000) + 10000
+    return f"CMP-{num}"
+
+class UserRegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    persona: Optional[str] = "mentor"
+    level: Optional[str] = "Class 12"
+
+class UserLoginRequest(BaseModel):
+    email: str
+    password: str
+
+class SyncProfileRequest(BaseModel):
+    user_id: str
+    name: Optional[str] = None
+    persona: Optional[str] = "mentor"
+    identity: Optional[str] = "school"
+    level: Optional[str] = "Class 12"
+    board: Optional[str] = "CBSE"
+    daily_rhythm: Optional[str] = "45 mins / day"
+    target_goal: Optional[str] = ""
+    subjects: Optional[List[Any]] = []
+    sub_details: Optional[Dict[str, Any]] = {}
+    learning_styles: Optional[List[str]] = []
+
+class GoogleAuthSyncRequest(BaseModel):
+    name: str
+    email: str
+    avatar: Optional[str] = ""
+    sub: Optional[str] = ""
+
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
@@ -471,6 +584,320 @@ async def get_status():
         "engine": "Dual-Engine (Gemini 3.5 Flash + GLM-4 Flash Fast Race)",
         "voice": "Microsoft Edge Neural Voice"
     }
+
+@app.post("/api/auth/register")
+@app.post("/auth/register")
+async def auth_register(req: UserRegisterRequest):
+    email_clean = req.email.strip().lower()
+    name_clean = req.name.strip()
+    if not email_clean or not req.password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM users WHERE lower(email) = ?", (email_clean,))
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
+    
+    user_id = generate_user_id()
+    while True:
+        cursor.execute("SELECT id FROM users WHERE user_id = ?", (user_id,))
+        if not cursor.fetchone():
+            break
+        user_id = generate_user_id()
+    
+    pwd_hash = hash_password(req.password)
+    now = datetime.utcnow().isoformat()
+    cursor.execute("""
+        INSERT INTO users (user_id, name, email, password_hash, role, created_at)
+        VALUES (?, ?, ?, ?, 'student', ?)
+    """, (user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now))
+    
+    default_subjects = json.dumps(["Physics", "Chemistry", "Mathematics"])
+    cursor.execute("""
+        INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
+        VALUES (?, ?, 'school', ?, 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)
+    """, (user_id, req.persona or "mentor", req.level or "Class 12", default_subjects, now))
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "success",
+        "user": {
+            "user_id": user_id,
+            "name": name_clean or email_clean.split('@')[0],
+            "email": email_clean,
+            "role": "student"
+        },
+        "profile": {
+            "persona": req.persona or "mentor",
+            "identity": "school",
+            "level": req.level or "Class 12",
+            "board": "CBSE",
+            "daily_rhythm": "45 mins / day",
+            "target_goal": "Board & Entrance Exams",
+            "subjects": ["Physics", "Chemistry", "Mathematics"],
+            "updated_at": now
+        },
+        "isNew": True
+    }
+
+@app.post("/api/auth/login")
+@app.post("/auth/login")
+async def auth_login(req: UserLoginRequest):
+    email_clean = req.email.strip().lower()
+    pwd_hash = hash_password(req.password)
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id, name, email, password_hash, role, created_at
+        FROM users WHERE lower(email) = ?
+    """, (email_clean,))
+    user_row = cursor.fetchone()
+    
+    if not user_row or user_row[3] != pwd_hash:
+        conn.close()
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    
+    user_id = user_row[0]
+    cursor.execute("""
+        SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at
+        FROM user_profiles WHERE user_id = ?
+    """, (user_id,))
+    prof_row = cursor.fetchone()
+    conn.close()
+    
+    profile_data = {
+        "persona": prof_row[0] if prof_row else "mentor",
+        "identity": prof_row[1] if prof_row else "school",
+        "level": prof_row[2] if prof_row else "Class 12",
+        "board": prof_row[3] if prof_row else "CBSE",
+        "daily_rhythm": prof_row[4] if prof_row else "45 mins / day",
+        "target_goal": prof_row[5] if prof_row else "",
+        "subjects": json.loads(prof_row[6]) if prof_row and prof_row[6] else ["Physics", "Chemistry", "Mathematics"],
+        "sub_details": json.loads(prof_row[7]) if prof_row and len(prof_row) > 7 and prof_row[7] else {},
+        "learning_styles": json.loads(prof_row[8]) if prof_row and len(prof_row) > 8 and prof_row[8] else ["visual", "socratic"],
+        "updated_at": prof_row[9] if prof_row and len(prof_row) > 9 else ""
+    }
+    
+    return {
+        "status": "success",
+        "user": {
+            "user_id": user_id,
+            "name": user_row[1],
+            "email": user_row[2],
+            "role": user_row[4],
+            "created_at": user_row[5]
+        },
+        "profile": profile_data
+    }
+
+@app.post("/api/auth/google")
+@app.post("/auth/google")
+async def auth_google(req: GoogleAuthSyncRequest):
+    email_clean = req.email.strip().lower()
+    name_clean = req.name.strip() or email_clean.split('@')[0]
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id, name, email, role, created_at
+        FROM users WHERE lower(email) = ?
+    """, (email_clean,))
+    user_row = cursor.fetchone()
+    
+    now = datetime.utcnow().isoformat()
+    is_new = False
+    if not user_row:
+        is_new = True
+        user_id = generate_user_id()
+        while True:
+            cursor.execute("SELECT id FROM users WHERE user_id = ?", (user_id,))
+            if not cursor.fetchone():
+                break
+            user_id = generate_user_id()
+        
+        pwd_hash = hash_password(secrets.token_hex(16))
+        cursor.execute("""
+            INSERT INTO users (user_id, name, email, password_hash, role, created_at)
+            VALUES (?, ?, ?, ?, 'student', ?)
+        """, (user_id, name_clean, email_clean, pwd_hash, now))
+        
+        default_subjects = json.dumps(["Physics", "Chemistry", "Mathematics"])
+        cursor.execute("""
+            INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
+            VALUES (?, 'mentor', 'school', 'Class 12', 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)
+        """, (user_id, default_subjects, now))
+        conn.commit()
+    else:
+        user_id = user_row[0]
+        name_clean = user_row[1]
+    
+    cursor.execute("""
+        SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at
+        FROM user_profiles WHERE user_id = ?
+    """, (user_id,))
+    prof_row = cursor.fetchone()
+    conn.close()
+    
+    profile_data = {
+        "persona": prof_row[0] if prof_row else "mentor",
+        "identity": prof_row[1] if prof_row else "school",
+        "level": prof_row[2] if prof_row else "Class 12",
+        "board": prof_row[3] if prof_row else "CBSE",
+        "daily_rhythm": prof_row[4] if prof_row else "45 mins / day",
+        "target_goal": prof_row[5] if prof_row else "",
+        "subjects": json.loads(prof_row[6]) if prof_row and prof_row[6] else ["Physics", "Chemistry", "Mathematics"],
+        "sub_details": json.loads(prof_row[7]) if prof_row and len(prof_row) > 7 and prof_row[7] else {},
+        "learning_styles": json.loads(prof_row[8]) if prof_row and len(prof_row) > 8 and prof_row[8] else ["visual", "socratic"],
+        "updated_at": prof_row[9] if prof_row and len(prof_row) > 9 else ""
+    }
+    
+    return {
+        "status": "success",
+        "user": {
+            "user_id": user_id,
+            "name": name_clean,
+            "email": email_clean,
+            "role": user_row[3] if user_row else "student",
+            "avatar": req.avatar
+        },
+        "profile": profile_data,
+        "isNew": is_new
+    }
+
+@app.post("/api/auth/sync-profile")
+@app.post("/auth/sync-profile")
+async def sync_profile(req: SyncProfileRequest):
+    if not req.user_id:
+        raise HTTPException(status_code=400, detail="User ID is required.")
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    now = datetime.utcnow().isoformat()
+    if req.name:
+        cursor.execute("UPDATE users SET name = ? WHERE user_id = ?", (req.name.strip(), req.user_id))
+    
+    subjects_json = json.dumps(req.subjects or [])
+    sub_details_json = json.dumps(req.sub_details or {})
+    learning_styles_json = json.dumps(req.learning_styles or [])
+    
+    cursor.execute("""
+        INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            persona = excluded.persona,
+            identity = excluded.identity,
+            level = excluded.level,
+            board = excluded.board,
+            daily_rhythm = excluded.daily_rhythm,
+            target_goal = excluded.target_goal,
+            subjects = excluded.subjects,
+            sub_details = excluded.sub_details,
+            learning_styles = excluded.learning_styles,
+            updated_at = excluded.updated_at
+    """, (
+        req.user_id,
+        req.persona or "mentor",
+        req.identity or "school",
+        req.level or "Class 12",
+        req.board or "CBSE",
+        req.daily_rhythm or "45 mins / day",
+        req.target_goal or "",
+        subjects_json,
+        sub_details_json,
+        learning_styles_json,
+        now
+    ))
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "user_id": req.user_id, "updated_at": now}
+
+@app.get("/api/admin/metrics")
+@app.get("/admin/metrics")
+async def admin_metrics():
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT persona, COUNT(*) FROM user_profiles GROUP BY persona")
+    persona_counts = {row[0]: row[1] for row in cursor.fetchall()}
+    
+    cursor.execute("SELECT level, COUNT(*) FROM user_profiles GROUP BY level")
+    level_counts = {row[0]: row[1] for row in cursor.fetchall()}
+    
+    cursor.execute("SELECT user_id, name, email, created_at FROM users ORDER BY id DESC LIMIT 5")
+    recent_users = [
+        {"user_id": r[0], "name": r[1], "email": r[2], "created_at": r[3]}
+        for r in cursor.fetchall()
+    ]
+    conn.close()
+    
+    return {
+        "status": "success",
+        "total_users": total_users,
+        "persona_counts": persona_counts,
+        "level_counts": level_counts,
+        "recent_users": recent_users,
+        "database_location": db_path
+    }
+
+@app.get("/api/admin/users")
+@app.get("/admin/users")
+async def admin_users():
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT u.user_id, u.name, u.email, u.role, u.created_at,
+               p.persona, p.identity, p.level, p.board, p.daily_rhythm, p.target_goal, p.subjects, p.updated_at
+        FROM users u
+        LEFT JOIN user_profiles p ON u.user_id = p.user_id
+        ORDER BY u.id DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    users_list = []
+    for r in rows:
+        subjects = []
+        try:
+            if r[11]: subjects = json.loads(r[11])
+        except Exception:
+            pass
+        users_list.append({
+            "user_id": r[0],
+            "name": r[1],
+            "email": r[2],
+            "role": r[3],
+            "created_at": r[4],
+            "profile": {
+                "persona": r[5] or "mentor",
+                "identity": r[6] or "school",
+                "level": r[7] or "Class 12",
+                "board": r[8] or "CBSE",
+                "daily_rhythm": r[9] or "45 mins / day",
+                "target_goal": r[10] or "",
+                "subjects": subjects,
+                "updated_at": r[12] or r[4]
+            }
+        })
+    
+    return {"status": "success", "count": len(users_list), "users": users_list}
 
 @app.post("/api/chat-teach", response_model=ChatTeachResponse)
 @app.post("/chat-teach", response_model=ChatTeachResponse)
@@ -1064,6 +1491,16 @@ async def get_landing_page():
 @app.get("/graph")
 async def get_classroom_page():
     return FileResponse(os.path.join(STATIC_DIR, "app.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
+
+# ClearMind Pro Admin Dashboard
+@app.get("/admin")
+@app.get("/admin.html")
+async def get_admin_page():
+    return FileResponse(os.path.join(STATIC_DIR, "admin.html"), headers={
         "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
         "Pragma": "no-cache",
         "Expires": "0"

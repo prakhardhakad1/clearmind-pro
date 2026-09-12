@@ -819,6 +819,28 @@ window.OnboardingWizard = {
       }
     }
 
+    // Persist calibrated persona, class, board, and subjects to backend SQLite DB
+    const authUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
+    if (authUser && authUser.user_id) {
+      fetch('/api/auth/sync-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: authUser.user_id,
+          name: authUser.name || this.profile.user?.name,
+          persona: this.profile.persona,
+          identity: this.profile.identity,
+          level: this.profile.level,
+          board: this.profile.subDetails?.curriculum || 'CBSE',
+          daily_rhythm: this.profile.dailyRhythm,
+          target_goal: this.profile.targetGoal,
+          subjects: this.profile.subjects,
+          sub_details: this.profile.subDetails,
+          learning_styles: this.profile.learningStyles
+        })
+      }).catch(err => console.warn('Background profile sync:', err));
+    }
+
     const telemetry = JSON.parse(localStorage.getItem('clearmind_onboarding_analytics') || '[]');
     telemetry.push({
       timestamp: this.profile.calibratedAt,

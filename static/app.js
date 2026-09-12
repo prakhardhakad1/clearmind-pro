@@ -55,9 +55,22 @@
         level: "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)"
       })
   );
+  const authUser = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
+  const studentUserId = authUser?.user_id || "CMP-STUDENT";
+  if (!studentProfile.name && authUser?.name) {
+    studentProfile.name = authUser.name;
+  }
   if (!studentProfile.name && studentProfile.user?.name) {
     studentProfile.name = studentProfile.user.name;
   }
+
+  // Update header name & User ID badge
+  const pNameHeader = document.getElementById("profileNameHeader");
+  if (pNameHeader) pNameHeader.textContent = studentProfile.name || "Student";
+  const headerUserIdBadge = document.getElementById("headerUserIdBadge");
+  if (headerUserIdBadge) headerUserIdBadge.textContent = studentUserId;
+  const modalUserIdBadge = document.getElementById("modalUserIdBadge");
+  if (modalUserIdBadge) modalUserIdBadge.textContent = studentUserId;
 
   let conversationHistory = JSON.parse(
     localStorage.getItem("clearmind_conv_history") || "[]"
@@ -3547,6 +3560,23 @@
       pModal?.classList.add("hidden");
     });
 
+    // Logout & Session Memory Purge Controller
+    const triggerSessionLogout = () => {
+      // CRITICAL PRIVACY & SESSION PURGE:
+      // Active study topics, chapters studied, and chat logs are wiped on logout
+      localStorage.removeItem("clearmind_auth_user");
+      localStorage.removeItem("clearmind_conv_history");
+      localStorage.removeItem("clearmind_active_topic");
+      localStorage.removeItem("clearmind_canvas_nodes");
+      sessionStorage.clear();
+      showToast("Logging out & clearing session memory...", "info");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 300);
+    };
+    document.getElementById("appLogoutBtn")?.addEventListener("click", triggerSessionLogout);
+    document.getElementById("modalLogoutBtn")?.addEventListener("click", triggerSessionLogout);
+
     // Wire HUD Persona Switcher Grid Buttons
     document.querySelectorAll(".hud-persona-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -3585,6 +3615,25 @@
       if (chosenTopic) curData.activeTopic = chosenTopic;
       localStorage.setItem("clearmind_profile", JSON.stringify(curData));
       localStorage.setItem("clearmind_setup_completed", "true");
+
+      // Sync persona & updated profile to backend SQLite DB
+      if (authUser && authUser.user_id) {
+        fetch('/api/auth/sync-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: authUser.user_id,
+            name: finalName,
+            persona: localStorage.getItem("clearmind_calibrated_persona") || curData.persona || "mentor",
+            identity: curData.identity || "school",
+            level: curData.level || studentProfile.level || "Class 12",
+            board: curData.subDetails?.curriculum || curData.board || "CBSE",
+            daily_rhythm: curData.dailyRhythm || "45 mins / day",
+            target_goal: curData.targetGoal || "",
+            subjects: curData.subjects || []
+          })
+        }).catch(err => console.warn('Profile sync on save:', err));
+      }
 
       updateHUD();
       updateActiveTopicUI();

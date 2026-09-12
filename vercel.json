@@ -13,6 +13,10 @@
       "destination": "/static/app.html"
     },
     {
+      "source": "/(admin|admin.html)",
+      "destination": "/static/admin.html"
+    },
+    {
       "source": "/((?!api/|.*\\..*).*)",
       "destination": "/static/index.html"
     }
