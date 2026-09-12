@@ -425,6 +425,7 @@ class TTSRequest(BaseModel):
 # API Endpoints
 # ---------------------------------------------------------------------------
 @app.get("/api/status")
+@app.get("/status")
 async def get_status():
     return {
         "status": "online",
@@ -435,6 +436,7 @@ async def get_status():
     }
 
 @app.post("/api/chat-teach", response_model=ChatTeachResponse)
+@app.post("/chat-teach", response_model=ChatTeachResponse)
 async def chat_teach(req: ChatTeachRequest, request: Request):
     user_msg = req.message.strip()
     raw_topic = req.topic.strip()
@@ -690,6 +692,7 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
     )
 
 @app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
+@app.post("/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
 async def get_exam_cheat_sheet(req: ExamCheatSheetRequest, request: Request):
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
@@ -820,6 +823,7 @@ Return strictly a valid JSON object matching this schema:
     )
 
 @app.post("/api/blitz-quiz", response_model=BlitzQuizResponse)
+@app.post("/blitz-quiz", response_model=BlitzQuizResponse)
 async def get_blitz_quiz(req: BlitzQuizRequest, request: Request):
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
@@ -893,6 +897,7 @@ Return strictly a valid JSON object:
     return BlitzQuizResponse(topic=topic, questions=q_list[:q_count], time_limit_seconds=req.time_limit_seconds)
 
 @app.post("/api/flashcards", response_model=FlashcardsResponse)
+@app.post("/flashcards", response_model=FlashcardsResponse)
 async def get_flashcards(req: FlashcardsRequest, request: Request):
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
@@ -967,6 +972,7 @@ Return strictly a valid JSON object:
     return FlashcardsResponse(topic=topic, cards=cards[:card_count])
 
 @app.post("/api/tts")
+@app.post("/tts")
 async def generate_tts(req: TTSRequest):
     clean = clean_speech_text(req.text)
     voice = NEURAL_VOICES.get(req.language, NEURAL_VOICES["hinglish"])
