@@ -251,6 +251,14 @@ window.AuthEngine = {
   },
 
   continueAsGuest() {
+    const hasSetup = localStorage.getItem('clearmind_setup_completed') === 'true';
+    const savedUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
+    if (hasSetup && savedUser) {
+      this.closeAuthModal();
+      window.location.href = '/classroom';
+      return;
+    }
+
     // Generate an ephemeral Guest ID
     const guestId = 'GUEST-' + Math.floor(1000 + Math.random() * 9000);
     this.currentUser = {
@@ -502,9 +510,12 @@ window.AuthEngine = {
 
   updateNavUser() {
     const navBtn = document.getElementById('navAuthBtn');
-    if (navBtn) {
-      if (this.currentUser && !this.currentUser.isGuest) {
-        const userIdBadge = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${this.currentUser.user_id}</span>` : '';
+    const heroBtn = document.getElementById('heroGetStartedBtn');
+    const navGuestBtn = document.getElementById('navGuestBtn');
+
+    if (this.currentUser && !this.currentUser.isGuest) {
+      const userIdBadge = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${this.currentUser.user_id}</span>` : '';
+      if (navBtn) {
         navBtn.innerHTML = `<span>👤 ${this.currentUser.name}${userIdBadge}</span>`;
         navBtn.className = 'btn-secondary text-xs flex items-center gap-1.5 cursor-pointer';
         navBtn.title = `Logged in as ${this.currentUser.email} (${this.currentUser.user_id || ''})`;
@@ -512,13 +523,34 @@ window.AuthEngine = {
           e.preventDefault();
           this.showUserMenu(navBtn);
         };
-      } else {
+      }
+      if (heroBtn) {
+        heroBtn.removeAttribute('data-open-auth');
+        heroBtn.innerHTML = `<span>🚀</span> <span>Enter Classroom Cockpit</span>`;
+        heroBtn.onclick = (e) => {
+          e.preventDefault();
+          window.location.href = '/classroom';
+        };
+      }
+      if (navGuestBtn) {
+        navGuestBtn.style.display = 'none';
+      }
+    } else {
+      if (navBtn) {
         navBtn.innerHTML = 'Sign In';
         navBtn.className = 'btn-secondary text-xs';
         navBtn.onclick = (e) => {
           e.preventDefault();
           this.openAuthModal('signin');
         };
+      }
+      if (heroBtn) {
+        heroBtn.setAttribute('data-open-auth', 'signup');
+        heroBtn.innerHTML = `<span>🚀</span> <span>Get Started Free — Calibrate Profile</span>`;
+        heroBtn.onclick = null;
+      }
+      if (navGuestBtn) {
+        navGuestBtn.style.display = '';
       }
     }
   },

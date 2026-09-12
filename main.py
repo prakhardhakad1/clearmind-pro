@@ -805,6 +805,10 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
     cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users WHERE lower(email) = ?", (email_clean,))
     existing = cursor.fetchone()
+    if not existing:
+        turso_data = fetch_user_from_turso(email_clean)
+        if turso_data and turso_data.get("user"):
+            existing = turso_data["user"]
     if existing:
         conn.close()
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
@@ -947,6 +951,13 @@ async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTa
         FROM users WHERE lower(email) = ?
     """, (email_clean,))
     user_row = cursor.fetchone()
+    
+    # Cold-start resilience: if not in local /tmp SQLite, check Turso Cloud (Mumbai)
+    if not user_row:
+        turso_data = fetch_user_from_turso(email_clean)
+        if turso_data and turso_data.get("user"):
+            u_vals = turso_data["user"]
+            user_row = (u_vals[0], u_vals[1], u_vals[2], u_vals[4], u_vals[5])
     
     now = datetime.utcnow().isoformat()
     is_new = False
