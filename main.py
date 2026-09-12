@@ -503,8 +503,6 @@ def _convert_turso_cell(cell: dict) -> Any:
         except Exception: return val
     return val
 
-_turso_client = httpx.Client(timeout=6.0)
-
 def turso_query(sql: str, args: Optional[List[Any]] = None) -> List[Tuple]:
     typed_args = []
     if args:
@@ -524,14 +522,15 @@ def turso_query(sql: str, args: Optional[List[Any]] = None) -> List[Tuple]:
         ]
     }
     
-    resp = _turso_client.post(
-        TURSO_PIPELINE_URL,
-        headers={
-            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
-            "Content-Type": "application/json"
-        },
-        json=payload
-    )
+    with httpx.Client(timeout=6.0) as client:
+        resp = client.post(
+            TURSO_PIPELINE_URL,
+            headers={
+                "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
     if resp.status_code != 200:
         raise RuntimeError(f"Turso HTTP {resp.status_code}: {resp.text}")
     
