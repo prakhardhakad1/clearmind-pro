@@ -45,6 +45,9 @@ import edge_tts
 # ---------------------------------------------------------------------------
 # Configuration & Environment
 # ---------------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("clearmind")
+
 ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=ENV_PATH)
 
@@ -500,6 +503,8 @@ def _convert_turso_cell(cell: dict) -> Any:
         except Exception: return val
     return val
 
+_turso_client = httpx.Client(timeout=6.0)
+
 def turso_query(sql: str, args: Optional[List[Any]] = None) -> List[Tuple]:
     typed_args = []
     if args:
@@ -513,28 +518,33 @@ def turso_query(sql: str, args: Optional[List[Any]] = None) -> List[Tuple]:
             else:
                 typed_args.append({"type": "text", "value": str(a)})
     
-    body = json.dumps({
+    payload = {
         "requests": [
             {"type": "execute", "stmt": {"sql": sql, "args": typed_args}}
         ]
-    }).encode("utf-8")
+    }
     
-    req = urllib.request.Request(TURSO_PIPELINE_URL, data=body, headers={
-        "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
-        "Content-Type": "application/json"
-    })
+    resp = _turso_client.post(
+        TURSO_PIPELINE_URL,
+        headers={
+            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+            "Content-Type": "application/json"
+        },
+        json=payload
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Turso HTTP {resp.status_code}: {resp.text}")
     
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-        results = data.get("results", [])
-        if not results:
-            return []
-        first = results[0]
-        if first.get("type") == "error":
-            raise RuntimeError(first.get("error", {}).get("message", "Turso Query Error"))
-        exec_res = first.get("response", {}).get("result", {})
-        raw_rows = exec_res.get("rows", [])
-        return [tuple(_convert_turso_cell(c) for c in r) for r in raw_rows]
+    data = resp.json()
+    results = data.get("results", [])
+    if not results:
+        return []
+    first = results[0]
+    if first.get("type") == "error":
+        raise RuntimeError(first.get("error", {}).get("message", "Turso Query Error"))
+    exec_res = first.get("response", {}).get("result", {})
+    raw_rows = exec_res.get("rows", [])
+    return [tuple(_convert_turso_cell(c) for c in r) for r in raw_rows]
 
 def get_db_path() -> str:
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
