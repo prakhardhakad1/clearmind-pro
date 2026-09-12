@@ -59,25 +59,115 @@
   function openProfile(isFirstTime = false) {
     const pModal = document.getElementById("profileModal");
     const nInp = document.getElementById("inputStudentName");
-    const lInp = document.getElementById("inputStudyLevel");
     const tInp = document.getElementById("inputStudentTopic");
     const closeBtn = document.getElementById("closeProfileModal");
-    const titleEl = document.getElementById("profileModalTitle");
-    const subtitleEl = document.getElementById("profileModalSubtitle");
 
-    if (nInp) nInp.value = studentProfile.name || "Prakhar";
-    if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
-    if (tInp) tInp.value = activeTopic || "";
+    const calibratedData = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+    const currentPersona = localStorage.getItem("clearmind_calibrated_persona") || calibratedData.persona || "strict";
 
-    if (isFirstTime) {
-      if (titleEl) titleEl.innerHTML = `<span>✨ Welcome to ClearMind Pro</span>`;
-      if (subtitleEl) subtitleEl.textContent = "Please enter your name and topic to enter the classroom";
-    } else {
-      if (titleEl) titleEl.innerHTML = `<span>⚙️ Student Profile & Settings</span>`;
-      if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or grade level anytime";
+    // Set name & topic
+    if (nInp) nInp.value = studentProfile.name || calibratedData.user?.name || "Prakhar";
+    if (tInp) tInp.value = activeTopic || calibratedData.activeTopic || "";
+
+    // Set curriculum info
+    const hudCurriculum = document.getElementById("hudCurriculumText");
+    if (hudCurriculum) {
+      if (calibratedData.subDetails?.streamTitle) {
+        hudCurriculum.textContent = `${calibratedData.subDetails.gradeTitle || ''} • ${calibratedData.subDetails.streamTitle}`;
+      } else if (calibratedData.subDetails?.programTitle) {
+        hudCurriculum.textContent = calibratedData.subDetails.programTitle;
+      } else if (calibratedData.identityTitle) {
+        hudCurriculum.textContent = calibratedData.identityTitle;
+      } else {
+        hudCurriculum.textContent = studentProfile.level || "Class 12 Science (PCM)";
+      }
     }
+
+    // Set countdown & rhythm
+    const hudCountdown = document.getElementById("hudExamCountdown");
+    const hudExamName = document.getElementById("hudExamName");
+    const hudRhythm = document.getElementById("hudDailyRhythm");
+
+    if (hudCountdown) {
+      hudCountdown.textContent = calibratedData.daysUntilExam ? `${calibratedData.daysUntilExam} Days Left` : "172 Days Left";
+    }
+    if (hudExamName) {
+      hudExamName.textContent = `Target: ${calibratedData.examTargetName || 'Board & Entrance Exams'}`;
+    }
+    if (hudRhythm) {
+      hudRhythm.textContent = `${calibratedData.dailyRhythm || 45} mins / day`;
+    }
+
+    // Highlight active persona in HUD grid
+    highlightHudPersona(currentPersona);
+
+    // Populate tracked subjects list
+    const subjectsContainer = document.getElementById("hudTrackedSubjectsList");
+    if (subjectsContainer) {
+      const subjects = calibratedData.subjects || [
+        { name: "Physics", priority: "high" },
+        { name: "Chemistry", priority: "high" },
+        { name: "Mathematics", priority: "high" }
+      ];
+      subjectsContainer.innerHTML = subjects.map(s => {
+        const sName = typeof s === "string" ? s : s.name;
+        const isHigh = typeof s === "object" && s.priority === "high";
+        const isActive = sName.toLowerCase() === (activeTopic || "").toLowerCase();
+        return `<button type="button" data-pick-subject="${escapeHtml(sName)}" class="hud-subject-pill px-2.5 py-1 rounded-xl text-[11px] font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+          isActive 
+            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-sm shadow-cyan-500/20' 
+            : 'bg-white/[0.03] border-white/10 hover:border-cyan-500/40 text-slate-300 hover:text-white'
+        }">
+          <span>${isHigh ? '🔥' : '📚'}</span>
+          <span>${escapeHtml(sName)}</span>
+          ${isHigh ? '<span class="text-[9px] uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-extrabold">High</span>' : ''}
+        </button>`;
+      }).join("");
+
+      subjectsContainer.querySelectorAll("[data-pick-subject]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const picked = btn.getAttribute("data-pick-subject");
+          if (picked) {
+            selectAndSetTopic(picked);
+            if (tInp) tInp.value = picked;
+            openProfile(false);
+          }
+        });
+      });
+    }
+
     if (closeBtn) closeBtn.classList.remove("hidden");
     pModal?.classList.remove("hidden");
+  }
+
+  function highlightHudPersona(personaKey) {
+    const pKey = personaKey || "strict";
+    const label = document.getElementById("currentActivePersonaLabel");
+    const personaMap = {
+      mentor: { label: "🎓 Encouraging Mentor", title: "Mentor" },
+      strict: { label: "⚡ Strict Examiner", title: "Strict Examiner" },
+      polymath: { label: "🔬 First-Principles", title: "First-Principles" },
+      socratic: { label: "💡 Socratic Guide", title: "Socratic Guide" },
+      hacker: { label: "🚀 Exam Hacker", title: "Exam Hacker" },
+      feynman: { label: "🧠 Feynman (ELI5)", title: "Feynman (ELI5)" }
+    };
+
+    if (label) {
+      label.textContent = personaMap[pKey]?.label || "⚡ Strict Examiner";
+    }
+
+    document.querySelectorAll(".hud-persona-btn").forEach(btn => {
+      const p = btn.getAttribute("data-persona");
+      if (p === pKey) {
+        btn.className = "hud-persona-btn active p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer shadow-sm shadow-cyan-500/20";
+        const t = btn.querySelector(".font-bold");
+        if (t) t.className = "text-[11px] font-bold text-cyan-300";
+      } else {
+        btn.className = "hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer";
+        const t = btn.querySelector(".font-bold");
+        if (t) t.className = "text-[11px] font-bold text-white";
+      }
+    });
   }
   window.openProfile = openProfile;
 
@@ -1423,6 +1513,56 @@
     if (typeof renderBlitzTopicSection === "function") {
       renderBlitzTopicSection();
     }
+
+    renderConceptNodesForTopic(activeTopic);
+  }
+
+  function renderConceptNodesForTopic(topic) {
+    const list = document.getElementById("canvasNodesGrid");
+    if (!list) return;
+    
+    const t = (topic || activeTopic || "").toLowerCase();
+    let nodes = [];
+
+    if (t.includes("physics")) {
+      nodes = [
+        { type: "Node 01 • Fundamental Law", title: "Coulomb's Law & Electric Field Vector", desc: "Electrostatic force between point charges is inversely proportional to r². F = k·(q1·q2)/r²", color: "text-cyan-400" },
+        { type: "Node 02 • High-Yield Trap", title: "Gauss's Law on Arbitrary Closed Surfaces", desc: "Flux depends strictly on enclosed charge Σq_enc / ε₀, independent of surface geometry.", color: "text-amber-400" }
+      ];
+    } else if (t.includes("chem")) {
+      nodes = [
+        { type: "Node 01 • Reaction Mechanism", title: "Electrophilic Aromatic Substitution (EAS)", desc: "Arenium ion intermediate formation preserving aromatic delocalization energy.", color: "text-emerald-400" },
+        { type: "Node 02 • Examiner Trap", title: "Coordination Splitting & CFSE Ligand Field", desc: "Strong field vs weak field ligands determine spin states, pairing energy, and d-d absorption color.", color: "text-purple-400" }
+      ];
+    } else if (t.includes("math") || t.includes("calculus") || t.includes("algebra")) {
+      nodes = [
+        { type: "Node 01 • Core Theorem", title: "Mean Value Theorem & Differential Extrema", desc: "Continuity on [a,b] guarantees a tangent parallel to secant line: f'(c) = [f(b)-f(a)]/(b-a).", color: "text-indigo-400" },
+        { type: "Node 02 • Speed Shortcut", title: "L'Hôpital's Rule for Indeterminate 0/0 & ∞/∞", desc: "Evaluate limits by independent differentiation of numerator and denominator.", color: "text-pink-400" }
+      ];
+    } else if (t.includes("bio") || t.includes("neet")) {
+      nodes = [
+        { type: "Node 01 • Molecular Process", title: "DNA Replication & Okazaki Fragment Splicing", desc: "Leading vs lagging strand synthesis orchestrated by DNA Polymerase III and Ligase.", color: "text-emerald-400" },
+        { type: "Node 02 • High-Yield Cycle", title: "Calvin Cycle & Rubisco Oxygenase Competition", desc: "Photorespiration losses mitigated in C4/CAM plants through spatial/temporal CO₂ capture.", color: "text-cyan-400" }
+      ];
+    } else if (t.includes("python") || t.includes("computer") || t.includes("dsa")) {
+      nodes = [
+        { type: "Node 01 • Data Structures", title: "Hash Map & Collision Resolution O(1)", desc: "Key-value indexing with open addressing vs chaining for constant amortized access.", color: "text-emerald-400" },
+        { type: "Node 02 • Core Principle", title: "Recursion Stack & Divide-and-Conquer", desc: "Base case termination preventing recursion depth overflow with O(log N) state trees.", color: "text-cyan-400" }
+      ];
+    } else {
+      nodes = [
+        { type: "Node 01 • Definition", title: `${topic || "Core Principles"} Foundations`, desc: `Essential terminology, axioms, and operational framework for ${topic || "this syllabus topic"}.`, color: "text-cyan-400" },
+        { type: "Node 02 • Examiner Trap", title: "High-Yield Distinction & Pitfalls", desc: "Key conceptual boundaries that separate top scorers from common exam misinterpretations.", color: "text-amber-400" }
+      ];
+    }
+
+    list.innerHTML = nodes.map(n => `
+      <div class="bento-card p-3.5 rounded-2xl border border-white/10 space-y-1 animate-fade-in shadow-sm">
+        <span class="text-[9px] font-black ${n.color} uppercase tracking-wider">${escapeHtml(n.type)}</span>
+        <h5 class="text-xs font-extrabold text-white">${escapeHtml(n.title)}</h5>
+        <p class="text-[11px] text-slate-400 leading-relaxed">${escapeHtml(n.desc)}</p>
+      </div>
+    `).join("");
   }
 
   function renderSuggestedChips(chips) {
@@ -3374,22 +3514,32 @@
     document.getElementById("editProfileJourneyBtn")?.addEventListener("click", () => openProfile(false));
     document.getElementById("brandLogoBtn")?.addEventListener("click", () => openProfile(false));
 
-    // Close Profile Modal ✕ Button
+    // Close / Skip Profile Buttons
     document.getElementById("closeProfileModal")?.addEventListener("click", () => {
       pModal?.classList.add("hidden");
     });
-
-    // Skip Profile Button
     document.getElementById("skipProfileBtn")?.addEventListener("click", () => {
       pModal?.classList.add("hidden");
-      localStorage.setItem("clearmind_setup_completed", "true");
-      showToast("Welcome! Ask Luna anything to start.", "info");
+    });
+
+    // Wire HUD Persona Switcher Grid Buttons
+    document.querySelectorAll(".hud-persona-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = btn.getAttribute("data-persona");
+        if (p) {
+          localStorage.setItem("clearmind_calibrated_persona", p);
+          highlightHudPersona(p);
+          updateHUD();
+          playSound("click");
+          const pName = studentProfile.name || "Student";
+          showToast(`Pedagogical persona switched to ${p}`, "info");
+        }
+      });
     });
 
     // Save Profile Submit Button
     document.getElementById("saveProfileBtn")?.addEventListener("click", () => {
       const nInp = document.getElementById("inputStudentName");
-      const lInp = document.getElementById("inputStudyLevel");
       const tInp = document.getElementById("inputStudentTopic");
       const enteredName = nInp?.value.trim() || "";
       const chosenTopic = tInp?.value.trim() || "";
@@ -3397,17 +3547,18 @@
       const finalName = (enteredName && enteredName.toLowerCase() !== "student") ? enteredName : (studentProfile.name || "Prakhar");
 
       studentProfile.name = finalName;
-      studentProfile.level = lInp?.value || "College / University";
       
       if (chosenTopic) {
         activeTopic = chosenTopic;
         localStorage.setItem("clearmind_active_topic", activeTopic);
-      } else {
-        activeTopic = "";
-        localStorage.removeItem("clearmind_active_topic");
       }
 
-      localStorage.setItem("clearmind_profile", JSON.stringify(studentProfile));
+      // Update stored profile with new name and active topic
+      const curData = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+      curData.user = curData.user || {};
+      curData.user.name = finalName;
+      if (chosenTopic) curData.activeTopic = chosenTopic;
+      localStorage.setItem("clearmind_profile", JSON.stringify(curData));
       localStorage.setItem("clearmind_setup_completed", "true");
 
       updateHUD();
@@ -3415,11 +3566,8 @@
       updateDynamicRoadmap();
       pModal?.classList.add("hidden");
       playSound("fanfare");
-      if (activeTopic) {
-        showToast("Welcome " + finalName + "! Classroom ready for " + activeTopic, "success");
-      } else {
-        showToast("Welcome " + finalName + "! Ask Luna anything to start.", "success");
-      }
+      
+      showToast("Academic calibration saved for " + finalName + "!", "success");
 
       // Reset chat and give clean welcoming greeting
       const box = document.getElementById("chatMessagesContainer");

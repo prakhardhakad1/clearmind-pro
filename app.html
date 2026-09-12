@@ -331,71 +331,7 @@
 
         <!-- Chat Messages Container -->
         <div id="chatMessagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-          
-          <!-- Turn 1: Luna Initial Turn -->
-          <div class="flex items-start gap-2.5 animate-fade-in">
-            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-500 to-fuchsia-500 flex items-center justify-center text-sm text-white shrink-0 mt-1 shadow-md shadow-violet-500/20">
-              🌸
-            </div>
-            <div class="space-y-2 max-w-[90%]">
-              <div class="glass border border-white/10 p-4 rounded-2xl rounded-tl-sm text-slate-200 text-xs leading-relaxed shadow-sm space-y-3">
-                <div class="flex items-center justify-between border-b border-white/5 pb-1.5 text-[10px] text-slate-400">
-                  <span class="font-bold text-violet-300">Luna</span>
-                  <span>11:02 AM</span>
-                </div>
-
-                <p>
-                  Awesome! Let's build our first function in Python. It's like defining a specific <strong>'recipe'</strong> your code will follow.
-                </p>
-
-                <!-- Code Snippet Box -->
-                <div class="bg-[#050714]/80 border border-white/5 rounded-xl p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto space-y-1 shadow-inner">
-                  <div class="text-slate-500 select-none"># Python Function Definition</div>
-                  <div><span class="text-violet-400">def</span> <span class="text-yellow-300">greet</span>(name):</div>
-                  <div class="pl-4"><span class="text-cyan-400">print</span>(<span class="text-amber-300">"Hello, "</span> + name + <span class="text-amber-300">"!"</span>)</div>
-                  <div class="pt-1"><span class="text-yellow-300">greet</span>(<span class="text-amber-300">"Alex"</span>)</div>
-                </div>
-
-                <p>
-                  When we call <code class="glass px-1.5 py-0.5 rounded text-violet-300 font-mono text-[11px] border border-white/5">greet("Alex")</code>, the output will be <em>'Hello, Alex!'</em>.
-                </p>
-
-                <!-- Interactive Analogy Spotlight Card -->
-                <div class="p-3.5 bg-violet-950/40 border border-violet-500/30 rounded-xl space-y-1 shadow-sm">
-                  <span class="text-[9px] font-black uppercase tracking-wider text-violet-300 flex items-center gap-1"><span>💡</span> <span>[Interactive Analogy Card]</span></span>
-                  <h5 class="text-xs font-bold text-white">Title: 'Functions = Recipe Box'</h5>
-                  <p class="text-[11px] text-violet-200/90 leading-relaxed">
-                    Description: Define recipe (function) once, reuse whenever needed (call function).
-                  </p>
-                </div>
-
-                <!-- Voice Listen Button -->
-                <div class="pt-1.5 flex items-center justify-between border-t border-white/5">
-                  <button data-speech="Awesome! Let's build our first function in Python. It's like defining a specific recipe your code will follow. When we call greet('Alex'), the output will be 'Hello, Alex!'." class="chat-listen-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-violet-200 text-xs font-bold border border-violet-500/40 transition cursor-pointer">
-                    <span>🎧</span> <span>Listen with Voice</span>
-                  </button>
-                  <span class="text-[10px] text-slate-500 font-medium">Neural Voice Synthesis</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Turn 2: Student Initial Turn -->
-          <div class="flex items-start justify-end gap-2.5 animate-fade-in">
-            <div class="space-y-1 max-w-[85%] text-right">
-              <div class="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-purple-600 text-white p-3.5 rounded-2xl rounded-tr-sm text-xs font-medium leading-relaxed shadow-lg border border-white/15 inline-block text-left">
-                <div class="flex items-center justify-between border-b border-white/20 pb-1 text-[10px] text-purple-200 mb-1.5">
-                  <span class="font-bold">Sarah J.</span>
-                  <span>11:03 AM</span>
-                </div>
-                Okay, I see how they work! What's the output for <code class="bg-purple-900/60 px-1 py-0.5 rounded font-mono text-[11px]">greet("Sarah")</code>?
-              </div>
-            </div>
-            <div class="w-8 h-8 rounded-xl glass border border-white/10 flex items-center justify-center text-base shrink-0 mt-1 shadow-sm">
-              👩
-            </div>
-          </div>
-
+          <!-- Dynamic initial welcome injected by app.js from student profile & calibrated persona -->
         </div>
 
         <!-- Suggested Reply Chips Dock -->
@@ -594,16 +530,7 @@
                 <span>🕸️</span> <span>Unlocked Concept Nodes</span>
               </h4>
               <div id="canvasNodesGrid" class="grid sm:grid-cols-2 gap-3">
-                <div class="bento-card p-3.5 rounded-2xl border border-white/10 space-y-1">
-                  <span class="text-[9px] font-black text-violet-400 uppercase tracking-wider">Node 01 • Definition</span>
-                  <h5 class="text-xs font-extrabold text-white">Function Header & Parameters</h5>
-                  <p class="text-[11px] text-slate-400 leading-relaxed">Functions accept inputs, execute operations, and return output values.</p>
-                </div>
-                <div class="bento-card p-3.5 rounded-2xl border border-white/10 space-y-1">
-                  <span class="text-[9px] font-black text-fuchsia-400 uppercase tracking-wider">Node 02 • Analogy</span>
-                  <h5 class="text-xs font-extrabold text-white">The Recipe Box Model</h5>
-                  <p class="text-[11px] text-slate-400 leading-relaxed">Store the instruction card once, bake whenever you are hungry!</p>
-                </div>
+                <!-- Concept nodes generated dynamically from calibrated curriculum & active topic -->
               </div>
             </div>
 
@@ -1489,73 +1416,141 @@
 </div>
 
   <!-- ========================================================================= -->
-  <!-- STUDENT PROFILE MODAL                                                     -->
+  <!-- ACADEMIC CALIBRATION & TWIN SETTINGS HUD MODAL                            -->
   <!-- ========================================================================= -->
   <div id="profileModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4" style="box-sizing: border-box;">
-    <div class="bg-obsidian-900 border border-purple-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl shadow-purple-950/50 space-y-3 sm:space-y-4 ring-1 ring-purple-500/20 box-border" style="width: 100%; max-width: min(440px, calc(100vw - 24px)); box-sizing: border-box; margin: auto;">
-      <div class="flex items-center justify-between border-b border-obsidian-800 pb-3">
-        <div>
-          <h3 id="profileModalTitle" class="text-sm font-extrabold text-white flex items-center gap-2">
-            <span>✨ Welcome to ClearMind Pro</span>
-          </h3>
-          <p id="profileModalSubtitle" class="text-[11px] text-purple-300/80 mt-0.5">Set up your learning profile to enter the classroom</p>
-        </div>
-        <button id="closeProfileModal" class="text-slate-400 hover:text-white font-bold text-lg p-1 rounded-lg hover:bg-obsidian-800 transition">✕</button>
-      </div>
-
-      <div class="space-y-3">
-        <div>
-          <label class="text-xs font-bold text-slate-300">Choose Avatar:</label>
-          <div id="avatarPickerGrid" class="grid grid-cols-4 gap-1.5 sm:gap-2 mt-1.5 w-full box-border">
-            <button data-avatar="👩" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">👩</button>
-            <button data-avatar="🧠" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🧠</button>
-            <button data-avatar="🚀" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🚀</button>
-            <button data-avatar="🔬" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🔬</button>
-            <button data-avatar="⚡" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">⚡</button>
-            <button data-avatar="🦉" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🦉</button>
-            <button data-avatar="🌟" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">🌟</button>
-            <button data-avatar="💡" class="avatar-btn p-2 sm:p-2.5 rounded-xl bg-obsidian-800 hover:bg-purple-950 border border-obsidian-700 text-xl sm:text-2xl transition min-h-[44px] flex items-center justify-center min-w-0 w-full box-border">💡</button>
+    <div class="bg-[#0c0e1a]/95 border border-white/15 rounded-3xl p-5 sm:p-6 w-full max-w-xl max-h-[92dvh] overflow-y-auto shadow-2xl shadow-cyan-950/40 space-y-4 ring-1 ring-cyan-500/20 box-border text-slate-200">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-500 to-violet-600 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/20 shrink-0">
+            🎓
+          </div>
+          <div>
+            <h3 id="profileModalTitle" class="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+              Academic Twin Calibration
+            </h3>
+            <p id="profileModalSubtitle" class="text-[11px] text-cyan-300/80">Synchronized curriculum, exam countdown & pedagogical persona</p>
           </div>
         </div>
-
-        <div>
-          <label for="inputStudentName" class="text-xs font-bold text-slate-300">Your Name:</label>
-          <input type="text" id="inputStudentName" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border" value="Prakhar" placeholder="e.g. Prakhar" />
-        </div>
-
-        <div>
-          <label for="inputStudentTopic" class="text-xs font-bold text-slate-300">What Subject or Topic do you want to learn?</label>
-          <input type="text" id="inputStudentTopic" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border" placeholder="e.g. Physics, Calculus, Organic Chemistry, Photosynthesis, Coding..." />
-        </div>
-
-        <div>
-          <label for="inputStudyLevel" class="text-xs font-bold text-slate-300">Study Level:</label>
-          <select id="inputStudyLevel" class="mt-1 w-full min-w-0 bg-obsidian-850 border border-obsidian-750 text-slate-100 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none box-border">
-            <optgroup label="School Education" class="bg-obsidian-900 text-purple-300 font-bold">
-              <option value="Class 1 - 2 (Primary School)">Class 1 - 2 (Primary School)</option>
-              <option value="Class 3 - 5 (Elementary School)">Class 3 - 5 (Elementary School)</option>
-              <option value="Class 6 - 8 (Middle School)">Class 6 - 8 (Middle School)</option>
-              <option value="Class 9 - 10 (Secondary / High School)">Class 9 - 10 (High School)</option>
-              <option value="Class 11 - 12 (Senior Secondary / JEE / NEET)">Class 11 - 12 (Senior Secondary / JEE / NEET)</option>
-            </optgroup>
-            <optgroup label="Higher Education" class="bg-obsidian-900 text-purple-300 font-bold">
-              <option value="College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)" selected>College / University (Undergraduate)</option>
-              <option value="Postgraduate / Professional / Master's">Postgraduate / Professional</option>
-              <option value="Competitive Exams (GATE, CAT, UPSC, GRE)">Competitive Exams</option>
-            </optgroup>
-          </select>
-        </div>
-
+        <button id="closeProfileModal" class="text-slate-400 hover:text-white font-bold text-lg p-1.5 rounded-xl hover:bg-white/10 transition cursor-pointer">✕</button>
       </div>
 
-      <div class="flex items-center justify-between gap-2 pt-3 border-t border-obsidian-800">
-        <button id="skipProfileBtn" type="button" class="px-3 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold hover:bg-obsidian-800 transition">
-          Skip for now ➔
+      <!-- Identity & Name Section -->
+      <div class="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <label class="text-[10px] font-black uppercase tracking-wider text-cyan-400">Student Identity & Board</label>
+            <div id="hudCurriculumBadge" class="text-xs font-bold text-white mt-0.5 flex items-center gap-1.5">
+              <span>🏫</span> <span id="hudCurriculumText">Class 12 Science (PCM)</span>
+            </div>
+          </div>
+          <a href="/?recalibrate=1" class="text-[11px] font-bold text-cyan-300 hover:text-cyan-200 bg-cyan-950/60 border border-cyan-800/60 px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1">
+            <span>🔄</span> <span>Recalibrate Syllabus</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/5">
+          <div>
+            <label for="inputStudentName" class="text-[11px] font-bold text-slate-300">Your Name:</label>
+            <input type="text" id="inputStudentName" class="mt-1 w-full bg-[#050714] border border-white/15 text-white rounded-xl px-3 py-2 text-xs focus:border-cyan-500 focus:outline-none transition" value="Prakhar" placeholder="Student Name" />
+          </div>
+          <div>
+            <label for="inputStudentTopic" class="text-[11px] font-bold text-slate-300">Active Syllabus Topic:</label>
+            <input type="text" id="inputStudentTopic" class="mt-1 w-full bg-[#050714] border border-white/15 text-white rounded-xl px-3 py-2 text-xs focus:border-cyan-500 focus:outline-none transition" placeholder="e.g. Physics, Calculus, Organic Chemistry..." />
+          </div>
+        </div>
+      </div>
+
+      <!-- Live AI Teaching Persona Switcher -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <span>⚡</span> <span>Luna AI Teaching Persona</span>
+          </label>
+          <span id="currentActivePersonaLabel" class="text-[10px] font-extrabold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-800/50">⚡ Strict Examiner</span>
+        </div>
+        <div id="hudPersonaGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <button type="button" data-persona="mentor" class="hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer">
+            <span class="text-base">🎓</span>
+            <div>
+              <div class="text-[11px] font-bold text-white">Mentor</div>
+              <div class="text-[9px] text-slate-400">Warm & encouraging</div>
+            </div>
+          </button>
+          <button type="button" data-persona="strict" class="hud-persona-btn active p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer shadow-sm shadow-cyan-500/20">
+            <span class="text-base">⚡</span>
+            <div>
+              <div class="text-[11px] font-bold text-cyan-300">Strict Examiner</div>
+              <div class="text-[9px] text-cyan-200/80">Edge cases & rigor</div>
+            </div>
+          </button>
+          <button type="button" data-persona="polymath" class="hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer">
+            <span class="text-base">🔬</span>
+            <div>
+              <div class="text-[11px] font-bold text-white">First-Principles</div>
+              <div class="text-[9px] text-slate-400">Derivations & proofs</div>
+            </div>
+          </button>
+          <button type="button" data-persona="socratic" class="hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer">
+            <span class="text-base">💡</span>
+            <div>
+              <div class="text-[11px] font-bold text-white">Socratic Guide</div>
+              <div class="text-[9px] text-slate-400">Probing questions</div>
+            </div>
+          </button>
+          <button type="button" data-persona="hacker" class="hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer">
+            <span class="text-base">🚀</span>
+            <div>
+              <div class="text-[11px] font-bold text-white">Exam Hacker</div>
+              <div class="text-[9px] text-slate-400">Shortcuts & tricks</div>
+            </div>
+          </button>
+          <button type="button" data-persona="feynman" class="hud-persona-btn p-2.5 rounded-xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/50 text-left transition flex flex-col justify-between min-h-[64px] cursor-pointer">
+            <span class="text-base">🧠</span>
+            <div>
+              <div class="text-[11px] font-bold text-white">Feynman (ELI5)</div>
+              <div class="text-[9px] text-slate-400">Simple everyday metaphors</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Exam Countdown & Rhythm Stats -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <div class="p-3 rounded-2xl bg-white/[0.02] border border-white/10 space-y-1">
+          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">🎯 Target Exam</span>
+          <div id="hudExamCountdown" class="text-xs sm:text-sm font-extrabold text-amber-300">172 Days Left</div>
+          <div id="hudExamName" class="text-[10px] text-slate-400">Target: March 2026 Exams</div>
+        </div>
+        <div class="p-3 rounded-2xl bg-white/[0.02] border border-white/10 space-y-1">
+          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400">⏱️ Daily Rhythm</span>
+          <div id="hudDailyRhythm" class="text-xs sm:text-sm font-extrabold text-emerald-300">45 mins / day</div>
+          <div class="text-[10px] text-slate-400">Optimized retention pace</div>
+        </div>
+      </div>
+
+      <!-- Tracked Subjects Quick-Picks -->
+      <div class="space-y-1.5 pt-1">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+          <span>📚</span> <span>Tracked Priority Subjects</span>
+        </label>
+        <div id="hudTrackedSubjectsList" class="flex flex-wrap gap-1.5">
+          <!-- Dynamic subject pills injected via app.js -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between gap-2 pt-3 border-t border-white/10">
+        <button id="skipProfileBtn" type="button" class="px-3.5 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold hover:bg-white/5 transition">
+          Close
         </button>
-        <button id="saveProfileBtn" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition min-h-[44px]">
-          🚀 Save & Enter Classroom
+        <button id="saveProfileBtn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-600 hover:opacity-95 text-slate-950 font-black text-xs shadow-lg shadow-cyan-500/20 transition cursor-pointer">
+          ✨ Save & Apply Changes
         </button>
       </div>
+
     </div>
   </div>
 
