@@ -4,7 +4,7 @@
  */
 
 // Paste your Google Cloud OAuth Client ID below or store in localStorage as 'clearmind_google_client_id'
-window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || localStorage.getItem('clearmind_google_client_id') || '';
+window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || localStorage.getItem('clearmind_google_client_id') || '61854617680-nvv67578jejp9qo1kcaeshb5f31o3p69.apps.googleusercontent.com';
 
 window.AuthEngine = {
   currentUser: null,
@@ -28,19 +28,46 @@ window.AuthEngine = {
   },
 
   initGoogleGSI() {
-    if (window.GOOGLE_CLIENT_ID && typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      try {
-        google.accounts.id.initialize({
-          client_id: window.GOOGLE_CLIENT_ID,
-          callback: (response) => this.handleGoogleCredentialResponse(response),
-          auto_select: false,
-          cancel_on_tap_outside: true
-        });
-        console.log('✅ Google Identity Services (GSI) initialized');
-      } catch (err) {
-        console.warn('Google GSI initialization error:', err);
+    const clientId = window.GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    let attempts = 0;
+    const setupGSI = () => {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => this.handleGoogleCredentialResponse(response),
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+          console.log('✅ Google Identity Services (GSI) initialized with Client ID:', clientId);
+
+          // Render official Google button if target container exists
+          const container = document.getElementById('googleGsiBtnContainer');
+          const customBtn = document.getElementById('googleAuthBtn');
+          if (container) {
+            google.accounts.id.renderButton(container, {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+              width: 340
+            });
+            if (customBtn) customBtn.classList.add('hidden');
+          }
+        } catch (err) {
+          console.warn('Google GSI initialization error:', err);
+        }
+      } else if (attempts < 20) {
+        attempts++;
+        setTimeout(setupGSI, 200);
       }
-    }
+    };
+
+    setupGSI();
   },
 
   handleGoogleCredentialResponse(response) {
@@ -79,8 +106,14 @@ window.AuthEngine = {
 
   triggerGoogleAuth() {
     if (window.GOOGLE_CLIENT_ID && typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+      const gsiBtn = document.querySelector('#googleGsiBtnContainer div[role="button"]');
+      if (gsiBtn) {
+        gsiBtn.click();
+        return;
+      }
       google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.warn('Google One Tap prompt skipped or not displayed, using developer simulator:', notification);
           this.simulateGoogleAuth();
         }
       });
