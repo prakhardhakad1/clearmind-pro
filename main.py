@@ -26,7 +26,7 @@ import sqlite3
 import hashlib
 import secrets
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response as PlainResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -538,6 +538,148 @@ def init_db():
 
 init_db()
 
+# Turso Cloud (LibSQL) Cloud Resilience Tier (AWS AP South Mumbai)
+TURSO_DB_URL = os.getenv("TURSO_DB_URL", "https://clearmind-db-prakhardhakad1.aws-ap-south-1.turso.io")
+TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODkyMTY5NDAsImlkIjoiMDFhMDk1YTEtYzUwMS03NmJjLWIzNTMtNmYwNjg1NmJmNjFmIiwia2lkIjoiUXo2Wmx2cnFxcE92OFFXcjdIbUl2S0RQbVB1UnlGVXJ1eThTdUd5S2YzYyIsInJpZCI6ImIxM2Q0YmI5LWJiOGYtNGE0My1iMjZmLWZlMjJlZGRmYTkyMiJ9.9k0uyRo9X-TzgwYwxza21sy15Ps-NofRcpdSm0cm0D1liHjXfxX_LGl1kHtTjyC295ITNm6OvPJafR2W4nnvDw")
+
+def turso_sync_records(statements: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Background task to sync database records permanently to Turso Cloud in Mumbai."""
+    try:
+        if not TURSO_DB_URL or not TURSO_AUTH_TOKEN:
+            return None
+        pipeline_url = TURSO_DB_URL.strip().replace("libsql://", "https://").rstrip("/") + "/v2/pipeline"
+        reqs = []
+        for stmt in statements:
+            sql = stmt["sql"]
+            args = stmt.get("args", [])
+            typed_args = []
+            for a in args:
+                if a is None:
+                    typed_args.append({"type": "null"})
+                elif isinstance(a, int):
+                    typed_args.append({"type": "integer", "value": str(a)})
+                elif isinstance(a, float):
+                    typed_args.append({"type": "float", "value": a})
+                else:
+                    typed_args.append({"type": "text", "value": str(a)})
+            reqs.append({"type": "execute", "stmt": {"sql": sql, "args": typed_args}})
+        
+        body = json.dumps({"requests": reqs}).encode("utf-8")
+        req = urllib.request.Request(pipeline_url, data=body, headers={
+            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        logger.warning(f"Turso sync notice: {e}")
+        return None
+
+def fetch_user_from_turso(login_id: str) -> Optional[Dict[str, Any]]:
+    """Fetches user and persona from Turso Cloud on cold-start and caches into local SQLite."""
+    try:
+        if not TURSO_DB_URL or not TURSO_AUTH_TOKEN:
+            return None
+        pipeline_url = TURSO_DB_URL.strip().replace("libsql://", "https://").rstrip("/") + "/v2/pipeline"
+        body = json.dumps({
+            "requests": [
+                {
+                    "type": "execute",
+                    "stmt": {
+                        "sql": "SELECT user_id, name, email, password_hash, role, created_at FROM users WHERE lower(email) = ? OR upper(user_id) = ?",
+                        "args": [{"type": "text", "value": login_id.lower()}, {"type": "text", "value": login_id.upper()}]
+                    }
+                },
+                {
+                    "type": "execute",
+                    "stmt": {
+                        "sql": "SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at FROM user_profiles WHERE user_id = (SELECT user_id FROM users WHERE lower(email) = ? OR upper(user_id) = ?)",
+                        "args": [{"type": "text", "value": login_id.lower()}, {"type": "text", "value": login_id.upper()}]
+                    }
+                }
+            ]
+        }).encode("utf-8")
+        req = urllib.request.Request(pipeline_url, data=body, headers={
+            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            results = data.get("results", [])
+            if len(results) >= 2:
+                u_res = results[0].get("response", {}).get("result", {})
+                p_res = results[1].get("response", {}).get("result", {})
+                u_rows = u_res.get("rows", [])
+                p_rows = p_res.get("rows", [])
+                if u_rows:
+                    u_vals = [c.get("value") for c in u_rows[0]]
+                    p_vals = [c.get("value") for c in p_rows[0]] if p_rows else None
+                    # Cache in local SQLite
+                    try:
+                        conn = sqlite3.connect(get_db_path())
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, tuple(u_vals))
+                        if p_vals:
+                            cursor.execute("""
+                                INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (u_vals[0], *p_vals))
+                        conn.commit()
+                        conn.close()
+                    except Exception as cache_err:
+                        logger.warning(f"Cache write error: {cache_err}")
+                    return {"user": u_vals, "profile": p_vals}
+        return None
+    except Exception as e:
+        logger.warning(f"Turso fetch error: {e}")
+        return None
+
+def sync_turso_to_local_cache():
+    """Sync all users from Turso Cloud into local cache for admin reporting."""
+    try:
+        if not TURSO_DB_URL or not TURSO_AUTH_TOKEN:
+            return
+        pipeline_url = TURSO_DB_URL.strip().replace("libsql://", "https://").rstrip("/") + "/v2/pipeline"
+        body = json.dumps({
+            "requests": [
+                {
+                    "type": "execute",
+                    "stmt": {
+                        "sql": "SELECT u.user_id, u.name, u.email, u.password_hash, u.role, u.created_at, p.persona, p.identity, p.level, p.board, p.daily_rhythm, p.target_goal, p.subjects, p.sub_details, p.learning_styles, p.updated_at FROM users u LEFT JOIN user_profiles p ON u.user_id = p.user_id"
+                    }
+                }
+            ]
+        }).encode("utf-8")
+        req = urllib.request.Request(pipeline_url, data=body, headers={
+            "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
+            "Content-Type": "application/json"
+        })
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            rows = data.get("results", [])[0].get("response", {}).get("result", {}).get("rows", [])
+            if not rows:
+                return
+            conn = sqlite3.connect(get_db_path())
+            cursor = conn.cursor()
+            for r in rows:
+                v = [c.get("value") for c in r]
+                cursor.execute("""
+                    INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (v[0], v[1], v[2], v[3], v[4], v[5]))
+                if v[6] is not None:
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (v[0], v[6] or "mentor", v[7] or "school", v[8] or "Class 12", v[9] or "CBSE", v[10] or "45 mins / day", v[11] or "", v[12] or "[]", v[13] or "{}", v[14] or "[]", v[15] or ""))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.warning(f"Turso cache sync notice: {e}")
+
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.strip().encode("utf-8")).hexdigest()
 
@@ -631,7 +773,7 @@ async def get_status():
 
 @app.post("/api/auth/register")
 @app.post("/auth/register")
-async def auth_register(req: UserRegisterRequest):
+async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTasks):
     email_clean = req.email.strip().lower()
     name_clean = req.name.strip()
     if not email_clean or not req.password:
@@ -674,6 +816,18 @@ async def auth_register(req: UserRegisterRequest):
     
     conn.commit()
     conn.close()
+    
+    # Schedule background permanent sync to Turso Cloud (Mumbai)
+    background_tasks.add_task(turso_sync_records, [
+        {
+            "sql": "INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)",
+            "args": [user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now]
+        },
+        {
+            "sql": "INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at) VALUES (?, ?, 'school', ?, 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)",
+            "args": [user_id, req.persona or "mentor", req.level or "Class 12", default_subjects, now]
+        }
+    ])
     
     return {
         "status": "success",
@@ -720,6 +874,13 @@ async def auth_login(req: UserLoginRequest):
     """, (login_id_clean.lower(), login_id_clean.upper()))
     user_row = cursor.fetchone()
     
+    # Cold-start resilience: If not in local /tmp SQLite, check Turso Cloud (Mumbai)
+    turso_data = None
+    if not user_row:
+        turso_data = fetch_user_from_turso(login_id_clean)
+        if turso_data and turso_data.get("user"):
+            user_row = tuple(turso_data["user"])
+    
     if not user_row or user_row[3] != pwd_hash:
         conn.close()
         raise HTTPException(status_code=401, detail="Invalid email/ID or password.")
@@ -759,7 +920,7 @@ async def auth_login(req: UserLoginRequest):
 
 @app.post("/api/auth/google")
 @app.post("/auth/google")
-async def auth_google(req: GoogleAuthSyncRequest):
+async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTasks):
     email_clean = req.email.strip().lower()
     name_clean = req.name.strip() or email_clean.split('@')[0]
     
@@ -795,6 +956,18 @@ async def auth_google(req: GoogleAuthSyncRequest):
             VALUES (?, 'mentor', 'school', 'Class 12', 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)
         """, (user_id, default_subjects, now))
         conn.commit()
+        
+        # Sync new Google user to Turso Cloud in background
+        background_tasks.add_task(turso_sync_records, [
+            {
+                "sql": "INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)",
+                "args": [user_id, name_clean, email_clean, pwd_hash, now]
+            },
+            {
+                "sql": "INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at) VALUES (?, 'mentor', 'school', 'Class 12', 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)",
+                "args": [user_id, default_subjects, now]
+            }
+        ])
     else:
         user_id = user_row[0]
         name_clean = user_row[1]
@@ -834,7 +1007,7 @@ async def auth_google(req: GoogleAuthSyncRequest):
 
 @app.post("/api/auth/sync-profile")
 @app.post("/auth/sync-profile")
-async def sync_profile(req: SyncProfileRequest):
+async def sync_profile(req: SyncProfileRequest, background_tasks: BackgroundTasks):
     if not req.user_id:
         raise HTTPException(status_code=400, detail="User ID is required.")
     
@@ -880,6 +1053,43 @@ async def sync_profile(req: SyncProfileRequest):
     conn.commit()
     conn.close()
     
+    # Sync persona & profile updates to Turso Cloud (Mumbai) permanently in background
+    turso_stmts = []
+    if req.name:
+        turso_stmts.append({
+            "sql": "UPDATE users SET name = ? WHERE user_id = ?",
+            "args": [req.name.strip(), req.user_id]
+        })
+    turso_stmts.append({
+        "sql": """INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  ON CONFLICT(user_id) DO UPDATE SET
+                      persona = excluded.persona,
+                      identity = excluded.identity,
+                      level = excluded.level,
+                      board = excluded.board,
+                      daily_rhythm = excluded.daily_rhythm,
+                      target_goal = excluded.target_goal,
+                      subjects = excluded.subjects,
+                      sub_details = excluded.sub_details,
+                      learning_styles = excluded.learning_styles,
+                      updated_at = excluded.updated_at""",
+        "args": [
+            req.user_id,
+            req.persona or "mentor",
+            req.identity or "school",
+            req.level or "Class 12",
+            req.board or "CBSE",
+            req.daily_rhythm or "45 mins / day",
+            req.target_goal or "",
+            subjects_json,
+            sub_details_json,
+            learning_styles_json,
+            now
+        ]
+    })
+    background_tasks.add_task(turso_sync_records, turso_stmts)
+    
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
 
 @app.post("/api/admin/login")
@@ -920,6 +1130,9 @@ async def admin_metrics(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
         
+    # Aggregate fresh records from Turso Cloud
+    sync_turso_to_local_cache()
+    
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -946,7 +1159,7 @@ async def admin_metrics(request: Request):
         "persona_counts": persona_counts,
         "level_counts": level_counts,
         "recent_users": recent_users,
-        "database_location": db_path
+        "database_location": f"Turso LibSQL (AWS Mumbai) + Local Cache ({db_path})"
     }
 
 @app.get("/api/admin/users")
@@ -955,6 +1168,9 @@ async def admin_users(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
         
+    # Aggregate fresh records from Turso Cloud
+    sync_turso_to_local_cache()
+    
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
