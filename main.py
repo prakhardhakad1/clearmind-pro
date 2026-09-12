@@ -1042,6 +1042,8 @@ async def catch_all_debug(request: Request, path_name: str = ""):
         "received_path": request.url.path,
         "scope_path": request.scope.get("path"),
         "path_name": path_name,
+        "query_params": dict(request.query_params),
+        "headers": dict(request.headers),
         "method": request.method
     }
 

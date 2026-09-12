@@ -1,6 +1,6 @@
 import sys
 import os
-import json
+import urllib.parse
 
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
@@ -9,30 +9,23 @@ if root_dir not in sys.path:
 from main import app as fastapi_app
 
 async def app(scope, receive, send):
-    if scope['type'] == 'http':
-        headers_dict = {k.decode('latin1'): v.decode('latin1') for k, v in scope.get('headers', [])}
-        path = scope.get('path', '')
+    if scope.get('type') == 'http':
+        headers = dict(scope.get('headers', []))
+        matched_path = headers.get(b'x-matched-path', b'').decode('latin1')
         
-        # If debug header or test, return debug info
-        if 'debug' in scope.get('query_string', b'').decode():
-            response_body = json.dumps({
-                'path': path,
-                'raw_path': scope.get('raw_path', b'').decode('latin1'),
-                'headers': headers_dict
-            }, indent=2).encode('utf-8')
-            
-            await send({
-                'type': 'http.response.start',
-                'status': 200,
-                'headers': [
-                    [b'content-type', b'application/json'],
-                    [b'content-length', str(len(response_body)).encode()]
-                ]
-            })
-            await send({
-                'type': 'http.response.body',
-                'body': response_body
-            })
-            return
+        qs = scope.get('query_string', b'').decode('latin1')
+        route_param = None
+        for part in qs.split('&'):
+            if part.startswith('_route='):
+                route_param = urllib.parse.unquote(part.split('=', 1)[1])
+                break
+                
+        if route_param:
+            target_path = f'/api/{route_param}' if not route_param.startswith('/') else route_param
+            scope['path'] = target_path
+            scope['raw_path'] = target_path.encode('latin1')
+        elif matched_path and not matched_path.endswith('.py'):
+            scope['path'] = matched_path
+            scope['raw_path'] = matched_path.encode('latin1')
             
     return await fastapi_app(scope, receive, send)
