@@ -1034,3 +1034,14 @@ async def get_manifest():
 
 # Mount /static directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")
+
+@app.api_route("/{path_name:path}", methods=["GET", "POST"])
+async def catch_all_debug(request: Request, path_name: str = ""):
+    return {
+        "status": "debug",
+        "received_path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "path_name": path_name,
+        "method": request.method
+    }
+
