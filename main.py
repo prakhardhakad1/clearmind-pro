@@ -817,8 +817,8 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
     conn.commit()
     conn.close()
     
-    # Schedule background permanent sync to Turso Cloud (Mumbai)
-    background_tasks.add_task(turso_sync_records, [
+    # Permanent sync to Turso Cloud (AWS Mumbai)
+    turso_sync_records([
         {
             "sql": "INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)",
             "args": [user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now]
@@ -957,8 +957,8 @@ async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTa
         """, (user_id, default_subjects, now))
         conn.commit()
         
-        # Sync new Google user to Turso Cloud in background
-        background_tasks.add_task(turso_sync_records, [
+        # Permanent sync to Turso Cloud (AWS Mumbai)
+        turso_sync_records([
             {
                 "sql": "INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)",
                 "args": [user_id, name_clean, email_clean, pwd_hash, now]
@@ -1088,7 +1088,7 @@ async def sync_profile(req: SyncProfileRequest, background_tasks: BackgroundTask
             now
         ]
     })
-    background_tasks.add_task(turso_sync_records, turso_stmts)
+    turso_sync_records(turso_stmts)
     
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
 
