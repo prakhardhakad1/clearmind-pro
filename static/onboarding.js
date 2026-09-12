@@ -894,4 +894,14 @@ window.OnboardingWizard = {
 
 document.addEventListener('DOMContentLoaded', () => {
   window.OnboardingWizard.init();
+  if (window.location.search.includes('onboard') || window.location.search.includes('recalibrate')) {
+    setTimeout(() => {
+      const savedUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
+      if (window.AuthEngine && !savedUser) {
+        window.AuthEngine.openAuthModal('signup');
+      } else {
+        window.OnboardingWizard.open(savedUser || { name: 'Learner', isGuest: true });
+      }
+    }, 250);
+  }
 });

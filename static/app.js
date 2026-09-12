@@ -4229,9 +4229,14 @@
     const urlParams = new URLSearchParams(window.location.search);
     const hasCompletedSetup = localStorage.getItem("clearmind_setup_completed");
 
-    if (!hasCompletedSetup || urlParams.has("settings")) {
+    if (!hasCompletedSetup && !urlParams.has("preview")) {
+      window.location.replace("/?onboard=1");
+      return;
+    }
+
+    if (urlParams.has("settings")) {
       setTimeout(() => {
-        openProfile(!hasCompletedSetup);
+        openProfile(false);
       }, 400);
     }
 

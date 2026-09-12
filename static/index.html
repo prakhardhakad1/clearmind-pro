@@ -81,9 +81,6 @@
 
       <!-- Header CTAs -->
       <div class="hidden sm:flex items-center gap-2.5">
-        <a href="/classroom" class="text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 transition-all flex items-center gap-1.5 shadow-sm" title="Open ClearMind Pro Classroom Cockpit">
-          <span>🚀</span> <span>Classroom</span>
-        </a>
         <button type="button" id="navGuestBtn" data-open-auth="signup" class="btn-guest text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-cyan-500/40 bg-white/5 hover:bg-white/10 text-gray-200 transition-all flex items-center gap-1.5 cursor-pointer">
           <span>⚡</span> <span>Get Started</span>
         </button>
@@ -118,9 +115,8 @@
     </div>
 
     <div class="mt-auto flex flex-col gap-3">
-      <a href="/classroom" class="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 font-bold text-center text-white shadow-lg shadow-violet-500/30">🚀 Enter Classroom Cockpit</a>
-      <button type="button" data-open-auth="signup" class="w-full py-3 rounded-xl border border-white/15 bg-white/5 font-semibold text-center text-white cursor-pointer">⚡ Start Free Prep</button>
-      <button type="button" data-open-auth="signin" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-center text-white cursor-pointer">Sign In / Register</button>
+      <button type="button" data-open-auth="signup" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 font-extrabold text-center text-slate-950 shadow-lg shadow-cyan-500/25 cursor-pointer">🚀 Calibrate Academic Profile</button>
+      <button type="button" data-open-auth="signin" class="w-full py-3 rounded-xl border border-white/15 bg-white/5 font-semibold text-center text-white cursor-pointer">Sign In / Register</button>
     </div>
   </div>
 
@@ -143,14 +139,11 @@
         From Class 6 to B.Tech, MBBS & Beyond. Experience Socratic dialogues, 60-second cheatsheets, 3D memory galaxies, and gamified speed battles engineered for deep conceptual retention.
       </p>
 
-      <!-- Primary Action Buttons -->
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-        <button type="button" id="heroGetStartedBtn" data-open-auth="signup" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-extrabold text-base shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer">
-          Get Started Free — Calibrate Profile 🚀
+      <!-- Primary Action Buttons (Calibration First) -->
+      <div class="flex items-center justify-center mb-16">
+        <button type="button" id="heroGetStartedBtn" data-open-auth="signup" class="w-full sm:w-auto px-10 py-4.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-base sm:text-lg shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
+          <span>🚀</span> <span>Get Started Free — Calibrate Profile</span>
         </button>
-        <a href="/classroom" id="heroEnterClassroomBtn" class="w-full sm:w-auto px-6 py-4 rounded-2xl border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 hover:border-violet-500/50 text-white font-semibold text-base backdrop-blur-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm">
-          <span>🚀</span> Enter Classroom Cockpit
-        </a>
       </div>
 
       <!-- Interactive Teaser Box -->
@@ -385,7 +378,7 @@
         <a href="#features" class="hover:text-cyan-400 transition-colors">Features</a>
         <a href="#how-it-works" class="hover:text-cyan-400 transition-colors">How It Works</a>
         <a href="#faq" class="hover:text-cyan-400 transition-colors">FAQ</a>
-        <a href="/classroom" class="text-violet-400 hover:text-violet-300 font-bold transition-colors flex items-center gap-1"><span>🚀</span> Classroom Cockpit</a>
+        <button type="button" data-open-auth="signup" class="text-cyan-400 hover:text-cyan-300 font-bold transition-colors flex items-center gap-1 cursor-pointer"><span>🚀</span> Calibrate Profile &amp; Start</button>
         <span class="text-emerald-400 flex items-center gap-1.5 font-mono">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Systems Operational
         </span>
@@ -728,8 +721,8 @@
   </div>
 
   <!-- Scripts -->
-  <script src="./auth.js?v=5.0"></script>
-  <script src="./onboarding.js?v=5.0"></script>
-  <script src="./landing.js?v=5.0"></script>
+  <script src="./auth.js?v=6.0"></script>
+  <script src="./onboarding.js?v=6.0"></script>
+  <script src="./landing.js?v=6.0"></script>
 </body>
 </html>
