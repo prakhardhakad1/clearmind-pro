@@ -22,7 +22,6 @@ import asyncio
 from typing import List, Optional, Dict, Any
 
 import urllib.parse
-import urllib.request
 import sqlite3
 import hashlib
 import secrets
@@ -45,9 +44,6 @@ import edge_tts
 # ---------------------------------------------------------------------------
 # Configuration & Environment
 # ---------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("clearmind")
-
 ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=ENV_PATH)
 
@@ -468,135 +464,14 @@ class TTSRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Database & Authentication Architecture (Turso Edge Cloud + SQLite Fallback)
+# Database & Authentication Architecture (SQLite & User Session Engine)
 # ---------------------------------------------------------------------------
-TURSO_DB_URL = os.getenv(
-    "TURSO_DATABASE_URL",
-    "https://clearmind-db-prakhardhakad1.aws-ap-south-1.turso.io"
-)
-TURSO_AUTH_TOKEN = os.getenv(
-    "TURSO_AUTH_TOKEN",
-    "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODkyMTY5NDAsImlkIjoiMDFhMDk1YTEtYzUwMS03NmJjLWIzNTMtNmYwNjg1NmJmNjFmIiwia2lkIjoiUXo2Wmx2cnFxcE92OFFXcjdIbUl2S0RQbVB1UnlGVXJ1eThTdUd5S2YzYyIsInJpZCI6ImIxM2Q0YmI5LWJiOGYtNGE0My1iMjZmLWZlMjJlZGRmYTkyMiJ9.9k0uyRo9X-TzgwYwxza21sy15Ps-NofRcpdSm0cm0D1liHjXfxX_LGl1kHtTjyC295ITNm6OvPJafR2W4nnvDw"
-)
-
-def normalize_turso_pipeline_url(url: str) -> str:
-    if not url: return ""
-    url = url.strip()
-    if url.startswith("libsql://"):
-        url = url.replace("libsql://", "https://")
-    if not url.endswith("/v2/pipeline"):
-        url = url.rstrip("/") + "/v2/pipeline"
-    return url
-
-TURSO_PIPELINE_URL = normalize_turso_pipeline_url(TURSO_DB_URL)
-
-def _convert_turso_cell(cell: dict) -> Any:
-    vtype = cell.get("type")
-    if vtype == "null":
-        return None
-    val = cell.get("value")
-    if vtype == "integer":
-        try: return int(val)
-        except Exception: return val
-    elif vtype == "float":
-        try: return float(val)
-        except Exception: return val
-    return val
-
-def turso_query(sql: str, args: Optional[List[Any]] = None) -> List[Tuple]:
-    typed_args = []
-    if args:
-        for a in args:
-            if a is None:
-                typed_args.append({"type": "null"})
-            elif isinstance(a, int):
-                typed_args.append({"type": "integer", "value": str(a)})
-            elif isinstance(a, float):
-                typed_args.append({"type": "float", "value": a})
-            else:
-                typed_args.append({"type": "text", "value": str(a)})
-    
-    payload = {
-        "requests": [
-            {"type": "execute", "stmt": {"sql": sql, "args": typed_args}}
-        ]
-    }
-    
-    with httpx.Client(timeout=6.0) as client:
-        resp = client.post(
-            TURSO_PIPELINE_URL,
-            headers={
-                "Authorization": f"Bearer {TURSO_AUTH_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json=payload
-        )
-    if resp.status_code != 200:
-        raise RuntimeError(f"Turso HTTP {resp.status_code}: {resp.text}")
-    
-    data = resp.json()
-    results = data.get("results", [])
-    if not results:
-        return []
-    first = results[0]
-    if first.get("type") == "error":
-        raise RuntimeError(first.get("error", {}).get("message", "Turso Query Error"))
-    exec_res = first.get("response", {}).get("result", {})
-    raw_rows = exec_res.get("rows", [])
-    return [tuple(_convert_turso_cell(c) for c in r) for r in raw_rows]
-
 def get_db_path() -> str:
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
         return "/tmp/clearmind.db"
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "clearmind.db")
 
-def db_execute(sql: str, params: Optional[List[Any]] = None):
-    if TURSO_PIPELINE_URL and TURSO_AUTH_TOKEN:
-        try:
-            return turso_query(sql, params)
-        except Exception as err:
-            logger.warning(f"Turso execute fallback: {err}")
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(sql, tuple(params) if params else ())
-    conn.commit()
-    conn.close()
-
-def db_fetchone(sql: str, params: Optional[List[Any]] = None) -> Optional[Tuple]:
-    if TURSO_PIPELINE_URL and TURSO_AUTH_TOKEN:
-        try:
-            rows = turso_query(sql, params)
-            return rows[0] if rows else None
-        except Exception as err:
-            logger.warning(f"Turso fetchone fallback: {err}")
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(sql, tuple(params) if params else ())
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-def db_fetchall(sql: str, params: Optional[List[Any]] = None) -> List[Tuple]:
-    if TURSO_PIPELINE_URL and TURSO_AUTH_TOKEN:
-        try:
-            return turso_query(sql, params)
-        except Exception as err:
-            logger.warning(f"Turso fetchall fallback: {err}")
-    db_path = get_db_path()
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(sql, tuple(params) if params else ())
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
 def init_db():
-    now = datetime.utcnow().isoformat()
-    admin_pwd_hash = hashlib.sha256("@PrakharDhakad1234543211".encode("utf-8")).hexdigest()
-    
-    # 1. Initialize local SQLite (offline fallback)
     try:
         db_path = get_db_path()
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
@@ -629,22 +504,37 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
+        # Seed or update default admin credentials with requested password
+        now = datetime.utcnow().isoformat()
+        admin_pwd_hash = hashlib.sha256("@PrakharDhakad1234543211".encode("utf-8")).hexdigest()
         cursor.execute("SELECT id FROM users WHERE email = 'admin@clearmind.ai' OR user_id = 'CMP-ADMIN'")
-        if not cursor.fetchone():
+        existing_admin = cursor.fetchone()
+        if not existing_admin:
             cursor.execute("""
                 INSERT INTO users (user_id, name, email, password_hash, role, created_at)
-                VALUES ('CMP-ADMIN', 'ClearMind Admin', 'admin@clearmind.ai', ?, 'admin', ?)
-            """, (admin_pwd_hash, now))
+                VALUES (?, ?, ?, ?, 'admin', ?)
+            """, (
+                "CMP-ADMIN",
+                "ClearMind Admin",
+                "admin@clearmind.ai",
+                admin_pwd_hash,
+                now
+            ))
             cursor.execute("""
                 INSERT OR REPLACE INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
-                VALUES ('CMP-ADMIN', 'polymath', 'college', 'College / B.Tech CSE', 'Autonomous', '60m', 'System Architecture & Research', ?, ?)
-            """, (json.dumps(["AI & Machine Learning", "Operating Systems", "Advanced Mathematics"]), now))
+                VALUES (?, 'polymath', 'college', 'College / B.Tech CSE', 'Autonomous', '60m', 'System Architecture & Research', ?, ?)
+            """, (
+                "CMP-ADMIN",
+                json.dumps(["AI & Machine Learning", "Operating Systems", "Advanced Mathematics"]),
+                now
+            ))
         else:
             cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = 'CMP-ADMIN' OR email = 'admin@clearmind.ai'", (admin_pwd_hash,))
         conn.commit()
         conn.close()
+        logger.info(f"Initialized SQLite database at {db_path} with updated admin credentials")
     except Exception as err:
-        logger.warning(f"Local SQLite init notice: {err}")
+        logger.error(f"Failed to initialize SQLite DB: {err}")
 
 init_db()
 
@@ -753,28 +643,37 @@ async def auth_register(req: UserRegisterRequest):
     if len(req.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
     
-    existing = db_fetchone("SELECT user_id FROM users WHERE lower(email) = ?", [email_clean])
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM users WHERE lower(email) = ?", (email_clean,))
+    existing = cursor.fetchone()
     if existing:
+        conn.close()
         raise HTTPException(status_code=400, detail="An account with this email already exists. Please sign in.")
     
     user_id = generate_user_id()
     while True:
-        if not db_fetchone("SELECT id FROM users WHERE user_id = ?", [user_id]):
+        cursor.execute("SELECT id FROM users WHERE user_id = ?", (user_id,))
+        if not cursor.fetchone():
             break
         user_id = generate_user_id()
     
     pwd_hash = hash_password(req.password)
     now = datetime.utcnow().isoformat()
-    db_execute("""
+    cursor.execute("""
         INSERT INTO users (user_id, name, email, password_hash, role, created_at)
         VALUES (?, ?, ?, ?, 'student', ?)
-    """, [user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now])
+    """, (user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now))
     
     default_subjects = json.dumps(["Physics", "Chemistry", "Mathematics"])
-    db_execute("""
+    cursor.execute("""
         INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
         VALUES (?, ?, 'school', ?, 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)
-    """, [user_id, req.persona or "mentor", req.level or "Class 12", default_subjects, now])
+    """, (user_id, req.persona or "mentor", req.level or "Class 12", default_subjects, now))
+    
+    conn.commit()
+    conn.close()
     
     return {
         "status": "success",
@@ -811,19 +710,27 @@ async def auth_login(req: UserLoginRequest):
         raise HTTPException(status_code=400, detail="Please enter a valid email address or User ID.")
         
     pwd_hash = hash_password(req.password)
-    user_row = db_fetchone("""
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
         SELECT user_id, name, email, password_hash, role, created_at
         FROM users WHERE lower(email) = ? OR upper(user_id) = ?
-    """, [login_id_clean.lower(), login_id_clean.upper()])
+    """, (login_id_clean.lower(), login_id_clean.upper()))
+    user_row = cursor.fetchone()
     
     if not user_row or user_row[3] != pwd_hash:
+        conn.close()
         raise HTTPException(status_code=401, detail="Invalid email/ID or password.")
     
     user_id = user_row[0]
-    prof_row = db_fetchone("""
+    cursor.execute("""
         SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at
         FROM user_profiles WHERE user_id = ?
-    """, [user_id])
+    """, (user_id,))
+    prof_row = cursor.fetchone()
+    conn.close()
     
     profile_data = {
         "persona": prof_row[0] if prof_row else "mentor",
@@ -856,10 +763,14 @@ async def auth_google(req: GoogleAuthSyncRequest):
     email_clean = req.email.strip().lower()
     name_clean = req.name.strip() or email_clean.split('@')[0]
     
-    user_row = db_fetchone("""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
         SELECT user_id, name, email, role, created_at
         FROM users WHERE lower(email) = ?
-    """, [email_clean])
+    """, (email_clean,))
+    user_row = cursor.fetchone()
     
     now = datetime.utcnow().isoformat()
     is_new = False
@@ -867,29 +778,33 @@ async def auth_google(req: GoogleAuthSyncRequest):
         is_new = True
         user_id = generate_user_id()
         while True:
-            if not db_fetchone("SELECT id FROM users WHERE user_id = ?", [user_id]):
+            cursor.execute("SELECT id FROM users WHERE user_id = ?", (user_id,))
+            if not cursor.fetchone():
                 break
             user_id = generate_user_id()
         
         pwd_hash = hash_password(secrets.token_hex(16))
-        db_execute("""
+        cursor.execute("""
             INSERT INTO users (user_id, name, email, password_hash, role, created_at)
             VALUES (?, ?, ?, ?, 'student', ?)
-        """, [user_id, name_clean, email_clean, pwd_hash, now])
+        """, (user_id, name_clean, email_clean, pwd_hash, now))
         
         default_subjects = json.dumps(["Physics", "Chemistry", "Mathematics"])
-        db_execute("""
+        cursor.execute("""
             INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, updated_at)
             VALUES (?, 'mentor', 'school', 'Class 12', 'CBSE', '45 mins / day', 'Board & Entrance Exams', ?, ?)
-        """, [user_id, default_subjects, now])
+        """, (user_id, default_subjects, now))
+        conn.commit()
     else:
         user_id = user_row[0]
         name_clean = user_row[1]
     
-    prof_row = db_fetchone("""
+    cursor.execute("""
         SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at
         FROM user_profiles WHERE user_id = ?
-    """, [user_id])
+    """, (user_id,))
+    prof_row = cursor.fetchone()
+    conn.close()
     
     profile_data = {
         "persona": prof_row[0] if prof_row else "mentor",
@@ -923,15 +838,19 @@ async def sync_profile(req: SyncProfileRequest):
     if not req.user_id:
         raise HTTPException(status_code=400, detail="User ID is required.")
     
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
     now = datetime.utcnow().isoformat()
     if req.name:
-        db_execute("UPDATE users SET name = ? WHERE user_id = ?", [req.name.strip(), req.user_id])
+        cursor.execute("UPDATE users SET name = ? WHERE user_id = ?", (req.name.strip(), req.user_id))
     
     subjects_json = json.dumps(req.subjects or [])
     sub_details_json = json.dumps(req.sub_details or {})
     learning_styles_json = json.dumps(req.learning_styles or [])
     
-    db_execute("""
+    cursor.execute("""
         INSERT INTO user_profiles (user_id, persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
@@ -945,7 +864,7 @@ async def sync_profile(req: SyncProfileRequest):
             sub_details = excluded.sub_details,
             learning_styles = excluded.learning_styles,
             updated_at = excluded.updated_at
-    """, [
+    """, (
         req.user_id,
         req.persona or "mentor",
         req.identity or "school",
@@ -957,7 +876,9 @@ async def sync_profile(req: SyncProfileRequest):
         sub_details_json,
         learning_styles_json,
         now
-    ])
+    ))
+    conn.commit()
+    conn.close()
     
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
 
@@ -967,11 +888,16 @@ async def admin_login(req: AdminLoginRequest):
     uid_clean = req.user_id.strip()
     pwd_hash = hash_password(req.password)
     
-    row = db_fetchone("""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
         SELECT user_id, name, email, password_hash, role
         FROM users
         WHERE (user_id = ? OR lower(email) = ?) AND role = 'admin'
-    """, [uid_clean, uid_clean.lower()])
+    """, (uid_clean, uid_clean.lower()))
+    row = cursor.fetchone()
+    conn.close()
     
     if not row or row[3] != pwd_hash:
         raise HTTPException(status_code=401, detail="Invalid Admin User ID or Password.")
@@ -994,20 +920,25 @@ async def admin_metrics(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
         
-    count_row = db_fetchone("SELECT COUNT(*) FROM users")
-    total_users = count_row[0] if count_row else 0
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
     
-    persona_rows = db_fetchall("SELECT persona, COUNT(*) FROM user_profiles GROUP BY persona")
-    persona_counts = {r[0]: r[1] for r in persona_rows if r[0]}
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
     
-    level_rows = db_fetchall("SELECT level, COUNT(*) FROM user_profiles GROUP BY level")
-    level_counts = {r[0]: r[1] for r in level_rows if r[0]}
+    cursor.execute("SELECT persona, COUNT(*) FROM user_profiles GROUP BY persona")
+    persona_counts = {row[0]: row[1] for row in cursor.fetchall()}
     
-    recent_rows = db_fetchall("SELECT user_id, name, email, created_at FROM users ORDER BY id DESC LIMIT 5")
+    cursor.execute("SELECT level, COUNT(*) FROM user_profiles GROUP BY level")
+    level_counts = {row[0]: row[1] for row in cursor.fetchall()}
+    
+    cursor.execute("SELECT user_id, name, email, created_at FROM users ORDER BY id DESC LIMIT 5")
     recent_users = [
         {"user_id": r[0], "name": r[1], "email": r[2], "created_at": r[3]}
-        for r in recent_rows
+        for r in cursor.fetchall()
     ]
+    conn.close()
     
     return {
         "status": "success",
@@ -1015,7 +946,7 @@ async def admin_metrics(request: Request):
         "persona_counts": persona_counts,
         "level_counts": level_counts,
         "recent_users": recent_users,
-        "database_location": "Turso Cloud (AWS AP South Mumbai)" if (TURSO_PIPELINE_URL and TURSO_AUTH_TOKEN) else get_db_path()
+        "database_location": db_path
     }
 
 @app.get("/api/admin/users")
@@ -1024,13 +955,19 @@ async def admin_users(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
         
-    rows = db_fetchall("""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
         SELECT u.user_id, u.name, u.email, u.role, u.created_at,
                p.persona, p.identity, p.level, p.board, p.daily_rhythm, p.target_goal, p.subjects, p.updated_at
         FROM users u
         LEFT JOIN user_profiles p ON u.user_id = p.user_id
         ORDER BY u.id DESC
     """)
+    rows = cursor.fetchall()
+    conn.close()
     
     users_list = []
     for r in rows:
@@ -1053,15 +990,11 @@ async def admin_users(request: Request):
                 "daily_rhythm": r[9] or "45 mins / day",
                 "target_goal": r[10] or "",
                 "subjects": subjects,
-                "updated_at": r[12] if len(r) > 12 else ""
+                "updated_at": r[12] or r[4]
             }
         })
     
-    return {
-        "status": "success",
-        "total": len(users_list),
-        "users": users_list
-    }
+    return {"status": "success", "count": len(users_list), "users": users_list}
 
 @app.post("/api/chat-teach", response_model=ChatTeachResponse)
 @app.post("/chat-teach", response_model=ChatTeachResponse)
