@@ -552,6 +552,28 @@ class UserLoginRequest(BaseModel):
     email: str
     password: str
 
+class AdminLoginRequest(BaseModel):
+    user_id: str
+    password: str
+
+ADMIN_SESSION_SECRET = os.getenv("ADMIN_SESSION_SECRET", "clearmind_secure_admin_2026_vault_key")
+
+def make_admin_token(admin_uid: str) -> str:
+    raw = f"{admin_uid}:{ADMIN_SESSION_SECRET}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+def verify_admin_auth(request: Request) -> bool:
+    auth_header = request.headers.get("authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    elif request.headers.get("x-admin-token"):
+        token = request.headers.get("x-admin-token").strip()
+    
+    if token and (token == make_admin_token("CMP-ADMIN") or token == make_admin_token("admin@clearmind.ai")):
+        return True
+    return False
+
 class SyncProfileRequest(BaseModel):
     user_id: str
     name: Optional[str] = None
@@ -823,9 +845,44 @@ async def sync_profile(req: SyncProfileRequest):
     
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
 
+@app.post("/api/admin/login")
+@app.post("/admin/login")
+async def admin_login(req: AdminLoginRequest):
+    uid_clean = req.user_id.strip()
+    pwd_hash = hash_password(req.password)
+    
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id, name, email, password_hash, role
+        FROM users
+        WHERE (user_id = ? OR lower(email) = ?) AND role = 'admin'
+    """, (uid_clean, uid_clean.lower()))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if not row or row[3] != pwd_hash:
+        raise HTTPException(status_code=401, detail="Invalid Admin User ID or Password.")
+    
+    token = make_admin_token(row[0])
+    return {
+        "status": "success",
+        "token": token,
+        "admin": {
+            "user_id": row[0],
+            "name": row[1],
+            "email": row[2],
+            "role": "admin"
+        }
+    }
+
 @app.get("/api/admin/metrics")
 @app.get("/admin/metrics")
-async def admin_metrics():
+async def admin_metrics(request: Request):
+    if not verify_admin_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
+        
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -857,7 +914,10 @@ async def admin_metrics():
 
 @app.get("/api/admin/users")
 @app.get("/admin/users")
-async def admin_users():
+async def admin_users(request: Request):
+    if not verify_admin_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
+        
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

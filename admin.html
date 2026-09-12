@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ClearMind Pro — Admin & Academic Analytics Console</title>
+  <title>ClearMind Pro — Admin Access Gate</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -32,7 +32,7 @@
     .persona-badge-feynman { background: rgba(236, 72, 153, 0.15); color: #f9a8d4; border: 1px solid rgba(236, 72, 153, 0.3); }
   </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500/30 selection:text-white">
+<body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500/30 selection:text-white relative">
 
   <!-- Ambient Backdrop Glow -->
   <div class="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
@@ -41,162 +41,306 @@
     <div class="grid-bg absolute inset-0 opacity-40"></div>
   </div>
 
-  <!-- Navbar -->
-  <header class="sticky top-0 z-40 glass-card border-b border-white/10 px-4 lg:px-8 py-3.5">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <a href="/" class="flex items-center gap-2.5 group">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center">
-            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-base">🛡️</div>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-base font-black tracking-tight text-white">ClearMind <span class="text-cyan-400">Pro</span></span>
-              <span class="text-[10px] font-black uppercase tracking-wider bg-cyan-950 text-cyan-300 border border-cyan-800/80 px-2 py-0.5 rounded-full">Admin Console</span>
-            </div>
-            <p class="text-[11px] text-slate-400">Student Directory, User IDs & Academic Persona Registry</p>
-          </div>
-        </a>
-      </div>
-
-      <div class="flex items-center gap-2.5">
-        <button id="refreshDataBtn" class="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5 cursor-pointer">
-          <span>🔄</span> <span>Refresh</span>
-        </button>
-        <a href="/classroom" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition flex items-center gap-1.5">
-          <span>🎓</span> <span>Classroom</span>
-        </a>
-        <a href="/" class="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 hover:text-white transition">
-          Home
-        </a>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Content Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
-
-    <!-- Top Bento Metrics Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <!-- ========================================================================= -->
+  <!-- 1. ADMIN SECURITY GATEKEEPER MODAL (LOCKED BY DEFAULT)                     -->
+  <!-- ========================================================================= -->
+  <div id="adminGatekeeperModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl">
+    <div class="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-slate-900/95 border border-white/15 shadow-2xl shadow-purple-500/10 text-center relative overflow-hidden">
       
-      <!-- Card 1: Total Students -->
-      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
-        <div class="flex items-center justify-between text-slate-400 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Total Registered</span>
-          <span class="text-lg">👥</span>
-        </div>
-        <div id="statTotalUsers" class="text-3xl font-black text-white">0</div>
-        <div class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-          <span>●</span> <span>Database Active (SQLite)</span>
+      <!-- Top Decorative Aura -->
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-purple-500/20 blur-2xl pointer-events-none"></div>
+
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-violet-500 to-cyan-400 p-0.5 shadow-xl shadow-purple-500/30 mx-auto mb-4 flex items-center justify-center">
+        <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
+          🛡️
         </div>
       </div>
 
-      <!-- Card 2: Persona Breakdown -->
-      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
-        <div class="flex items-center justify-between text-slate-400 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Active Personas</span>
-          <span class="text-lg">🧠</span>
-        </div>
-        <div id="statPersonaCount" class="text-3xl font-black text-cyan-400">0</div>
-        <div id="statPersonaPills" class="flex flex-wrap gap-1 mt-1 text-[10px] text-slate-300">
-          <!-- Injected via JS -->
-        </div>
-      </div>
+      <h2 class="text-xl font-black text-white tracking-tight">Admin Access Gate</h2>
+      <p class="text-xs text-slate-400 mt-1 mb-6">Restricted Area • Authentication required with Admin User ID & Password</p>
 
-      <!-- Card 3: Levels Breakdown -->
-      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
-        <div class="flex items-center justify-between text-slate-400 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Academic Tiers</span>
-          <span class="text-lg">🏫</span>
-        </div>
-        <div id="statLevelCount" class="text-3xl font-black text-purple-400">0</div>
-        <div id="statLevelPills" class="flex flex-wrap gap-1 mt-1 text-[10px] text-slate-300">
-          <!-- Injected via JS -->
-        </div>
-      </div>
+      <!-- Error message container -->
+      <div id="adminLoginError" class="hidden mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-medium text-center"></div>
 
-      <!-- Card 4: Session Privacy Architecture -->
-      <div class="glass-card rounded-2xl p-5 relative overflow-hidden border-emerald-500/20">
-        <div class="flex items-center justify-between text-slate-400 mb-2">
-          <span class="text-xs font-bold uppercase tracking-wider">Privacy Engine</span>
-          <span class="text-lg">🔒</span>
-        </div>
-        <div class="text-sm font-black text-emerald-300">Zero Ephemeral Leakage</div>
-        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
-          Chat & study chapters are session-only and wiped on logout. Persona & curriculum are saved permanently in DB.
-        </p>
-      </div>
-
-    </div>
-
-    <!-- Student Directory Card -->
-    <div class="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
-      
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+      <!-- Login Form -->
+      <form id="adminLoginForm" class="space-y-4 text-left">
         <div>
-          <h2 class="text-lg font-black text-white flex items-center gap-2">
-            <span>📚</span> <span>Registered Students & Persona Calibrations</span>
-          </h2>
-          <p class="text-xs text-slate-400">Searchable directory of enrolled students with unique User IDs</p>
-        </div>
-
-        <!-- Controls: Search & Filter -->
-        <div class="flex items-center gap-2">
-          <div class="relative w-full sm:w-64">
-            <input type="text" id="userSearchInput" placeholder="Search by name, email, CMP-ID..." class="w-full bg-slate-950 border border-white/15 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500" />
-            <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔍</span>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Admin User ID</label>
+          <div class="relative">
+            <input type="text" id="adminUserIdInput" placeholder="e.g. CMP-ADMIN" required autocomplete="username" class="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition" />
+            <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs">👤</span>
           </div>
-
-          <select id="personaFilterSelect" class="bg-slate-950 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-cyan-500">
-            <option value="all">All Personas</option>
-            <option value="socratic">Socratic</option>
-            <option value="strict">Strict</option>
-            <option value="mentor">Mentor</option>
-            <option value="polymath">Polymath</option>
-            <option value="hacker">Exam Hacker</option>
-            <option value="feynman">Feynman</option>
-          </select>
         </div>
-      </div>
 
-      <!-- Users Table -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead>
-            <tr class="border-b border-white/10 text-slate-400 uppercase tracking-wider font-bold">
-              <th class="py-3 px-3">User ID</th>
-              <th class="py-3 px-3">Student Name</th>
-              <th class="py-3 px-3">Email</th>
-              <th class="py-3 px-3">Role</th>
-              <th class="py-3 px-3">Persona</th>
-              <th class="py-3 px-3">Level / Board</th>
-              <th class="py-3 px-3">Tracked Subjects</th>
-              <th class="py-3 px-3">Registered</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody" class="divide-y divide-white/5">
-            <tr>
-              <td colspan="8" class="text-center py-8 text-slate-500">
-                <span class="inline-block animate-spin mr-2">⚙️</span> Loading student directory...
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Admin Password</label>
+          <div class="relative">
+            <input type="password" id="adminPasswordInput" placeholder="••••••••" required autocomplete="current-password" class="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition" />
+            <span class="absolute right-3.5 top-3.5 text-slate-500 text-xs">🔑</span>
+          </div>
+        </div>
+
+        <button type="submit" id="adminLoginSubmitBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 via-violet-500 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-purple-500/25 transition-all cursor-pointer">
+          Unlock Admin Panel 🔓
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-500">
+        <span>ClearMind Pro Security Engine</span>
+        <a href="/" class="text-cyan-400 hover:underline">Return to Home</a>
       </div>
 
     </div>
+  </div>
 
-  </main>
+  <!-- ========================================================================= -->
+  <!-- 2. PROTECTED ADMIN DASHBOARD CONTENT (REVEALED ONLY AFTER AUTH)            -->
+  <!-- ========================================================================= -->
+  <div id="adminDashboardContainer" class="hidden flex-1 flex flex-col">
+    
+    <!-- Navbar -->
+    <header class="sticky top-0 z-40 glass-card border-b border-white/10 px-4 lg:px-8 py-3.5">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <a href="/" class="flex items-center gap-2.5 group">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/20 flex items-center justify-center">
+              <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-base">🛡️</div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-base font-black tracking-tight text-white">ClearMind <span class="text-cyan-400">Pro</span></span>
+                <span class="text-[10px] font-black uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-800/80 px-2 py-0.5 rounded-full">Secure Admin Console</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Student Directory, User IDs & Academic Persona Registry</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <div id="adminUserPill" class="hidden sm:inline-block px-2.5 py-1 rounded-xl bg-purple-950/80 border border-purple-800/80 text-purple-300 text-xs font-mono font-bold">
+            CMP-ADMIN
+          </div>
+          <button id="refreshDataBtn" class="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 transition flex items-center gap-1.5 cursor-pointer">
+            <span>🔄</span> <span>Refresh</span>
+          </button>
+          <a href="/classroom" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition flex items-center gap-1.5">
+            <span>🎓</span> <span>Classroom</span>
+          </a>
+          <button id="adminLogoutBtn" class="px-3.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-xs font-bold text-red-300 transition flex items-center gap-1.5 cursor-pointer" title="Lock Admin Console">
+            <span>🔒</span> <span>Lock & Exit</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+      <!-- Top Bento Metrics Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Card 1: Total Students -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Total Registered</span>
+            <span class="text-lg">👥</span>
+          </div>
+          <div id="statTotalUsers" class="text-3xl font-black text-white">0</div>
+          <div class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+            <span>●</span> <span>Database Active (SQLite)</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Persona Breakdown -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Active Personas</span>
+            <span class="text-lg">🧠</span>
+          </div>
+          <div id="statPersonaCount" class="text-3xl font-black text-cyan-400">0</div>
+          <div id="statPersonaPills" class="flex flex-wrap gap-1 mt-1 text-[10px] text-slate-300">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Card 3: Levels Breakdown -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Academic Tiers</span>
+            <span class="text-lg">🏫</span>
+          </div>
+          <div id="statLevelCount" class="text-3xl font-black text-purple-400">0</div>
+          <div id="statLevelPills" class="flex flex-wrap gap-1 mt-1 text-[10px] text-slate-300">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Card 4: Session Privacy Architecture -->
+        <div class="glass-card rounded-2xl p-5 relative overflow-hidden border-emerald-500/20">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider">Privacy Engine</span>
+            <span class="text-lg">🔒</span>
+          </div>
+          <div class="text-sm font-black text-emerald-300">Zero Ephemeral Leakage</div>
+          <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">
+            Chat & study chapters are session-only and wiped on logout. Persona & curriculum are saved permanently in DB.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Student Directory Card -->
+      <div class="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <h2 class="text-lg font-black text-white flex items-center gap-2">
+              <span>📚</span> <span>Registered Students & Persona Calibrations</span>
+            </h2>
+            <p class="text-xs text-slate-400">Searchable directory of enrolled students with unique User IDs</p>
+          </div>
+
+          <!-- Controls: Search & Filter -->
+          <div class="flex items-center gap-2">
+            <div class="relative w-full sm:w-64">
+              <input type="text" id="userSearchInput" placeholder="Search by name, email, CMP-ID..." class="w-full bg-slate-950 border border-white/15 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500" />
+              <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔍</span>
+            </div>
+
+            <select id="personaFilterSelect" class="bg-slate-950 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-cyan-500">
+              <option value="all">All Personas</option>
+              <option value="socratic">Socratic</option>
+              <option value="strict">Strict</option>
+              <option value="mentor">Mentor</option>
+              <option value="polymath">Polymath</option>
+              <option value="hacker">Exam Hacker</option>
+              <option value="feynman">Feynman</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-white/10 text-slate-400 uppercase tracking-wider font-bold">
+                <th class="py-3 px-3">User ID</th>
+                <th class="py-3 px-3">Student Name</th>
+                <th class="py-3 px-3">Email</th>
+                <th class="py-3 px-3">Role</th>
+                <th class="py-3 px-3">Persona</th>
+                <th class="py-3 px-3">Level / Board</th>
+                <th class="py-3 px-3">Tracked Subjects</th>
+                <th class="py-3 px-3">Registered</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody" class="divide-y divide-white/5">
+              <tr>
+                <td colspan="8" class="text-center py-8 text-slate-500">
+                  <span class="inline-block animate-spin mr-2">⚙️</span> Loading student directory...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
 
   <script>
     let allUsers = [];
+    let adminToken = sessionStorage.getItem('clearmind_admin_token') || '';
+
+    function checkAdminSession() {
+      if (adminToken) {
+        unlockAdminView();
+        loadAdminData();
+      } else {
+        lockAdminView();
+      }
+    }
+
+    function lockAdminView() {
+      document.getElementById('adminGatekeeperModal').classList.remove('hidden');
+      document.getElementById('adminDashboardContainer').classList.add('hidden');
+    }
+
+    function unlockAdminView() {
+      document.getElementById('adminGatekeeperModal').classList.add('hidden');
+      document.getElementById('adminDashboardContainer').classList.remove('hidden');
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const uidInput = document.getElementById('adminUserIdInput');
+      const pwdInput = document.getElementById('adminPasswordInput');
+      const submitBtn = document.getElementById('adminLoginSubmitBtn');
+      const errBanner = document.getElementById('adminLoginError');
+
+      const user_id = uidInput?.value.trim();
+      const password = pwdInput?.value.trim();
+
+      if (!user_id || !password) return;
+
+      errBanner.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⚙️</span> Verifying Admin Credentials...';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Access Denied: Invalid Admin User ID or Password.');
+        }
+
+        adminToken = data.token;
+        sessionStorage.setItem('clearmind_admin_token', adminToken);
+        if (data.admin?.user_id) {
+          document.getElementById('adminUserPill').textContent = data.admin.user_id;
+        }
+
+        unlockAdminView();
+        loadAdminData();
+      } catch (err) {
+        errBanner.textContent = err.message || 'Access Denied.';
+        errBanner.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Unlock Admin Panel 🔓';
+      }
+    }
+
+    function handleAdminLogout() {
+      sessionStorage.removeItem('clearmind_admin_token');
+      adminToken = '';
+      lockAdminView();
+    }
 
     async function loadAdminData() {
+      if (!adminToken) return;
+
       try {
         const [metricsRes, usersRes] = await Promise.all([
-          fetch('/api/admin/metrics'),
-          fetch('/api/admin/users')
+          fetch('/api/admin/metrics', {
+            headers: { 'Authorization': 'Bearer ' + adminToken }
+          }),
+          fetch('/api/admin/users', {
+            headers: { 'Authorization': 'Bearer ' + adminToken }
+          })
         ]);
+
+        if (metricsRes.status === 401 || usersRes.status === 401) {
+          handleAdminLogout();
+          return;
+        }
 
         if (metricsRes.ok) {
           const metrics = await metricsRes.json();
@@ -325,7 +469,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      loadAdminData();
+      checkAdminSession();
+      document.getElementById('adminLoginForm')?.addEventListener('submit', handleAdminLogin);
+      document.getElementById('adminLogoutBtn')?.addEventListener('click', handleAdminLogout);
       document.getElementById('refreshDataBtn')?.addEventListener('click', loadAdminData);
       document.getElementById('userSearchInput')?.addEventListener('input', applyFilters);
       document.getElementById('personaFilterSelect')?.addEventListener('change', applyFilters);

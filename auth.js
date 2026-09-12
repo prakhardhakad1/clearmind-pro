@@ -517,9 +517,6 @@ window.AuthEngine = {
       <a href="/classroom" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/10 text-slate-200 transition font-medium">
         <span>🎓</span> <span>Classroom Cockpit</span>
       </a>
-      <a href="/admin" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/10 text-purple-300 transition font-medium">
-        <span>🛡️</span> <span>Admin Panel</span>
-      </a>
       <button type="button" id="dropdownLogoutBtn" class="w-full text-left flex items-center gap-2 p-1.5 rounded-xl hover:bg-red-500/20 text-red-400 transition font-medium cursor-pointer">
         <span>🚪</span> <span>Log Out (Wipe Session)</span>
       </button>
