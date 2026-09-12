@@ -778,21 +778,6 @@ async def get_status():
         "voice": "Microsoft Edge Neural Voice"
     }
 
-@app.get("/api/test-turso")
-async def test_turso_endpoint():
-    try:
-        url_preview = TURSO_DB_URL[:25] + "..." if TURSO_DB_URL else "None"
-        token_len = len(TURSO_AUTH_TOKEN) if TURSO_AUTH_TOKEN else 0
-        sync_res = turso_sync_records([{"sql": "SELECT 1"}])
-        return {
-            "status": "ok",
-            "url_preview": url_preview,
-            "token_len": token_len,
-            "sync_res": sync_res
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
 @app.post("/api/auth/register")
 @app.post("/auth/register")
 async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTasks):
