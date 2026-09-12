@@ -3155,10 +3155,13 @@
   }
 
   function getLocalizedGreeting(name) {
-    const persona = localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor";
-    const subjects = (studentProfile.subjects && studentProfile.subjects.length > 0)
-      ? studentProfile.subjects.map(s => s.name || s)
-      : [];
+    const calibratedData = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+    const persona = localStorage.getItem("clearmind_calibrated_persona") || calibratedData.persona || studentProfile.persona || "strict";
+    const subjects = (calibratedData.subjects && calibratedData.subjects.length > 0)
+      ? calibratedData.subjects.map(s => s.name || s)
+      : (studentProfile.subjects && studentProfile.subjects.length > 0)
+        ? studentProfile.subjects.map(s => s.name || s)
+        : [];
 
     let customChips = [];
     if (subjects.length > 0) {
@@ -3171,40 +3174,41 @@
     customChips.push(`⚡ Quick Blitz Arena Test`);
     customChips.push(`📋 1-Page Exam Cheat Sheet`);
 
-    const topicLabel = activeTopic || (subjects.length > 0 ? subjects[0] : (studentProfile.level || "your syllabus"));
+    const finalName = (name && name !== "there") ? name : (studentProfile.name || calibratedData.user?.name || "there");
+    const topicLabel = activeTopic || calibratedData.activeTopic || (subjects.length > 0 ? subjects[0] : (studentProfile.level || "your syllabus"));
 
     if (activeLanguage === "hinglish") {
       const personaIntros = {
-        strict: `Understood, **${name}**! ⚡ Main hoon **Luna**, aapki **Strict Examiner**.\n\nAapka track **${topicLabel}** lock ho chuka hai. Zero fluff, pure exam rigor.\n\nKoi bhi tough problem, derivation ya exam trap pucho!`,
-        socratic: `Namaste **${name}**! 💡 Main hoon **Luna**, aapki **Socratic Guide**.\n\n**${topicLabel}** seekhne ke liye ready? Main direct answer nahi dungi—thought-provoking questions se aapko khud solution deduce karwaungi!`,
-        polymath: `Welcome **${name}**! 🔬 Main hoon **Luna**, **First-Principles Polymath** mode mein.\n\n**${topicLabel}** ke governing laws aur mathematical proofs ko fundamental science se derive karenge!`,
-        hacker: `Let's crack this, **${name}**! 🚀 Main hoon **Luna**, aapki **Blitz Exam Hacker**.\n\n**${topicLabel}** ke high-yield shortcuts, mnemonics aur scoring patterns ko master karte hain!`,
-        feynman: `Hey **${name}**! 🧠 Main hoon **Luna**, aapki **Feynman ELI5 Explainer**.\n\nNo heavy textbook jargon! **${topicLabel}** ka koi bhi complex concept bolo, main everyday simple metaphors se samjhaungi!`,
-        mentor: `Hey **${name}**! 🌸 Main hoon **Luna**, aapki AI personal tutor.\n\n**${topicLabel}** ka koi bhi topic, formula ya problem pucho—main step-by-step real-world analogies ke saath explain karungi!`
+        strict: `Understood, **${finalName}**! ⚡ Main hoon **Luna**, aapki **Strict Examiner**.\n\nAapka track **${topicLabel}** lock ho chuka hai. Zero fluff, pure exam rigor.\n\nKoi bhi tough problem, derivation ya exam trap pucho!`,
+        socratic: `Namaste **${finalName}**! 💡 Main hoon **Luna**, aapki **Socratic Guide**.\n\n**${topicLabel}** seekhne ke liye ready? Main direct answer nahi dungi—thought-provoking questions se aapko khud solution deduce karwaungi!`,
+        polymath: `Welcome **${finalName}**! 🔬 Main hoon **Luna**, **First-Principles Polymath** mode mein.\n\n**${topicLabel}** ke governing laws aur mathematical proofs ko fundamental science se derive karenge!`,
+        hacker: `Let's crack this, **${finalName}**! 🚀 Main hoon **Luna**, aapki **Blitz Exam Hacker**.\n\n**${topicLabel}** ke high-yield shortcuts, mnemonics aur scoring patterns ko master karte hain!`,
+        feynman: `Hey **${finalName}**! 🧠 Main hoon **Luna**, aapki **Feynman ELI5 Explainer**.\n\nNo heavy textbook jargon! **${topicLabel}** ka koi bhi complex concept bolo, main everyday simple metaphors se samjhaungi!`,
+        mentor: `Hey **${finalName}**! 🌸 Main hoon **Luna**, aapki AI personal tutor.\n\n**${topicLabel}** ka koi bhi topic, formula ya problem pucho—main step-by-step real-world analogies ke saath explain karungi!`
       };
       return {
         reply_text: personaIntros[persona] || personaIntros.mentor,
-        speech_text: `Hey ${name}! Main hoon Luna. Aaj ${topicLabel} mein kya seekhna chahte ho?`,
+        speech_text: `Hey ${finalName}! Main hoon Luna. Aaj ${topicLabel} mein kya seekhna chahte ho?`,
         chips: customChips
       };
     } else if (activeLanguage === "hi") {
       return {
-        reply_text: `नमस्ते **${name}**! 🌸 मैं हूँ **लूना**, आपकी AI शिक्षक।\n\n**${topicLabel}** में आज आप क्या सीखना चाहते हैं?`,
-        speech_text: `नमस्ते ${name}! मैं हूँ लूना। आज क्या सीखना चाहते हैं?`,
+        reply_text: `नमस्ते **${finalName}**! 🌸 मैं हूँ **लूना**, आपकी AI शिक्षक।\n\n**${topicLabel}** में आज आप क्या सीखना चाहते हैं?`,
+        speech_text: `नमस्ते ${finalName}! मैं हूँ लूना। आज क्या सीखना चाहते हैं?`,
         chips: customChips
       };
     } else {
       const personaIntrosEn = {
-        strict: `Welcome, **${name}**! ⚡ I am **Luna**, configured as your **Strict Examiner**.\n\nYour target track is set: **${topicLabel}**.\n\nAsk your toughest questions, upload past-paper problems, or tap a milestone below to test your mastery under strict exam standards.`,
-        socratic: `Greetings, **${name}**! 💡 I am **Luna**, your **Socratic Guide**.\n\nReady to master **${topicLabel}**? I won't just hand you answers; I'll ask probing questions that empower you to deduce core truths yourself.`,
-        polymath: `Welcome, **${name}**! 🔬 I am **Luna**, in **First-Principles Polymath** mode.\n\nWe will derive fundamental governing laws and math proofs for **${topicLabel}** from basic axioms. Where shall we begin?`,
-        hacker: `Ready to accelerate, **${name}**? 🚀 I am **Luna**, your **Blitz Exam Hacker**.\n\nHigh-yield patterns, speed formulas, and score shortcuts for **${topicLabel}**. Pick a topic or jump into a Blitz Battle!`,
-        feynman: `Hey there, **${name}**! 🧠 I am **Luna**, your **Feynman ELI5 Explainer**.\n\nZero academic jargon. Tell me any intimidating concept in **${topicLabel}**, and I'll break it down with simple, vivid metaphors!`,
-        mentor: `Hello **${name}**! 🌸 I am **Luna**, your personal AI tutor.\n\n**${topicLabel}** is loaded into your classroom workspace. What would you like to explore first?`
+        strict: `Welcome, **${finalName}**! ⚡ I am **Luna**, configured as your **Strict Examiner**.\n\nYour target track is set: **${topicLabel}**.\n\nAsk your toughest questions, upload past-paper problems, or tap a milestone below to test your mastery under strict exam standards.`,
+        socratic: `Greetings, **${finalName}**! 💡 I am **Luna**, your **Socratic Guide**.\n\nReady to master **${topicLabel}**? I won't just hand you answers; I'll ask probing questions that empower you to deduce core truths yourself.`,
+        polymath: `Welcome, **${finalName}**! 🔬 I am **Luna**, in **First-Principles Polymath** mode.\n\nWe will derive fundamental governing laws and math proofs for **${topicLabel}** from basic axioms. Where shall we begin?`,
+        hacker: `Ready to accelerate, **${finalName}**? 🚀 I am **Luna**, your **Blitz Exam Hacker**.\n\nHigh-yield patterns, speed formulas, and score shortcuts for **${topicLabel}**. Pick a topic or jump into a Blitz Battle!`,
+        feynman: `Hey there, **${finalName}**! 🧠 I am **Luna**, your **Feynman ELI5 Explainer**.\n\nZero academic jargon. Tell me any intimidating concept in **${topicLabel}**, and I'll break it down with simple, vivid metaphors!`,
+        mentor: `Hello **${finalName}**! 🌸 I am **Luna**, your personal AI tutor.\n\n**${topicLabel}** is loaded into your classroom workspace. What would you like to explore first?`
       };
       return {
         reply_text: personaIntrosEn[persona] || personaIntrosEn.mentor,
-        speech_text: `Hello ${name}! I am Luna. What would you like to master in ${topicLabel} today?`,
+        speech_text: `Hello ${finalName}! I am Luna. What would you like to master in ${topicLabel} today?`,
         chips: customChips
       };
     }
@@ -4171,6 +4175,7 @@
     // RESTORE CHAT HISTORY IF EXISTS, OR SHOW INITIAL GREETING
     const box = document.getElementById("chatMessagesContainer");
     if (box) {
+      box.innerHTML = "";
       if (conversationHistory && conversationHistory.length > 0) {
         conversationHistory.forEach((item) => {
           if (item.role === "user") {
@@ -4184,14 +4189,15 @@
           }
         });
       } else {
-        const currentName = studentProfile.name || "there";
+        const calibrated = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+        const currentName = studentProfile.name || calibrated.user?.name || "there";
         const gr = getLocalizedGreeting(currentName);
         appendLunaMessage({
           reply_text: gr.reply_text,
           speech_text: gr.speech_text,
           analogy_card: {
             title: "🌸 Ready Whenever You Are",
-            description: "Tell me any topic in science, mathematics, engineering, or literature, and I'll break it down with everyday analogies!"
+            description: "Ask any problem, derivation, or formula—I am fully calibrated to your syllabus and pace!"
           }
         });
         renderSuggestedChips(gr.chips);
