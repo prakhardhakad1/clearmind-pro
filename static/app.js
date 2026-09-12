@@ -32,8 +32,16 @@
   // v19 clean greeting migration: clear old default Python conversation
   if (!localStorage.getItem("clearmind_v19_ask_greeting")) {
     localStorage.removeItem("clearmind_conv_history");
-    localStorage.removeItem("clearmind_active_topic");
     localStorage.setItem("clearmind_v19_ask_greeting", "true");
+  }
+
+  const rawProfile = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+  if (!activeTopic && rawProfile.subjects && rawProfile.subjects.length > 0) {
+    const topSub = rawProfile.subjects[0].name || rawProfile.subjects[0];
+    if (typeof topSub === "string") {
+      activeTopic = topSub;
+      localStorage.setItem("clearmind_active_topic", activeTopic);
+    }
   }
 
   let totalXP = parseInt(localStorage.getItem("clearmind_xp") || "0", 10);
@@ -47,6 +55,9 @@
         level: "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)"
       })
   );
+  if (!studentProfile.name && studentProfile.user?.name) {
+    studentProfile.name = studentProfile.user.name;
+  }
 
   let conversationHistory = JSON.parse(
     localStorage.getItem("clearmind_conv_history") || "[]"
@@ -626,8 +637,18 @@
     const jProgress = document.getElementById("journeyXPProgress");
     const jBar = document.getElementById("journeyXPBar");
 
-    const displayName = studentProfile.name || "Student";
-    const displayAvatar = studentProfile.avatar || "🎓";
+    const calibrated = JSON.parse(localStorage.getItem("clearmind_profile") || "{}");
+    const personaIcons = {
+      mentor: "🎓",
+      strict: "⚡",
+      socratic: "💡",
+      polymath: "🔬",
+      hacker: "🚀",
+      feynman: "🧠"
+    };
+    const activePersonaKey = localStorage.getItem("clearmind_calibrated_persona") || calibrated.persona || "strict";
+    const displayName = studentProfile.name || calibrated.user?.name || calibrated.name || "Student";
+    const displayAvatar = personaIcons[activePersonaKey] || studentProfile.avatar || "⚡";
 
     // Update Header HUD (Desktop & Mobile)
     if (sName) sName.textContent = displayName;
@@ -1180,7 +1201,7 @@
     const box = document.getElementById("chatMessagesContainer");
     if (!box) return;
     const d = document.createElement("div");
-    d.className = "flex items-start gap-2.5 animate-fade-in";
+    d.className = "luna-msg flex items-start gap-2.5 animate-fade-in";
 
     let analogyHtml = "";
     if (data.analogy_card && data.analogy_card.title) {
