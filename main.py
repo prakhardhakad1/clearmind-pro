@@ -1055,6 +1055,7 @@ async def get_landing_page():
 # ClearMind Pro Classroom Cockpit & Workspaces
 @app.get("/app")
 @app.get("/classroom")
+@app.get("/app.html")
 @app.get("/cheatsheet")
 @app.get("/blitz")
 @app.get("/flashcards")

@@ -6,11 +6,15 @@
     },
     {
       "source": "/(app|classroom|cheatsheet|blitz|flashcards|analytics|galaxy|graph)",
-      "destination": "/app.html"
+      "destination": "/static/app.html"
+    },
+    {
+      "source": "/app.html",
+      "destination": "/static/app.html"
     },
     {
       "source": "/((?!api/|.*\\..*).*)",
-      "destination": "/index.html"
+      "destination": "/static/index.html"
     }
   ]
 }
