@@ -1541,7 +1541,10 @@
 
       </div>
 
-      <div class="flex justify-end gap-2 pt-3 border-t border-obsidian-800">
+      <div class="flex items-center justify-between gap-2 pt-3 border-t border-obsidian-800">
+        <button id="skipProfileBtn" type="button" class="px-3 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold hover:bg-obsidian-800 transition">
+          Skip for now ➔
+        </button>
         <button id="saveProfileBtn" class="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-md transition min-h-[44px]">
           🚀 Save & Enter Classroom
         </button>
@@ -1557,8 +1560,24 @@
         var pModal = document.getElementById("profileModal");
         if (!isSetupDone && pModal && !location.search.includes("preview=1")) {
           pModal.classList.remove("hidden");
-          var cBtn = document.getElementById("closeProfileModal");
-          if (cBtn) cBtn.classList.add("hidden");
+        }
+        var cBtn = document.getElementById("closeProfileModal");
+        if (cBtn) {
+          cBtn.addEventListener("click", function() {
+            if (pModal) pModal.classList.add("hidden");
+          });
+        }
+        var sBtn = document.getElementById("skipProfileBtn");
+        if (sBtn) {
+          sBtn.addEventListener("click", function() {
+            if (pModal) pModal.classList.add("hidden");
+            localStorage.setItem("clearmind_setup_completed", "true");
+          });
+        }
+        if (pModal) {
+          pModal.addEventListener("click", function(e) {
+            if (e.target === pModal) pModal.classList.add("hidden");
+          });
         }
       } catch (e) {
         console.error("Setup modal check error", e);
@@ -1684,6 +1703,6 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
   <!-- App Core JS -->
-  <script src="/app.js?v=29.0"></script>
+  <script src="/app.js?v=30.0"></script>
 </body>
 </html>

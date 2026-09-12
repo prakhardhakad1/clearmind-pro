@@ -56,6 +56,31 @@
     localStorage.setItem("clearmind_conv_history", JSON.stringify(conversationHistory));
   }
 
+  function openProfile(isFirstTime = false) {
+    const pModal = document.getElementById("profileModal");
+    const nInp = document.getElementById("inputStudentName");
+    const lInp = document.getElementById("inputStudyLevel");
+    const tInp = document.getElementById("inputStudentTopic");
+    const closeBtn = document.getElementById("closeProfileModal");
+    const titleEl = document.getElementById("profileModalTitle");
+    const subtitleEl = document.getElementById("profileModalSubtitle");
+
+    if (nInp) nInp.value = studentProfile.name || "Prakhar";
+    if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
+    if (tInp) tInp.value = activeTopic || "";
+
+    if (isFirstTime) {
+      if (titleEl) titleEl.innerHTML = `<span>✨ Welcome to ClearMind Pro</span>`;
+      if (subtitleEl) subtitleEl.textContent = "Please enter your name and topic to enter the classroom";
+    } else {
+      if (titleEl) titleEl.innerHTML = `<span>⚙️ Student Profile & Settings</span>`;
+      if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or grade level anytime";
+    }
+    if (closeBtn) closeBtn.classList.remove("hidden");
+    pModal?.classList.remove("hidden");
+  }
+  window.openProfile = openProfile;
+
   // Teaching Mode: "direct" (lecture & analogies) vs "socratic" (guiding questions)
   let teachingMode = localStorage.getItem("clearmind_teaching_mode") || "direct";
 
@@ -3309,41 +3334,24 @@
 
     // Profile / Settings Modal Controller
     const pModal = document.getElementById("profileModal");
-    const openProfile = (isFirstTime = false) => {
-      const nInp = document.getElementById("inputStudentName");
-      const lInp = document.getElementById("inputStudyLevel");
-      const tInp = document.getElementById("inputStudentTopic");
-      const closeBtn = document.getElementById("closeProfileModal");
-      const titleEl = document.getElementById("profileModalTitle");
-      const subtitleEl = document.getElementById("profileModalSubtitle");
-
-      if (nInp) nInp.value = studentProfile.name || "Prakhar";
-      if (lInp) lInp.value = studentProfile.level || "College / University (Undergraduate - B.Tech, B.Sc, MBBS, etc.)";
-      if (tInp) tInp.value = activeTopic || "";
-
-      if (isFirstTime) {
-        if (titleEl) titleEl.innerHTML = `<span>✨ Welcome to ClearMind Pro</span>`;
-        if (subtitleEl) subtitleEl.textContent = "Please enter your name and topic to enter the classroom";
-        if (closeBtn) closeBtn.classList.add("hidden");
-      } else {
-        if (titleEl) titleEl.innerHTML = `<span>⚙️ Student Profile & Settings</span>`;
-        if (subtitleEl) subtitleEl.textContent = "Update your name, target topic, or grade level anytime";
-        if (closeBtn) closeBtn.classList.remove("hidden");
-      }
-
-      pModal?.classList.remove("hidden");
-    };
 
     // All buttons that open Profile Modal
-    document.getElementById("headerProfileBtn")?.addEventListener("click", openProfile);
-    document.getElementById("headerProfileBtnMobile")?.addEventListener("click", openProfile);
-    document.getElementById("dockSettingsBtn")?.addEventListener("click", openProfile);
-    document.getElementById("editProfileJourneyBtn")?.addEventListener("click", openProfile);
-    document.getElementById("brandLogoBtn")?.addEventListener("click", openProfile);
+    document.getElementById("headerProfileBtn")?.addEventListener("click", () => openProfile(false));
+    document.getElementById("headerProfileBtnMobile")?.addEventListener("click", () => openProfile(false));
+    document.getElementById("dockSettingsBtn")?.addEventListener("click", () => openProfile(false));
+    document.getElementById("editProfileJourneyBtn")?.addEventListener("click", () => openProfile(false));
+    document.getElementById("brandLogoBtn")?.addEventListener("click", () => openProfile(false));
 
     // Close Profile Modal ✕ Button
     document.getElementById("closeProfileModal")?.addEventListener("click", () => {
       pModal?.classList.add("hidden");
+    });
+
+    // Skip Profile Button
+    document.getElementById("skipProfileBtn")?.addEventListener("click", () => {
+      pModal?.classList.add("hidden");
+      localStorage.setItem("clearmind_setup_completed", "true");
+      showToast("Welcome! Ask Luna anything to start.", "info");
     });
 
     // Save Profile Submit Button
