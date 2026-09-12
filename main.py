@@ -545,6 +545,24 @@ def generate_user_id() -> str:
     num = secrets.randbelow(90000) + 10000
     return f"CMP-{num}"
 
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
+
+def is_valid_email(email: str) -> bool:
+    if not email or len(email) > 254:
+        return False
+    if not EMAIL_REGEX.match(email):
+        return False
+    parts = email.split('@')
+    if len(parts) != 2:
+        return False
+    domain = parts[1]
+    if '.' not in domain or domain.startswith('.') or domain.endswith('.'):
+        return False
+    tld = domain.split('.')[-1]
+    if len(tld) < 2 or not tld.isalpha():
+        return False
+    return True
+
 class UserRegisterRequest(BaseModel):
     name: str
     email: str
@@ -619,6 +637,12 @@ async def auth_register(req: UserRegisterRequest):
     if not email_clean or not req.password:
         raise HTTPException(status_code=400, detail="Email and password are required.")
     
+    if not is_valid_email(email_clean):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address (e.g. name@domain.com).")
+        
+    if len(req.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+    
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -675,7 +699,16 @@ async def auth_register(req: UserRegisterRequest):
 @app.post("/api/auth/login")
 @app.post("/auth/login")
 async def auth_login(req: UserLoginRequest):
-    email_clean = req.email.strip().lower()
+    login_id_clean = req.email.strip()
+    if not login_id_clean or not req.password:
+        raise HTTPException(status_code=400, detail="Email/User ID and password are required.")
+    
+    is_email = is_valid_email(login_id_clean.lower())
+    is_uid = bool(re.match(r'^CMP-[A-Za-z0-9]+$', login_id_clean))
+    
+    if not is_email and not is_uid:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address or User ID.")
+        
     pwd_hash = hash_password(req.password)
     
     db_path = get_db_path()
@@ -683,13 +716,13 @@ async def auth_login(req: UserLoginRequest):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT user_id, name, email, password_hash, role, created_at
-        FROM users WHERE lower(email) = ?
-    """, (email_clean,))
+        FROM users WHERE lower(email) = ? OR upper(user_id) = ?
+    """, (login_id_clean.lower(), login_id_clean.upper()))
     user_row = cursor.fetchone()
     
     if not user_row or user_row[3] != pwd_hash:
         conn.close()
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
+        raise HTTPException(status_code=401, detail="Invalid email/ID or password.")
     
     user_id = user_row[0]
     cursor.execute("""

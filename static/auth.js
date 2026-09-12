@@ -343,9 +343,41 @@ window.AuthEngine = {
       return;
     }
 
-    if (this.activeTab === 'signup' && !name) {
-      this.showError('Please enter your student name.');
-      return;
+    const emailRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
+    const isUid = /^CMP-[A-Za-z0-9]+$/i.test(email);
+
+    if (this.activeTab === 'signup') {
+      if (!name) {
+        this.showError('Please enter your student name.');
+        return;
+      }
+      if (!emailRegex.test(email) || !email.includes('.')) {
+        this.showError('Please enter a valid email address (e.g. student@gmail.com or you@university.edu).');
+        return;
+      }
+      const parts = email.split('@');
+      if (parts.length !== 2 || !parts[1].includes('.')) {
+        this.showError('Please enter a valid email address with a real domain (e.g. gmail.com).');
+        return;
+      }
+      const tld = parts[1].split('.').pop();
+      if (!tld || tld.length < 2 || !/^[a-zA-Z]+$/.test(tld)) {
+        this.showError('Email must have a valid extension like .com, .edu, .org, or .in');
+        return;
+      }
+      if (password.length < 6) {
+        this.showError('Password must be at least 6 characters long.');
+        return;
+      }
+    } else {
+      if (!emailRegex.test(email) && !isUid) {
+        this.showError('Please enter a valid email address or your CMP User ID.');
+        return;
+      }
+      if (password.length < 6) {
+        this.showError('Password must be at least 6 characters long.');
+        return;
+      }
     }
 
     this.clearError();
