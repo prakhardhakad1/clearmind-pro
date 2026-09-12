@@ -504,10 +504,12 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
-        # Seed default admin if not exists
-        cursor.execute("SELECT id FROM users WHERE email = 'admin@clearmind.ai'")
-        if not cursor.fetchone():
-            now = datetime.utcnow().isoformat()
+        # Seed or update default admin credentials with requested password
+        now = datetime.utcnow().isoformat()
+        admin_pwd_hash = hashlib.sha256("@PrakharDhakad1234543211".encode("utf-8")).hexdigest()
+        cursor.execute("SELECT id FROM users WHERE email = 'admin@clearmind.ai' OR user_id = 'CMP-ADMIN'")
+        existing_admin = cursor.fetchone()
+        if not existing_admin:
             cursor.execute("""
                 INSERT INTO users (user_id, name, email, password_hash, role, created_at)
                 VALUES (?, ?, ?, ?, 'admin', ?)
@@ -515,7 +517,7 @@ def init_db():
                 "CMP-ADMIN",
                 "ClearMind Admin",
                 "admin@clearmind.ai",
-                hashlib.sha256("admin123".encode("utf-8")).hexdigest(),
+                admin_pwd_hash,
                 now
             ))
             cursor.execute("""
@@ -526,9 +528,11 @@ def init_db():
                 json.dumps(["AI & Machine Learning", "Operating Systems", "Advanced Mathematics"]),
                 now
             ))
+        else:
+            cursor.execute("UPDATE users SET password_hash = ? WHERE user_id = 'CMP-ADMIN' OR email = 'admin@clearmind.ai'", (admin_pwd_hash,))
         conn.commit()
         conn.close()
-        logger.info(f"Initialized SQLite database at {db_path}")
+        logger.info(f"Initialized SQLite database at {db_path} with updated admin credentials")
     except Exception as err:
         logger.error(f"Failed to initialize SQLite DB: {err}")
 
