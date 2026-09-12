@@ -21,6 +21,7 @@ import logging
 import asyncio
 from typing import List, Optional, Dict, Any
 
+import urllib.parse
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response as PlainResponse, JSONResponse
@@ -43,6 +44,41 @@ ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=ENV_PATH)
 
 app = FastAPI(title="ClearMind Pro", version="5.0.0")
+
+class VercelRouteMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            qs = scope.get("query_string", b"").decode("latin1")
+            new_qs_parts = []
+            route = None
+            if qs:
+                for part in qs.split("&"):
+                    if part.startswith("_route="):
+                        route = urllib.parse.unquote(part.split("=", 1)[1])
+                    elif part:
+                        new_qs_parts.append(part)
+                scope["query_string"] = "&".join(new_qs_parts).encode("latin1")
+
+            if route:
+                if not route.startswith("/"):
+                    route = "/" + route
+                target = f"/api{route}"
+                scope["path"] = target
+                scope["raw_path"] = target.encode("latin1")
+            elif scope.get("path", "").endswith(".py"):
+                # Fallback if accessed as /api/index.py
+                headers = dict(scope.get("headers", []))
+                matched = headers.get(b"x-matched-path", b"").decode("latin1")
+                if matched and not matched.endswith(".py"):
+                    scope["path"] = matched
+                    scope["raw_path"] = matched.encode("latin1")
+
+        await self.app(scope, receive, send)
+
+app.add_middleware(VercelRouteMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -1035,15 +1071,4 @@ async def get_manifest():
 # Mount /static directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")
 
-@app.api_route("/{path_name:path}", methods=["GET", "POST"])
-async def catch_all_debug(request: Request, path_name: str = ""):
-    return {
-        "status": "debug",
-        "received_path": request.url.path,
-        "scope_path": request.scope.get("path"),
-        "path_name": path_name,
-        "query_params": dict(request.query_params),
-        "headers": dict(request.headers),
-        "method": request.method
-    }
 
