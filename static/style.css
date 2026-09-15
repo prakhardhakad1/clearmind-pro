@@ -390,26 +390,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   height: 16px;
   padding: 0 4px;
 }
+.audio-waveform.hidden { display: none; }
 .waveform-bar {
-  width: 2.5px;
-  height: 4px;
+  width: 3px;
+  height: 16px;
   background: linear-gradient(to top, #a855f7, #ec4899);
   border-radius: 9999px;
-  transition: height 0.15s ease;
+  transform: scaleY(var(--voice-level, 0.2));
+  transition: transform 80ms linear;
 }
-.audio-waveform.active .waveform-bar {
-  animation: waveformPulse 0.9s ease-in-out infinite alternate;
+.audio-waveform.active { filter: drop-shadow(0 0 4px #a855f755); }
+.voice-choice-label { font-size: 10px; color: #c4b5fd; }
+.voice-choice {
+  max-width: 130px;
+  padding: 4px 7px;
+  border: 1px solid #a78bfa55;
+  border-radius: 8px;
+  background: #17152b;
+  color: #f5f3ff;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
 }
-.audio-waveform.active .waveform-bar:nth-child(1) { animation-delay: 0.1s; }
-.audio-waveform.active .waveform-bar:nth-child(2) { animation-delay: 0.32s; }
-.audio-waveform.active .waveform-bar:nth-child(3) { animation-delay: 0.18s; }
-.audio-waveform.active .waveform-bar:nth-child(4) { animation-delay: 0.45s; }
-.audio-waveform.active .waveform-bar:nth-child(5) { animation-delay: 0.22s; }
-
-@keyframes waveformPulse {
-  0% { height: 4px; }
-  50% { height: 16px; }
-  100% { height: 7px; }
+.voice-choice:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; }
+.voice-speaking { animation: voiceSpeaking 1.4s ease-in-out infinite; }
+@keyframes voiceSpeaking {
+  0%, 100% { transform: scale(0.97); opacity: 0.45; }
+  50% { transform: scale(1.08); opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-speaking { animation: none; }
+  .waveform-bar { transition: none; transform: scaleY(0.55); }
 }
 
 /* =========================================================================

@@ -19,7 +19,8 @@ import json
 import base64
 import logging
 import asyncio
-from typing import List, Optional, Dict, Any
+import html
+from typing import List, Optional, Dict, Any, Literal
 
 import urllib.parse
 import sqlite3
@@ -117,7 +118,7 @@ async def add_no_cache_header(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
     return response
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -176,15 +177,177 @@ def get_language_directive(language_code: str) -> str:
     else:
         return "CRITICAL MANDATORY: You MUST communicate in clear, natural, high-yield English."
 
-def clean_speech_text(text: str) -> str:
-    """Strip markdown symbols, emojis, and code formatting so voice sounds 100% human-natural."""
-    if not text: return ""
-    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
-    text = re.sub(r'\\[a-zA-Z]+', ' ', text)
-    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-    text = re.sub(r'[*_#`~>\-]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+def clean_speech_text(text: str, language: str = "hinglish") -> str:
+    """Turn display markup and nested math into plain, speakable text, never SSML."""
+    if not text:
+        return ""
+    hindi = (language or "hinglish").lower().strip() == "hi"
+    words = {
+        "divide": "भाग" if hindi else "divided by",
+        "square": "का वर्ग" if hindi else "squared",
+        "cube": "का घन" if hindi else "cubed",
+        "power": "की घात" if hindi else "to the power of",
+        "root": "वर्गमूल" if hindi else "square root of",
+        "group": "राशि" if hindi else "the quantity",
+        "end": "राशि समाप्त" if hindi else "end quantity",
+    }
+    numbers = (
+        ["शून्य", "एक", "दो", "तीन", "चार", "पांच", "छह", "सात", "आठ", "नौ"]
+        if hindi else ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    )
+    text = re.sub(r"```.*?(?:```|$)", " ", text, flags=re.DOTALL)
+    text = html.unescape(text)
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.DOTALL)
+    # Tags require a name directly after '<'; the comparison 'x < y' survives.
+    text = re.sub(r"</?[A-Za-z][\w:-]*(?:\s+[^<>]*?)?\s*/?>", " ", text)
+    text = re.sub(r"!?\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = re.sub(r"(?<!\w)_{1,2}(.+?)_{1,2}(?!\w)", r"\1", text)
+    text = re.sub(r"(?m)^\s*(?:[-*+]\s+|>\s+)", "", text)
+    # Remove complete keycaps and emoji components, including flags and joiners.
+    text = re.sub(r"[0-9#*]\ufe0f?\u20e3", " ", text)
+    text = re.sub(
+        r"[\U0001f000-\U0001faff\U000e0020-\U000e007f\u2600-\u27bf"
+        r"\u2300-\u23ff\u2b50\u2b55\ufe0e\ufe0f\u200d\u20e3]", " ", text
+    )
+    text = re.sub(r"[*#`~]", "", text)
+    supers = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ", "0123456789+-=()n")
+    subs = str.maketrans("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎", "0123456789+-=()")
+    text = re.sub(r"[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿ]+", lambda m: "^{" + m[0].translate(supers) + "}", text)
+    text = re.sub(r"[₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎]+", lambda m: "_{" + m[0].translate(subs) + "}", text)
+    greek = {
+        "alpha": "alpha", "beta": "beta", "gamma": "gamma", "delta": "delta",
+        "epsilon": "epsilon", "theta": "theta", "lambda": "lambda", "mu": "mu",
+        "pi": "pi", "rho": "rho", "sigma": "sigma", "tau": "tau", "phi": "phi",
+        "omega": "omega", "eta": "eta", "nu": "nu", "xi": "xi", "psi": "psi",
+    }
+    commands = dict(greek, log="log", ln="natural log", sin="sine", cos="cosine", tan="tangent",
+                    times="×", cdot="×", div="÷", le="≤", leq="≤", ge="≥", geq="≥",
+                    ne="≠", neq="≠", approx="≈", pm="±", infty="∞", to="→",
+                    rightarrow="→", sum="summation", int="integral", partial="partial")
+    formatting = {"text", "textrm", "textbf", "mathrm", "mathbf", "mathit", "mathcal", "operatorname", "emph"}
+
+    def atom(source, pos):
+        while pos < len(source) and source[pos].isspace():
+            pos += 1
+        if pos == len(source):
+            return "", pos
+        if source[pos] == "{":
+            start, depth = pos + 1, 1
+            pos += 1
+            while pos < len(source) and depth:
+                depth += (source[pos] == "{") - (source[pos] == "}")
+                pos += 1
+            return source[start:pos - 1 if depth == 0 else pos], pos
+        if source[pos] == "\\":
+            match = re.match(r"\\[A-Za-z]+", source[pos:])
+            if match:
+                return match[0], pos + len(match[0])
+        return source[pos], pos + 1
+
+    def grouped(value):
+        value = value.strip()
+        if re.search(r"\s|[+−=<>/×÷-]", value):
+            return f"{words['group']} {value} {words['end']}"
+        return value
+
+    def parse(source, depth=0):
+        # A bounded recursive descent handles nested braces without evaluating input.
+        if depth >= 40:
+            return re.sub(r"[{}\\]", " ", source)
+        result, pos = [], 0
+        while pos < len(source):
+            char = source[pos]
+            if char == "\\":
+                match = re.match(r"\\([A-Za-z]+)", source[pos:])
+                if not match:
+                    pos += 1
+                    if pos < len(source) and source[pos] in "()[],$;! ":
+                        pos += 1
+                    continue
+                name = match[1]
+                pos += len(match[0])
+                if name in {"frac", "dfrac", "tfrac"}:
+                    top, pos = atom(source, pos)
+                    bottom, pos = atom(source, pos)
+                    result.append(f" {grouped(parse(top, depth + 1))} {words['divide']} {grouped(parse(bottom, depth + 1))} ")
+                elif name == "sqrt":
+                    index = ""
+                    if pos < len(source) and source[pos] == "[":
+                        end = source.find("]", pos + 1)
+                        if end >= 0:
+                            index, pos = source[pos + 1:end], end + 1
+                    value, pos = atom(source, pos)
+                    root = (f"{index} की मूल" if hindi else f"root of order {index} of") if index else words["root"]
+                    result.append(f" {root} {grouped(parse(value, depth + 1))} ")
+                elif name in formatting:
+                    value, pos = atom(source, pos)
+                    result.append(" " + parse(value, depth + 1) + " ")
+                elif name not in {"left", "right", "quad", "qquad", "displaystyle"}:
+                    result.append(" " + commands.get(name, name) + " ")
+                continue
+            if char == "{":
+                value, pos = atom(source, pos)
+                result.append(" " + parse(value, depth + 1) + " ")
+                continue
+            if char in "^_" and pos + 1 < len(source):
+                value, pos = atom(source, pos + 1)
+                value = parse(value, depth + 1).strip()
+                if char == "^":
+                    suffix = words["square"] if value == "2" else words["cube"] if value == "3" else words["power"] + " " + grouped(value)
+                else:
+                    suffix = " ".join(numbers[int(c)] for c in value) if value.isascii() and value.isdigit() else value
+                result.append(" " + suffix + " ")
+                continue
+            if char not in "}$":
+                result.append(char)
+            pos += 1
+        return "".join(result)
+
+    text = parse(text)
+    # Balanced scanning avoids cutting O(n log(n)) off at its inner parenthesis.
+    def big_o(source):
+        result, pos = [], 0
+        pattern = re.compile(r"\b(?:Big\s+)?O\s*\(")
+        while True:
+            match = pattern.search(source, pos)
+            if not match:
+                result.append(source[pos:])
+                break
+            end, depth = match.end(), 1
+            while end < len(source) and depth:
+                depth += (source[end] == "(") - (source[end] == ")")
+                end += 1
+            if depth:
+                result.append(source[pos:])
+                break
+            result.append(source[pos:match.start()])
+            inside = source[match.end():end - 1]
+            inside = re.sub(r"\b(log|natural log)\s*\(([^()]+)\)", r"\1 \2", inside)
+            result.append(("बिग ओ " if hindi else "Big O of ") + inside)
+            pos = end
+        return "".join(result)
+
+    text = big_o(text)
+    for char, name in zip("αβγδεθλμπρστφωηνξψ", ["alpha", "beta", "gamma", "delta", "epsilon", "theta", "lambda", "mu", "pi", "rho", "sigma", "tau", "phi", "omega", "eta", "nu", "xi", "psi"]):
+        text = text.replace(char, " " + name + " ")
+    operators = {
+        "<=": ("से छोटा या बराबर", "less than or equal to"), "≤": ("से छोटा या बराबर", "less than or equal to"),
+        ">=": ("से बड़ा या बराबर", "greater than or equal to"), "≥": ("से बड़ा या बराबर", "greater than or equal to"),
+        "!=": ("के बराबर नहीं", "not equal to"), "≠": ("के बराबर नहीं", "not equal to"),
+        "≈": ("लगभग बराबर", "approximately equals"), "=": ("बराबर", "equals"),
+        "+": ("जोड़", "plus"), "−": ("घटा", "minus"), "±": ("जोड़ या घटा", "plus or minus"),
+        "×": ("गुणा", "times"), "÷": ("भाग", "divided by"),
+        "<": ("से छोटा", "less than"), ">": ("से बड़ा", "greater than"),
+        "∞": ("अनंत", "infinity"), "→": ("की ओर", "tends to"), "√": ("वर्गमूल", "square root of"),
+    }
+    text = re.sub("|".join(re.escape(op) for op in operators), lambda m: " " + operators[m[0]][0 if hindi else 1] + " ", text)
+    text = re.sub(r"(?<=\w)\s*/\s*(?=\w)", " " + words["divide"] + " ", text)
+    text = re.sub(r"\b([A-Za-z])-(?=[A-Za-z]\b)", r"\1 घटा " if hindi else r"\1 minus ", text)
+    text = re.sub(r"-(?=\d)|(?<=\w)\s+-\s+(?=\w)|(?<=\d)-(?=\w)", " घटा " if hindi else " minus ", text)
+    text = text.replace("_", " ")
+    # Keep paragraph boundaries available to the thought chunker.
+    paragraphs = [re.sub(r"\s+", " ", paragraph).strip() for paragraph in re.split(r"\n\s*\n", text)]
+    return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
 
 def safe_parse_json(raw: str) -> Optional[Dict[str, Any]]:
     """Robustly parse LLM JSON responses, handling markdown code fences and LaTeX backslashes."""
@@ -349,29 +512,155 @@ async def execute_dual_ai_completion(
                 pass
     return None
 
-async def synthesize_edge_audio_base64(text: str, language: str = "hinglish") -> Optional[str]:
-    """Synthesizes high-fidelity neural voice using Microsoft Edge TTS and returns base64 MP3."""
-    if not text or not text.strip():
-        return None
-    clean = clean_speech_text(text)
-    if not clean:
-        return None
-    voice = NEURAL_VOICES.get(language, NEURAL_VOICES["hinglish"])
-    try:
-        async def _synth():
-            communicate = edge_tts.Communicate(clean[:140], voice)
-            audio_stream = io.BytesIO()
-            async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    audio_stream.write(chunk["data"])
-            return audio_stream.getvalue()
+VOICE_CANDIDATES = {
+    "hinglish": {
+        "female": ["en-IN-NeerjaExpressiveNeural", "en-IN-NeerjaNeural", "en-IN-PrabhatNeural"],
+        "male": ["en-IN-PrabhatNeural", "hi-IN-MadhurNeural", "en-US-AndrewMultilingualNeural"],
+    },
+    "hi": {
+        "female": ["hi-IN-SwaraNeural", "en-US-AvaMultilingualNeural"],
+        "male": ["hi-IN-MadhurNeural", "en-IN-PrabhatNeural", "en-US-AndrewMultilingualNeural"],
+    },
+    "en": {
+        "female": ["en-US-AvaMultilingualNeural", "en-US-JennyNeural"],
+        "male": ["en-US-AndrewMultilingualNeural", "en-US-GuyNeural", "en-IN-PrabhatNeural"],
+    },
+}
+MALE_NEURAL_VOICES = {
+    "es": "es-ES-AlvaroNeural", "fr": "fr-FR-HenriNeural", "de": "de-DE-ConradNeural",
+    "ja": "ja-JP-KeitaNeural", "zh": "zh-CN-YunxiNeural",
+}
+TTS_ATTEMPT_TIMEOUT = 12.0
+TTS_TOTAL_TIMEOUT = 45.0
+_TTS_SEMAPHORE = asyncio.Semaphore(3)
 
-        audio_bytes = await asyncio.wait_for(_synth(), timeout=3.0)
-        if audio_bytes:
-            return base64.b64encode(audio_bytes).decode("utf-8")
-    except Exception as e:
-        logger.info(f"Edge TTS synthesis skipped or timed out: {e}")
-    return None
+
+def speech_voice_candidates(language: str, voice_gender: str = "female") -> List[str]:
+    lang = (language or "hinglish").lower().strip()
+    if lang not in NEURAL_VOICES:
+        lang = "hinglish"
+    if lang in VOICE_CANDIDATES:
+        return list(VOICE_CANDIDATES[lang][voice_gender])
+    primary = MALE_NEURAL_VOICES[lang] if voice_gender == "male" else NEURAL_VOICES[lang]
+    fallback = "en-US-AndrewMultilingualNeural" if voice_gender == "male" else "en-US-AvaMultilingualNeural"
+    return [primary, fallback]
+
+
+def split_speech_thoughts(text: str, max_chars: int = 700) -> List[str]:
+    """Split already-verbalized math at thoughts, never at decimals or raw LaTeX."""
+    chunks, current = [], ""
+    for paragraph in re.split(r"\n\s*\n", text):
+        sentences = re.split(r"(?<=[.!?।])\s+", paragraph.strip())
+        for sentence in sentences:
+            if not sentence:
+                continue
+            # Only an oversized sentence needs a clause/word boundary fallback.
+            pieces = []
+            while len(sentence) > max_chars:
+                prefix = sentence[:max_chars + 1]
+                boundaries = [m.end() for m in re.finditer(r"[,;:]\s+", prefix)]
+                cut = boundaries[-1] if boundaries and boundaries[-1] >= max_chars // 2 else prefix.rfind(" ")
+                if cut <= 0:
+                    cut = max_chars
+                pieces.append(sentence[:cut].strip())
+                sentence = sentence[cut:].strip()
+            if sentence:
+                pieces.append(sentence)
+            for piece in pieces:
+                if current and len(current) + len(piece) + 1 > max_chars:
+                    chunks.append(current)
+                    current = ""
+                current = (current + " " + piece).strip()
+                if len(current) >= 260 or (len(current) >= 120 and current.endswith("?")):
+                    chunks.append(current)
+                    current = ""
+        if current and len(current) >= 120:
+            chunks.append(current)
+            current = ""
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def speech_prosody(text: str, expressive: bool = True):
+    # edge-tts accepts plain text plus rate/pitch, not custom break/emphasis SSML.
+    if expressive and text.rstrip().endswith("?"):
+        return "+2%", "+3Hz"
+    if expressive and re.search(r"\b(remember|key (?:idea|concept)|important|dhyan|yaad)\b|याद|महत्वपूर्ण", text, re.IGNORECASE):
+        return "-1%", "+1Hz"
+    if expressive and (":" in text or "the quantity" in text or "राशि" in text):
+        return "+0%", "+0Hz"
+    return "+3%", "+1Hz"
+
+
+async def _synthesize_voice_chunk(text: str, voice: str, expressive: bool) -> bytes:
+    async def collect():
+        rate, pitch = speech_prosody(text, expressive)
+        communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+        audio = io.BytesIO()
+        async for event in communicate.stream():
+            if event["type"] == "audio":
+                audio.write(event["data"])
+        data = audio.getvalue()
+        if not data:
+            raise ValueError("Empty speech audio")
+        return data
+
+    async with _TTS_SEMAPHORE:
+        return await asyncio.wait_for(collect(), timeout=TTS_ATTEMPT_TIMEOUT)
+
+
+async def synthesize_speech(text: str, language: str = "hinglish", voice_gender: str = "female", chunks: bool = False):
+    """Generate a complete narration with one consistent voice and a bounded deadline."""
+    clean = clean_speech_text(text, language)
+    if not clean or not any(char.isalnum() for char in clean):
+        raise ValueError("No speakable text")
+    thoughts = split_speech_thoughts(clean) if chunks else [clean]
+
+    async def try_voices():
+        timed_out = False
+        for voice in speech_voice_candidates(language, voice_gender):
+            tasks = [asyncio.create_task(_synthesize_voice_chunk(thought, voice, chunks)) for thought in thoughts]
+            try:
+                audio = await asyncio.gather(*tasks)
+                actual_gender = "male" if voice in {
+                    "en-IN-PrabhatNeural", "hi-IN-MadhurNeural", "en-US-AndrewMultilingualNeural", "en-US-GuyNeural",
+                    *MALE_NEURAL_VOICES.values(),
+                } else "female"
+                return {
+                    "chunks": [
+                        {"audio_base64": base64.b64encode(data).decode("ascii"),
+                         "pause_after_ms": 220 if index < len(audio) - 1 else 0, "voice": voice}
+                        for index, data in enumerate(audio)
+                    ],
+                    "speech_text": clean,
+                    "voice_gender": actual_gender,
+                }
+            except asyncio.TimeoutError:
+                timed_out = True
+                logger.info("Speech provider attempt timed out for voice %s", voice)
+            except Exception as exc:
+                logger.info("Speech provider attempt failed for voice %s (%s)", voice, type(exc).__name__)
+            finally:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+        if timed_out:
+            raise asyncio.TimeoutError("Speech provider timed out")
+        raise RuntimeError("Speech provider unavailable")
+
+    return await asyncio.wait_for(try_voices(), timeout=TTS_TOTAL_TIMEOUT)
+
+
+async def synthesize_edge_audio_base64(text: str, language: str = "hinglish", voice_gender: str = "female") -> Optional[str]:
+    """Use the same full-text voice selection and limits for legacy chat audio."""
+    try:
+        narration = await synthesize_speech(text, language, voice_gender)
+        return narration["chunks"][0]["audio_base64"]
+    except Exception as exc:
+        logger.info("Chat speech unavailable (%s)", type(exc).__name__)
+        return None
 
 class AnalogyCard(BaseModel):
     title: str = Field(description="Vivid real-world analogy title")
@@ -388,6 +677,8 @@ class ChatTeachRequest(BaseModel):
     mode: str = Field("direct", max_length=16) # "direct" or "socratic"
     persona: Optional[str] = Field("mentor", max_length=32)
     image_base64: Optional[str] = Field(None, max_length=3500000)  # ~2.5 MB of binary
+    include_audio: bool = True
+    voice_gender: Literal["female", "male"] = "female"
 
 class ChatTeachResponse(BaseModel):
     reply_text: str
@@ -519,6 +810,8 @@ class FlashcardsResponse(BaseModel):
 class TTSRequest(BaseModel):
     text: str = Field(..., max_length=5000)
     language: str = Field("hinglish", max_length=16)
+    voice_gender: Literal["female", "male"] = "female"
+    response_format: Literal["mp3", "chunks"] = "mp3"
 
 
 
@@ -2002,7 +2295,7 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
         d = safe_parse_json(raw_json)
         if d:
             reply = d.get("reply_text") or d.get("explanation") or d.get("content") or d.get("message") or ""
-            speech = clean_speech_text(d.get("speech_text") or reply[:120])
+            speech = clean_speech_text(d.get("speech_text") or reply, req.language)
             raw_det = (d.get("detected_topic") or "").strip()
 
             invalid_topic_tokens = [
@@ -2017,8 +2310,7 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
             else:
                 det_topic = raw_det
 
-            # Fast non-blocking TTS check
-            audio = await synthesize_edge_audio_base64(speech[:100], req.language)
+            audio = await synthesize_edge_audio_base64(speech, req.language, req.voice_gender) if req.include_audio else None
 
             r_steps = d.get("roadmap_steps") if det_topic else None
             card = None if (is_chitchat or is_broad_subject or not det_topic) else d.get("analogy_card")
@@ -2078,36 +2370,36 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
     if is_chitchat:
         if lang == "hinglish":
             dyn_reply = f"Namaste **{req.student_name}**! 🌸 Main hoon **Luna**, aapki AI personal tutor. Aaj aap kaunsa subject ya topic seekhna chahte hain? Jaise **Relations & Functions**, **Calculus**, ya **Newton's Laws**?"
-            speech = clean_speech_text(f"Namaste {req.student_name}! Aaj aap kaunsa topic seekhna chahte hain?")
+            speech = clean_speech_text(f"Namaste {req.student_name}! Aaj aap kaunsa topic seekhna chahte hain?", req.language)
         elif lang == "hi":
             dyn_reply = f"नमस्ते **{req.student_name}**! 🌸 मैं हूँ **लूना**, आपकी एआई शिक्षिका। आज आप कौन सा विषय या अध्याय पढ़ना चाहते हैं?"
-            speech = clean_speech_text(f"नमस्ते {req.student_name}! आज आप कौन सा विषय पढ़ना चाहते हैं?")
+            speech = clean_speech_text(f"नमस्ते {req.student_name}! आज आप कौन सा विषय पढ़ना चाहते हैं?", req.language)
         else:
             dyn_reply = f"Hello **{req.student_name}**! 🌸 I am **Luna**, your AI personal tutor. What subject or chapter would you like to master today? For example: **Relations & Functions**, **Calculus**, or **Thermodynamics**?"
-            speech = clean_speech_text(f"Hello {req.student_name}! What topic would you like to master today?")
+            speech = clean_speech_text(f"Hello {req.student_name}! What topic would you like to master today?", req.language)
         display_topic = ""
         suggested = ["Maths: Relations & Functions 📐", "Physics: Newton's Laws ⚛️", "Chemistry: Thermodynamics 🧪"]
         card = None
     elif is_broad_subject:
         if lang == "hinglish":
             dyn_reply = f"Wah! **{clean_msg.title()}** ek bohot hi interesting aur important subject hai. Lekin isme kaafi chapters hain — aap specific kaunsa chapter ya topic seekhna chahte hain? Jaise:\n- **Relations and Functions**\n- **Calculus & Derivatives**\n- **Matrices & Determinants**\n- **Trigonometry**\n\nMujhe specific topic batayein aur hum turant shuru karte hain!"
-            speech = clean_speech_text(f"Wah! {clean_msg.title()} mein aap specific kaunsa topic seekhna chahte hain?")
+            speech = clean_speech_text(f"Wah! {clean_msg.title()} mein aap specific kaunsa topic seekhna chahte hain?", req.language)
         else:
             dyn_reply = f"Great choice! **{clean_msg.title()}** is a vast and fascinating subject. Which specific topic or chapter would you like to focus on? For example:\n- **Relations & Functions**\n- **Calculus & Derivatives**\n- **Core Laws & Axioms**\n\nTell me the specific topic and we'll dive right in!"
-            speech = clean_speech_text(f"Great! Which specific topic in {clean_msg.title()} would you like to study?")
+            speech = clean_speech_text(f"Great! Which specific topic in {clean_msg.title()} would you like to study?", req.language)
         display_topic = ""
         suggested = ["Relations & Functions 📐", "Calculus Derivatives 📈", "Matrices & Vectors 🔢"]
         card = None
     elif dyn_topic:
         if lang == "hinglish":
             dyn_reply = f"Bohot badhiya sawaal hai **{req.student_name}**! Chalo **{dyn_topic}** ko bilkul aasan aur interesting tarike se master karte hain.\n\nIs concept mein core principles mathematically aur physically real-world systems se connect hote hain. Hum isko 4 key milestones mein cover karenge: Foundations, Core Mechanisms, Practical Application, aur Examiner Traps!"
-            speech = clean_speech_text(f"Bohot badhiya sawaal {req.student_name}! Chalo {dyn_topic} ko samajhte hain.")
+            speech = clean_speech_text(f"Bohot badhiya sawaal {req.student_name}! Chalo {dyn_topic} ko samajhte hain.", req.language)
             card_title = f"💡 {dyn_topic} ki Real-Life Intuition"
             card_desc = f"{dyn_topic} ko ek automated system ki tarah socho jahan har input ka ek exact, predictable output hota hai."
             suggested = [f"Explain {dyn_topic} formulas", f"{dyn_topic} ka everyday analogy 💡", "Start 60s Blitz ⏱️"]
         else:
             dyn_reply = f"Awesome question **{req.student_name}**! Let's master **{dyn_topic}** together. We will explore core principles, key mechanisms, and real-world intuition step-by-step!"
-            speech = clean_speech_text(f"Awesome question {req.student_name}! Let's master {dyn_topic} together.")
+            speech = clean_speech_text(f"Awesome question {req.student_name}! Let's master {dyn_topic} together.", req.language)
             card_title = f"💡 {dyn_topic} Intuition"
             card_desc = f"Think of {dyn_topic} like an automated system where fundamental rules produce predictable, elegant outcomes."
             suggested = [f"Explain {dyn_topic} formulas", f"Give an everyday {dyn_topic} analogy 💡", "Start 60s Blitz ⏱️"]
@@ -2115,12 +2407,12 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
         card = {"title": card_title, "description": card_desc}
     else:
         dyn_reply = f"Bohot badhiya **{req.student_name}**! Chalo is concept ko bilkul aasan real-world analogies aur step-by-step logic se master karte hain."
-        speech = clean_speech_text(f"Bohot badhiya {req.student_name}! Chalo ise step-by-step samajhte hain.")
+        speech = clean_speech_text(f"Bohot badhiya {req.student_name}! Chalo ise step-by-step samajhte hain.", req.language)
         display_topic = ""
         suggested = ["Give an everyday analogy 💡", "Step-by-step derivation 📐", "Test me with Blitz ⏱️"]
         card = None
 
-    audio = await synthesize_edge_audio_base64(speech[:100], req.language)
+    audio = await synthesize_edge_audio_base64(speech, req.language, req.voice_gender) if req.include_audio else None
     return ChatTeachResponse(
         reply_text=dyn_reply,
         speech_text=speech,
@@ -2425,18 +2717,21 @@ Return strictly a valid JSON object:
 @app.post("/tts", dependencies=[Depends(require_session)])
 async def generate_tts(req: TTSRequest, request: Request):
     await rate_limit(request, "tts", limit=30, window=60.0)
-    clean = clean_speech_text(req.text)
-    voice = NEURAL_VOICES.get(req.language, NEURAL_VOICES["hinglish"])
     try:
-        communicate = edge_tts.Communicate(clean[:500], voice)
-        audio_stream = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_stream.write(chunk["data"])
-        return PlainResponse(content=audio_stream.getvalue(), media_type="audio/mpeg")
-    except Exception as e:
-        logger.error(f"TTS endpoint error: {e}")
-        raise HTTPException(status_code=500, detail="Voice synthesis failed")
+        narration = await synthesize_speech(req.text, req.language, req.voice_gender, req.response_format == "chunks")
+        if req.response_format == "chunks":
+            return narration
+        return PlainResponse(
+            content=base64.b64decode(narration["chunks"][0]["audio_base64"]), media_type="audio/mpeg",
+            headers={"X-Voice-Name": narration["chunks"][0]["voice"], "X-Voice-Gender": narration["voice_gender"]},
+        )
+    except ValueError:
+        raise HTTPException(status_code=422, detail="No speakable text") from None
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Voice synthesis timed out. Please try again.") from None
+    except Exception as exc:
+        logger.warning("TTS endpoint unavailable (%s)", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Voice synthesis unavailable. Please try again.") from None
 
 # ---------------------------------------------------------------------------
 # Static Web App Mounts & Dynamic Routing

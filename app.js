@@ -13,7 +13,11 @@
   let soundEnabled = localStorage.getItem("clearmind_sound") !== "false";
   let isVoiceCallActive = false;
   let voiceRecognition = null;
-  let activeAudio = null;
+  let speechContext = null;
+  let speechSession = null;
+  let speechGeneration = 0;
+  let voiceIntentVersion = 0;
+  let activeVoiceGender = localStorage.getItem("clearmind_voice_gender") === "male" ? "male" : "female";
   let cachedCheatSheets = {};
   let awardedCheatSheetTopics = new Set();
   const examLoadState = { sequence: 0, pending: null, languages: new Map() };
@@ -531,13 +535,16 @@
   // Dynamic Audio Waveform Indicator Controller
   function setAudioWaveformActive(isActive) {
     const wf = document.getElementById("lunaWaveform");
-    if (!wf) return;
-    if (isActive) {
-      wf.classList.remove("hidden");
-      wf.classList.add("active");
-    } else {
-      wf.classList.remove("active");
-      wf.classList.add("hidden");
+    if (wf) {
+      wf.classList.toggle("hidden", !isActive);
+      wf.classList.toggle("active", isActive);
+      wf.setAttribute("aria-hidden", String(!isActive));
+      if (!isActive) wf.querySelectorAll(".waveform-bar").forEach(bar => bar.style.removeProperty("--voice-level"));
+    }
+    const rings = document.getElementById("voiceCallWaveRings");
+    if (rings) {
+      rings.classList.toggle("hidden", !isActive);
+      rings.classList.toggle("voice-speaking", isActive);
     }
   }
 
@@ -1225,7 +1232,7 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  function appendLunaMessage(data) {
+  function appendLunaMessage(data, autoplayIntent = null) {
     const box = document.getElementById("chatMessagesContainer");
     if (!box) return;
     const d = document.createElement("div");
@@ -1241,7 +1248,7 @@
         </div>`;
     }
 
-    const rawSpeech = (data.speech_text || data.reply_text || "").replace(/<[^>]*>/g, "").trim();
+    const rawSpeech = (data.speech_text || data.reply_text || "").trim();
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     d.innerHTML = `
@@ -1275,8 +1282,8 @@
       });
     }
 
-    // In live call, speak immediately
-    if (isVoiceCallActive) {
+    // Never autoplay a response after the user has already interrupted it.
+    if (isVoiceCallActive && soundEnabled && autoplayIntent === voiceIntentVersion) {
       toggleVoiceAudio(data.audio_base64, rawSpeech, null);
     }
   }
@@ -1402,6 +1409,8 @@
   // =========================================================================
   async function sendChatMessage(userText, imageBase64) {
     if (!userText || !userText.trim()) return;
+    interruptSpeech();
+    const autoplayIntent = voiceIntentVersion;
     const clean = userText.trim();
     appendUserMessage(clean, imageBase64);
 
@@ -1429,7 +1438,9 @@
           level: studentProfile.level || "College / University",
           mode: teachingMode,
           persona: localStorage.getItem("clearmind_calibrated_persona") || studentProfile.persona || "mentor",
-          image_base64: imageBase64 || null
+          image_base64: imageBase64 || null,
+          include_audio: false,
+          voice_gender: activeVoiceGender
         })
       });
 
@@ -1447,7 +1458,7 @@
       conversationHistory.push({ role: "assistant", content: data.reply_text, data: data });
       saveHistory();
 
-      appendLunaMessage(data);
+      appendLunaMessage(data, autoplayIntent);
       playSound("correct");
       addXP(25);
 
@@ -1647,151 +1658,284 @@
   // =========================================================================
   // VOICE TTS AUDIO PLAYBACK (INTERACTIVE PLAY / PAUSE / RESUME CONTROLLER)
   // =========================================================================
-  let currentActiveVoiceBtn = null;
-
-  function resetVoiceButton(btn) {
+  // One cancellable owner for requests, decoded buffers, playback, and UI.
+  function setVoiceButton(btn, label, busy = false) {
     if (!btn) return;
-    btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
-    btn.classList.remove("bg-red-950/80", "border-red-800/60", "text-red-300");
-    btn.classList.add("bg-purple-950/80", "border-purple-800/60", "text-purple-300");
-    btn.disabled = false;
+    btn.textContent = label;
+    btn.disabled = false; // Loading can always be cancelled.
+    btn.setAttribute("aria-busy", String(busy));
+    btn.setAttribute("aria-pressed", String(label === "Pause voice"));
   }
 
-  function stopCurrentAudio() {
-    if (activeAudio) {
-      try {
-        activeAudio.pause();
-        activeAudio.currentTime = 0;
-      } catch (e) {}
-      activeAudio = null;
-    }
-    if (currentActiveVoiceBtn) {
-      resetVoiceButton(currentActiveVoiceBtn);
-      currentActiveVoiceBtn = null;
-    }
+  function speechIsCurrent(session) {
+    return speechSession === session && session.id === speechGeneration;
+  }
+
+  function stopCurrentAudio(fade = true) {
+    ++speechGeneration;
+    const session = speechSession;
+    speechSession = null; // Invalidate before abort/ended callbacks can fire.
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     setAudioWaveformActive(false);
+    if (!session) return;
+    session.controller.abort();
+    clearTimeout(session.timeout);
+    cancelAnimationFrame(session.frame);
+    setVoiceButton(session.btn, "Listen with voice");
+    if (session.media) {
+      session.media.onended = session.media.onerror = session.media.onplaying = null;
+      const media = session.media;
+      const started = performance.now();
+      const volume = media.volume;
+      const finish = () => {
+        media.pause();
+        media.removeAttribute("src");
+        media.load();
+        if (session.url) URL.revokeObjectURL(session.url);
+      };
+      if (fade && !media.paused) {
+        const tick = () => {
+          const progress = Math.min(1, (performance.now() - started) / 45);
+          media.volume = volume * (1 - progress);
+          if (progress < 1) requestAnimationFrame(tick);
+          else finish();
+        };
+        tick();
+      } else finish();
+    }
+    if (session.gain) {
+      const now = speechContext.currentTime;
+      const tail = fade && speechContext.state === "running" ? 0.045 : 0;
+      session.gain.gain.cancelScheduledValues(now);
+      session.gain.gain.setValueAtTime(session.gain.gain.value, now);
+      session.gain.gain.linearRampToValueAtTime(0, now + tail);
+      for (const source of session.sources) {
+        source.onended = null;
+        try { source.stop(now + tail); } catch (_) { /* Already finished. */ }
+      }
+      setTimeout(() => {
+        session.sources.forEach(source => source.disconnect());
+        session.gain.disconnect();
+        session.analyser.disconnect();
+        session.sources.length = 0;
+      }, tail * 1000 + 20);
+    }
+  }
+
+  function interruptSpeech() {
+    ++voiceIntentVersion; // Also suppress autoplay from an older chat response.
+    stopCurrentAudio();
+  }
+
+  function getSpeechContext() {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return null;
+    if (!speechContext || speechContext.state === "closed") speechContext = new Context();
+    return speechContext;
+  }
+
+  // Keep a little room around consonants. Remove only near-digital silence at
+  // chunk edges (at most 300 ms), never silence inside the spoken phrase.
+  function speechPlaybackBounds(buffer) {
+    const rate = buffer.sampleRate;
+    const limit = Math.min(Math.floor(rate * 0.3), Math.floor(buffer.length / 4));
+    const padding = Math.floor(rate * 0.025);
+    const channels = Array.from({ length: buffer.numberOfChannels }, (_, i) => buffer.getChannelData(i));
+    const silent = i => channels.every(data => Math.abs(data[i]) < 0.0005);
+    let first = 0;
+    let last = buffer.length - 1;
+    while (first < limit && silent(first)) ++first;
+    while (last > buffer.length - 1 - limit && silent(last)) --last;
+    const start = Math.max(0, first - padding);
+    const end = Math.min(buffer.length, last + padding + 1);
+    return { offset: start / rate, duration: (end - start) / rate,
+      leading: (first - start) / rate, trailing: (end - last - 1) / rate };
+  }
+
+  function updateSpeechMeter(session) {
+    if (!speechIsCurrent(session)) return;
+    const running = speechContext.state === "running" && !session.paused && speechContext.currentTime >= session.startsAt;
+    setAudioWaveformActive(running);
+    if (running) {
+      session.analyser.getByteFrequencyData(session.bins);
+      document.querySelectorAll("#lunaWaveform .waveform-bar").forEach((bar, index) => {
+        const base = 2 + index * 5;
+        let energy = 0;
+        for (let i = base; i < base + 5; i++) energy += session.bins[i] || 0;
+        bar.style.setProperty("--voice-level", String(0.18 + (energy / 1275) * 0.82));
+      });
+    }
+    session.frame = requestAnimationFrame(() => updateSpeechMeter(session));
+  }
+
+  async function pauseOrResumeSpeech(session) {
+    if (session.loading) { interruptSpeech(); return; }
+    const operation = ++session.controlVersion;
+    try {
+      if (session.media) {
+        session.paused = !session.media.paused;
+        if (session.paused) session.media.pause();
+        else await session.media.play();
+      } else {
+        session.paused = !session.paused;
+        if (session.paused) await speechContext.suspend();
+        else await speechContext.resume();
+      }
+      if (!speechIsCurrent(session) || operation !== session.controlVersion) return;
+      setVoiceButton(session.btn, session.paused ? "Resume voice" : "Pause voice");
+      setAudioWaveformActive(!session.paused);
+    } catch (_) {
+      if (speechIsCurrent(session)) {
+        stopCurrentAudio(false);
+        showToast("Tap Listen again to enable audio playback.", "info");
+      }
+    }
   }
 
   function toggleVoiceAudio(base64Audio, rawSpeech, btn) {
+    if (btn && speechSession && speechSession.btn === btn) {
+      void pauseOrResumeSpeech(speechSession);
+      return;
+    }
     if (!soundEnabled) {
       soundEnabled = true;
       localStorage.setItem("clearmind_sound", "true");
-      const sBtn = document.getElementById("soundToggleBtn");
-      if (sBtn) sBtn.textContent = "🔊";
     }
-
-    // 1. If currently playing this audio, PAUSE IT
-    if (activeAudio && !activeAudio.paused && currentActiveVoiceBtn === btn && btn) {
-      activeAudio.pause();
-      setAudioWaveformActive(false);
-      btn.innerHTML = "<span>▶️</span> <span>Resume Voice</span>";
-      btn.classList.remove("bg-red-950/80", "border-red-800/60", "text-red-300");
-      btn.classList.add("bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
-      btn.disabled = false;
-      return;
-    }
-
-    // 2. If currently paused on this button, RESUME IT
-    if (activeAudio && activeAudio.paused && currentActiveVoiceBtn === btn && btn && activeAudio.currentTime > 0 && !activeAudio.ended) {
-      activeAudio.play().then(() => {
-        setAudioWaveformActive(true);
-        btn.innerHTML = "<span>⏸️</span> <span>Pause Voice</span>";
-        btn.classList.remove("bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
-        btn.classList.add("bg-red-950/80", "border-red-800/60", "text-red-300");
-        btn.disabled = false;
-      }).catch(err => {
-        console.warn("Audio resume error:", err);
-        stopCurrentAudio();
-      });
-      return;
-    }
-
-    // 3. Otherwise, stop any previous playing audio and start fresh
-    stopCurrentAudio();
-
-    if (!base64Audio && !rawSpeech) return;
-
-    if (btn) {
-      btn.innerHTML = "<span>⏸️</span> <span>Pause Voice</span>";
-      btn.classList.remove("bg-purple-950/80", "border-purple-800/60", "text-purple-300", "bg-emerald-950/80", "border-emerald-800/60", "text-emerald-300");
-      btn.classList.add("bg-red-950/80", "border-red-800/60", "text-red-300");
-      btn.disabled = false;
-      currentActiveVoiceBtn = btn;
-    }
-
-    if (base64Audio) {
-      try {
-        activeAudio = new Audio("data:audio/mpeg;base64," + base64Audio);
-        activeAudio.onended = () => {
-          stopCurrentAudio();
-        };
-        activeAudio.onerror = () => {
-          stopCurrentAudio();
-        };
-        activeAudio.play().then(() => {
-          setAudioWaveformActive(true);
-        }).catch(e => {
-          console.warn("Audio play rejected:", e);
-          stopCurrentAudio();
-        });
-      } catch (err) {
-        console.warn("Audio init error:", err);
-        stopCurrentAudio();
-      }
-    } else if (rawSpeech) {
-      playLunaVoice(rawSpeech, btn);
-    }
+    // Prefer text over old embedded clips: older responses can be truncated
+    // and do not necessarily match the currently selected voice.
+    void startNeuralSpeech(rawSpeech, btn, rawSpeech ? null : base64Audio);
   }
 
   function playPreSynthesizedAudio(base64Audio, btn) {
     toggleVoiceAudio(base64Audio, null, btn);
   }
 
-  async function playLunaVoice(rawText, btn) {
-    if (!soundEnabled || !rawText) return;
-    const clean = rawText.replace(/<[^>]*>/g, "").trim();
-    if (!clean) return;
+  function playLunaVoice(rawText, btn) {
+    toggleVoiceAudio(null, rawText, btn);
+  }
 
-    if (btn) {
-      btn.innerHTML = "<span>⏳</span> <span>Synthesizing...</span>";
-      btn.disabled = true;
+  async function startNeuralSpeech(rawText, btn, base64Audio = null) {
+    interruptSpeech();
+    const text = String(rawText || "").trim(); // Server owns math/markup cleaning.
+    if (!text && !base64Audio) return;
+    if (text.length > 5000) {
+      showToast("Select a passage of up to 5,000 characters to listen.", "info");
+      return;
     }
-
+    const session = {
+      id: speechGeneration, btn, controller: new AbortController(), sources: [],
+      loading: true, paused: false, controlVersion: 0, frame: 0
+    };
+    speechSession = session;
+    setVoiceButton(btn, "Preparing voice - click to cancel", true);
+    const context = getSpeechContext();
+    // Resume inside the click gesture, BEFORE waiting for the network.
+    const unlocked = context ? context.resume().then(() => true, () => false) : Promise.resolve(false);
+    session.timeout = setTimeout(() => {
+      if (!speechIsCurrent(session)) return;
+      stopCurrentAudio(false);
+      showToast("Voice service took too long. Tap Listen to retry.", "error");
+    }, 50000);
     try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
-        body: JSON.stringify({ text: clean, language: activeLanguage })
-      });
-      if (!res.ok) throw new Error("TTS failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (activeAudio) activeAudio.pause();
-      activeAudio = new Audio(url);
-      activeAudio.play().then(() => {
-        setAudioWaveformActive(true);
-      }).catch(e => console.warn(e));
-      activeAudio.onended = () => {
-        setAudioWaveformActive(false);
-        if (btn) {
-          btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
-          btn.disabled = false;
+      let chunks;
+      let legacyBytes;
+      if (base64Audio) {
+        chunks = [{ audio_base64: base64Audio, pause_after_ms: 0 }];
+      } else {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: session.controller.signal,
+          body: JSON.stringify({ text, language: activeLanguage, voice_gender: activeVoiceGender,
+            response_format: context ? "chunks" : "mp3" })
+        });
+        if (!res.ok) {
+          const error = new Error("Voice request failed");
+          error.status = res.status;
+          throw error;
         }
-      };
-    } catch (e) {
-      console.warn("TTS fallback:", e);
-      if ("speechSynthesis" in window) {
-        const u = new SpeechSynthesisUtterance(clean);
-        u.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
-        u.onstart = () => setAudioWaveformActive(true);
-        u.onend = () => setAudioWaveformActive(false);
-        u.onerror = () => setAudioWaveformActive(false);
-        window.speechSynthesis.speak(u);
+        if (!speechIsCurrent(session)) return;
+        if ((res.headers.get("content-type") || "").includes("application/json")) {
+          const payload = await res.json();
+          chunks = payload.chunks;
+          if (speechIsCurrent(session) && activeVoiceGender === "female" && payload.voice_gender === "male") {
+            showToast("Female voice is temporarily unavailable; using the backup male voice.", "info");
+          }
+          if (!Array.isArray(chunks) || !chunks.length || chunks.length > 80) throw new Error("Invalid voice chunks");
+        } else {
+          legacyBytes = await res.arrayBuffer(); // Compatible with old servers.
+        }
       }
-      if (btn) {
-        btn.innerHTML = "<span>🎧</span> <span>Listen with Voice</span>";
-        btn.disabled = false;
+      if (!speechIsCurrent(session)) return;
+      const toBytes = value => Uint8Array.from(atob(value), c => c.charCodeAt(0)).buffer;
+      if (!context) {
+        const bytes = legacyBytes || toBytes(chunks[0].audio_base64);
+        session.url = URL.createObjectURL(new Blob([bytes], { type: "audio/mpeg" }));
+        session.media = new Audio(session.url);
+        session.media.preload = "auto";
+        session.media.onplaying = () => { if (speechIsCurrent(session)) setAudioWaveformActive(true); };
+        session.media.onended = () => { if (speechIsCurrent(session)) stopCurrentAudio(false); };
+        session.media.onerror = () => {
+          if (speechIsCurrent(session)) {
+            stopCurrentAudio(false);
+            showToast("Audio could not be played. Tap Listen to retry.", "error");
+          }
+        };
+        await session.media.play();
+        if (!speechIsCurrent(session)) return;
+      } else {
+        if (!await unlocked || context.state !== "running") throw new Error("Audio needs a user gesture");
+        // Decode every chunk before playback. This intentionally trades startup
+        // buffering for no network/decode stalls between sentences.
+        const decoded = [];
+        const inputs = legacyBytes ? [{ bytes: legacyBytes, pause_after_ms: 0 }] : chunks;
+        for (const chunk of inputs) {
+          const buffer = await context.decodeAudioData(chunk.bytes || toBytes(chunk.audio_base64));
+          if (!speechIsCurrent(session)) return;
+          decoded.push({ buffer, bounds: speechPlaybackBounds(buffer),
+            pause: Math.max(0, Math.min(1000, Number(chunk.pause_after_ms) || 0)) / 1000 });
+        }
+        session.gain = context.createGain();
+        session.analyser = context.createAnalyser();
+        session.analyser.fftSize = 128;
+        session.bins = new Uint8Array(session.analyser.frequencyBinCount);
+        session.gain.connect(session.analyser);
+        session.analyser.connect(context.destination);
+        let cursor = context.currentTime + 0.04;
+        session.startsAt = cursor;
+        session.gain.gain.setValueAtTime(0, cursor);
+        session.gain.gain.linearRampToValueAtTime(1, cursor + 0.012);
+        let remaining = decoded.length;
+        decoded.forEach((chunk, index) => {
+          const source = context.createBufferSource();
+          source.buffer = chunk.buffer;
+          source.connect(session.gain);
+          source.onended = () => {
+            source.disconnect();
+            if (--remaining === 0 && speechIsCurrent(session)) stopCurrentAudio(false);
+          };
+          session.sources.push(source);
+          source.start(cursor, chunk.bounds.offset, chunk.bounds.duration);
+          const next = decoded[index + 1];
+          cursor += chunk.bounds.duration + (next ? Math.max(0, chunk.pause - chunk.bounds.trailing - next.bounds.leading) : 0);
+        });
+        session.gain.gain.setValueAtTime(1, Math.max(session.startsAt + 0.012, cursor - 0.012));
+        session.gain.gain.linearRampToValueAtTime(0, cursor);
+        updateSpeechMeter(session);
       }
+      clearTimeout(session.timeout);
+      session.loading = false;
+      setVoiceButton(btn, "Pause voice");
+    } catch (error) {
+      if (!speechIsCurrent(session) || error.name === "AbortError") return;
+      const status = error.status;
+      stopCurrentAudio(false);
+      // Never fall back to a robotic system voice or bypass an auth/rate error.
+      const message = status === 401 ? "Sign in again to use voice."
+        : status === 429 ? "Voice limit reached. Wait a minute, then retry."
+        : status === 422 ? "This passage has no readable speech or is too long."
+        : "Neural voice is unavailable. Tap Listen to retry; no system voice was substituted.";
+      showToast(message, "error");
     }
   }
 
@@ -4386,6 +4530,9 @@
   // LIVE VOICE CALL ORBIT
   // =========================================================================
   function startVoiceCall() {
+    interruptSpeech();
+    const context = getSpeechContext();
+    if (context) context.resume().catch(() => {});
     isVoiceCallActive = true;
     const statusText = document.getElementById("voiceCallStatusText");
     if (statusText) statusText.textContent = "Live Call Active • Speak with Luna";
@@ -4407,14 +4554,18 @@
         voiceRecognition.interimResults = true;
         voiceRecognition.lang = activeLanguage === "hinglish" ? "en-IN" : activeLanguage === "hi" ? "hi-IN" : "en-US";
         voiceRecognition.onresult = (e) => {
-          const tr = Array.from(e.results)
-            .map((r) => r[0].transcript)
-            .join("");
-          const el = document.getElementById("voiceLiveTranscript");
-          if (el) el.textContent = `"${tr}"`;
-          if (e.results[e.results.length - 1].isFinal) {
-            sendChatMessage(tr);
+          // Do not feed Luna's own speaker output back into the tutor.
+          // Tap Mic/orb to interrupt before dictating while she is speaking.
+          if (speechSession && !speechSession.paused) return;
+          let transcript = "";
+          let finalTranscript = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            transcript += e.results[i][0].transcript + " ";
+            if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + " ";
           }
+          const el = document.getElementById("voiceLiveTranscript");
+          if (el) el.textContent = transcript.trim();
+          if (finalTranscript.trim()) sendChatMessage(finalTranscript.trim());
         };
         voiceRecognition.onerror = (e) => {
           console.warn("Voice rec error:", e);
@@ -4445,7 +4596,7 @@
       callBtn.innerHTML = "<span>Start Call 📞</span>";
       callBtn.className = "px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-lg shadow-emerald-600/30 transition transform hover:scale-105 active:scale-95";
     }
-    if (activeAudio) activeAudio.pause();
+    interruptSpeech();
     playSound("click");
     showToast("Voice call ended.", "info");
   }
@@ -4566,6 +4717,7 @@
 
     // ENTER TO SEND MESSAGE, SHIFT + ENTER FOR NEWLINE!
     if (chatInput) {
+      chatInput.addEventListener("input", interruptSpeech);
       chatInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -4593,6 +4745,7 @@
 
     // Voice & Mic Button
     document.getElementById("chatMicBtn")?.addEventListener("click", () => {
+      interruptSpeech();
       window.switchCanvasTab("voice");
     });
     document.getElementById("endVoiceCallBtn")?.addEventListener("click", () => {
@@ -4639,6 +4792,7 @@
     const langSelectMobile = document.getElementById("languageSelectMobile");
     
     function applyLanguage(langVal, sourceEl) {
+      interruptSpeech();
       activeLanguage = langVal;
       localStorage.setItem("clearmind_lang", activeLanguage);
       if (langSelect && langSelect !== sourceEl) langSelect.value = activeLanguage;
@@ -4661,6 +4815,21 @@
       langSelectMobile.addEventListener("change", () => applyLanguage(langSelectMobile.value, langSelectMobile));
     }
 
+    const voiceSelect = document.getElementById("voiceGenderSelect");
+    if (voiceSelect) {
+      voiceSelect.value = activeVoiceGender;
+      voiceSelect.addEventListener("change", () => {
+        interruptSpeech();
+        activeVoiceGender = voiceSelect.value === "male" ? "male" : "female";
+        localStorage.setItem("clearmind_voice_gender", activeVoiceGender);
+      });
+    }
+    window.addEventListener("pagehide", interruptSpeech);
+    document.getElementById("voiceCallOrbBtn")?.addEventListener("click", () => {
+      if (isVoiceCallActive) interruptSpeech();
+      else startVoiceCall();
+    });
+
     // Sound FX Toggle (with icon sync & audio stop)
     const soundBtn = document.getElementById("soundToggleBtn");
     if (soundBtn) {
@@ -4670,7 +4839,7 @@
         localStorage.setItem("clearmind_sound", String(soundEnabled));
         soundBtn.textContent = soundEnabled ? "🔊" : "🔇";
         if (!soundEnabled) {
-          stopCurrentAudio();
+          interruptSpeech();
         }
         showToast("Sound FX " + (soundEnabled ? "Enabled" : "Muted"), "info");
       });

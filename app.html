@@ -315,8 +315,12 @@
                 <span id="chatPersonaBadge" class="text-[9px] font-black uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-800/60">🎓 Mentor</span>
               </div>
               <div class="flex items-center gap-2">
-                <p class="text-[10px] text-slate-400">Socratic Deep Teaching Stream</p>
-                <div id="lunaWaveform" class="audio-waveform hidden" title="Luna Neural Voice Active">
+                <label for="voiceGenderSelect" class="voice-choice-label">Voice</label>
+                <select id="voiceGenderSelect" class="voice-choice" title="Free neural voice; saved on this device">
+                  <option value="female" selected>Female - warm</option>
+                  <option value="male">Male - calm</option>
+                </select>
+                <div id="lunaWaveform" class="audio-waveform hidden" role="status" aria-label="Luna is speaking" aria-hidden="true" title="Luna is speaking">
                   <div class="waveform-bar"></div>
                   <div class="waveform-bar"></div>
                   <div class="waveform-bar"></div>
@@ -991,12 +995,12 @@
               <h3 class="text-base font-bold text-white tracking-tight flex items-center justify-center gap-2">
                 Live Voice Call with <span class="text-gradient font-instrument-serif italic text-lg">Luna</span>
               </h3>
-              <p class="text-xs text-slate-400">Continuous hands-free conversation with sub-2s neural voice.</p>
+              <p class="text-xs text-slate-400">Free neural voice with natural phrasing. Tap Mic or type to interrupt.</p>
             </div>
 
             <!-- Pulsing Waveform Rings -->
             <div class="relative my-6">
-              <div id="voiceCallWaveRings" class="absolute inset-0 w-36 h-36 -m-4 rounded-full border-2 border-violet-500/40 animate-ping pointer-events-none"></div>
+              <div id="voiceCallWaveRings" class="absolute inset-0 w-36 h-36 -m-4 rounded-full border-2 border-violet-500/40 hidden pointer-events-none"></div>
               <div id="voiceCallOrbBtn" class="w-28 h-28 rounded-full bg-gradient-to-tr from-violet-600 via-fuchsia-500 to-cyan-400 p-1.5 shadow-2xl shadow-violet-500/50 flex items-center justify-center cursor-pointer transition transform hover:scale-105 active:scale-95">
                 <div class="w-full h-full bg-[#050714] rounded-full flex items-center justify-center text-4xl">
                   🎙️
