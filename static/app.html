@@ -87,31 +87,32 @@
   <!-- ========================================================================= -->
   <!-- TOP SECOND-BRAIN FLOATING GLASS NAVBAR                                    -->
   <!-- ========================================================================= -->
-  <header id="globalNavbar" class="sticky top-0 z-40 glass-strong border-b border-white/10 px-3 lg:px-4 py-2 lg:py-2.5 transition shadow-2xl">
-    <div class="max-w-[1800px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-3">
+  <header id="globalNavbar" class="sticky top-0 z-40 bg-[#070914]/85 backdrop-blur-2xl border-b border-white/[0.08] px-3 lg:px-5 py-2 transition-all shadow-2xl">
+    <div class="max-w-[1800px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4">
       
       <!-- Top Row on Mobile / Left Group on Desktop -->
-      <div class="flex items-center justify-between w-full lg:w-auto gap-2">
+      <div class="flex items-center justify-between w-full lg:w-auto gap-3 shrink-0">
         <!-- Brand & Project Identity -->
-        <a href="/" class="flex items-center gap-2.5 shrink-0 group cursor-pointer" title="Return to ClearMind Pro Home">
-          <div class="relative">
-            <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 p-0.5 shadow-lg shadow-violet-500/25 animate-glow flex items-center justify-center transition-transform group-hover:scale-105">
-              <div class="w-full h-full bg-[#050714]/90 rounded-[14px] flex items-center justify-center text-lg lg:text-xl">
+        <a href="/" class="flex items-center gap-2.5 group cursor-pointer" title="Return to ClearMind Pro Home">
+          <div class="relative shrink-0">
+            <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-cyan-400 p-[1.5px] shadow-lg shadow-violet-500/25 flex items-center justify-center transition-transform group-hover:scale-105">
+              <div class="w-full h-full bg-[#070914] rounded-[13px] flex items-center justify-center text-lg">
                 🌸
               </div>
             </div>
-            <div class="absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500/30 to-cyan-400/30 blur-md -z-10 opacity-75 group-hover:opacity-100 transition-opacity"></div>
+            <div class="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-violet-500/30 to-cyan-400/30 blur-md -z-10 opacity-60 group-hover:opacity-100 transition-opacity"></div>
           </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h1 class="text-sm lg:text-base font-bold tracking-tight text-white flex items-center gap-1">
-                ClearMind <span class="font-instrument-serif italic text-gradient text-lg lg:text-xl">Pro</span>
-              </h1>
-              <span class="hidden md:inline-flex text-[8px] lg:text-[9px] font-black uppercase tracking-wider bg-violet-950/80 text-violet-300 border border-violet-800/60 px-1.5 py-0.5 rounded-full">
-                Cognitive Twin
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="text-sm lg:text-base font-extrabold tracking-tight text-white flex items-center gap-1">
+                ClearMind <span class="font-instrument-serif italic text-gradient text-lg lg:text-xl font-normal">Pro</span>
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-800/50 px-2 py-0.5 rounded-full shadow-sm">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Active</span>
               </span>
             </div>
-            <p class="hidden sm:block text-[10px] lg:text-[11px] text-slate-400 font-medium">Dual Gemini 3.6 Flash & GLM-4 Engine • Neural Voice</p>
+            <span class="text-[10px] text-slate-400 hidden xl:inline-block font-medium tracking-wide">Dual Gemini & GLM-4 • Socratic Studio</span>
           </div>
         </a>
 
@@ -146,27 +147,27 @@
       </div>
 
       <!-- Center Nav: Horizontally Scrollable Pills on Mobile / Centered on Desktop -->
-      <nav id="topWorkspaceNav" class="w-full lg:w-auto flex items-center gap-1 p-1 glass rounded-2xl border border-white/10 shadow-inner overflow-x-auto scrollbar-none flex-nowrap shrink-0">
-        <a href="/" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap" title="Return to Home Landing Page">
+      <nav id="topWorkspaceNav" class="w-full lg:w-auto flex items-center gap-1 p-1 bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/[0.08] shadow-inner overflow-x-auto scrollbar-none flex-nowrap shrink-0">
+        <a href="/" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap" title="Return to Home Landing Page">
           <span>🏠</span> <span>Home</span>
         </a>
-        <button data-page-link="classroom" class="global-nav-link active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+        <button data-page-link="classroom" class="global-nav-link active flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-sm shadow-violet-500/25 transition cursor-pointer shrink-0 whitespace-nowrap">
           <span>🎓</span> <span>Classroom</span>
         </button>
-        <button data-page-link="cheatsheet" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
-          <span>📑</span> <span>Exam Sheet</span>
+        <button data-page-link="cheatsheet" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>📑</span> <span>Cheat Sheet</span>
         </button>
-        <button data-page-link="blitz" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+        <button data-page-link="blitz" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
           <span>⚔️</span> <span>Blitz Arena</span>
         </button>
-        <button data-page-link="flashcards" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
-          <span>🎴</span> <span>3D Flashcards</span>
+        <button data-page-link="flashcards" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>🎴</span> <span>3D Cards</span>
         </button>
-        <button data-page-link="analytics" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+        <button data-page-link="analytics" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
           <span>📊</span> <span>Analytics</span>
         </button>
-        <button data-page-link="motion" class="global-nav-link flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
-          <span>🧊</span> <span>3D Motion Studio</span>
+        <button data-page-link="motion" class="global-nav-link flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition cursor-pointer shrink-0 whitespace-nowrap">
+          <span>🧊</span> <span>3D Motion</span>
         </button>
       </nav>
 
@@ -174,17 +175,17 @@
       <div class="hidden lg:flex items-center gap-2 shrink-0">
         <button
           id="openCmdPaletteBtn"
-          class="flex items-center gap-2.5 px-3 py-1.5 glass border border-white/10 text-xs text-slate-400 hover:text-slate-200 hover:border-violet-500/50 rounded-xl transition cursor-pointer group w-48"
+          class="flex items-center gap-2 px-2.5 py-1.5 bg-white/[0.03] border border-white/[0.08] text-xs text-slate-400 hover:text-slate-200 hover:border-violet-500/50 rounded-xl transition cursor-pointer group w-36 xl:w-44 shadow-sm"
           title="Open Command Palette (Ctrl+K or ⌘K)"
         >
           <span class="text-xs group-hover:text-violet-400 transition">🔍</span>
-          <span class="text-slate-400 group-hover:text-slate-200 truncate">Search or jump...</span>
+          <span class="text-slate-400 group-hover:text-slate-200 truncate">Search...</span>
           <kbd class="cmd-kbd text-[10px] px-1.5 py-0.5 rounded text-slate-400 font-mono ml-auto group-hover:border-violet-400/50">⌘K</kbd>
         </button>
         <input type="hidden" id="globalTopicSearchInput" />
 
         <!-- Language Selector Desktop -->
-        <select id="languageSelect" class="glass border border-white/10 text-xs font-bold text-slate-200 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-violet-500 focus:outline-none transition cursor-pointer">
+        <select id="languageSelect" class="bg-white/[0.03] border border-white/[0.08] text-xs font-semibold text-slate-200 rounded-xl px-2 py-1.5 focus:ring-1 focus:ring-violet-500 focus:outline-none transition cursor-pointer">
           <option value="hinglish" selected class="bg-[#0b0d22] text-white">🇮🇳 Hinglish</option>
           <option value="en" class="bg-[#0b0d22] text-white">🇺🇸 English</option>
           <option value="hi" class="bg-[#0b0d22] text-white">🇮🇳 Hindi</option>
@@ -194,39 +195,37 @@
           <option value="ja" class="bg-[#0b0d22] text-white">🇯🇵 Japanese</option>
         </select>
 
-        <!-- Daily Streak Counter Desktop -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-amber-500/30 text-amber-400 text-xs font-extrabold hover:border-amber-500/60 transition shimmer-badge" title="Daily Study Streak">
-          <span>🔥</span>
-          <span>Streak: <strong id="streakCount">1</strong></span>
-        </div>
-
-        <!-- XP Counter Desktop -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-violet-500/30 text-violet-300 text-xs font-extrabold hover:border-violet-500/60 transition shimmer-badge" title="Total XP Earned">
-          <span>⭐</span>
-          <span>XP: <strong id="totalXPDisplay">0</strong></span>
+        <!-- Compact Unified HUD: Streak & XP -->
+        <div class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs font-extrabold shadow-sm">
+          <span class="flex items-center gap-1 text-amber-400" title="Daily Study Streak">
+            <span>🔥</span><strong id="streakCount">1</strong>
+          </span>
+          <span class="w-[1px] h-3 bg-white/10"></span>
+          <span class="flex items-center gap-1 text-violet-300" title="Total XP Earned">
+            <span>⭐</span><strong id="totalXPDisplay">0</strong>
+          </span>
         </div>
 
         <!-- Sound FX Toggle Desktop -->
-        <button id="soundToggleBtn" class="p-2 rounded-xl glass border border-white/10 text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Toggle Sound FX">
+        <button id="soundToggleBtn" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.08] text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Toggle Sound FX">
           🔊
         </button>
 
         <!-- Keyboard Shortcuts Helper Desktop -->
-        <button id="shortcutsHelpBtn" class="p-2 rounded-xl glass border border-white/10 text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Keyboard Shortcuts (?)">
+        <button id="shortcutsHelpBtn" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.08] text-slate-300 hover:text-white hover:border-violet-500/40 transition cursor-pointer" title="Keyboard Shortcuts (?)">
           ⌨️
         </button>
 
         <!-- Student Profile Button Desktop -->
-        <button id="headerProfileBtn" class="flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-xl glass-strong hover:border-violet-500/50 border border-white/10 text-xs font-bold text-white transition cursor-pointer">
-          <span id="profileAvatarHeader" class="text-base">🎓</span>
-          <span id="profileNameHeader" class="max-w-[100px] truncate">Student</span>
-          <span id="headerUserIdBadge" class="hidden sm:inline-block px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-800/80">CMP</span>
+        <button id="headerProfileBtn" class="flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-violet-500/40 text-xs font-bold text-white transition cursor-pointer shadow-sm">
+          <span id="profileAvatarHeader" class="text-sm">🎓</span>
+          <span id="profileNameHeader" class="max-w-[80px] truncate">Student</span>
+          <span id="headerUserIdBadge" class="hidden xl:inline-block px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 font-mono text-[9px] font-bold border border-cyan-800/60">CMP</span>
         </button>
 
         <!-- Log Out & Purge Session Button -->
-        <button id="appLogoutBtn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl glass border border-red-500/30 text-red-400 hover:text-white hover:bg-red-500/20 text-xs font-bold transition cursor-pointer" title="Log Out & Wipe Active Study Session">
-          <span>🚪</span>
-          <span class="hidden xl:inline">Log Out</span>
+        <button id="appLogoutBtn" class="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.03] border border-red-500/20 text-red-400 hover:text-white hover:bg-red-500/20 transition cursor-pointer" title="Log Out & Wipe Active Study Session">
+          🚪
         </button>
       </div>
 

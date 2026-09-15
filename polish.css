@@ -411,7 +411,89 @@ h1, h2, h3, h4 {
   color: #fff;
 }
 
-/* ---------- 10. Reduced motion ------------------------------------------- */
+/* ---------- 10. Modern Obsidian Cockpit & Classroom Polish --------------- */
+#globalNavbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(7, 9, 20, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+}
+
+/* Left Mini-Sidebar Dock floating capsule */
+aside.hidden.sm\:flex {
+  background: rgba(10, 13, 29, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Left Chat Section modern glass container */
+#leftChatSection {
+  background: rgba(10, 13, 30, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45) !important;
+}
+
+#chatStreamHeader {
+  background: rgba(13, 17, 38, 0.6) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Right Canvas Section modern glass container */
+#rightCanvasSection {
+  background: rgba(10, 13, 30, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(24px) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Canvas top tab bar */
+.canvas-tab-btn.active {
+  background: linear-gradient(135deg, #7c3aed 0%, #c026d3 100%) !important;
+  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.35) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Quick Action Cards in Canvas */
+#pageClassroom .grid > div {
+  background: rgba(14, 18, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(16px) !important;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+#pageClassroom .grid > div:hover {
+  background: rgba(18, 23, 54, 0.75) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -8px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* Chat Input Bar floating appearance */
+#chatInputForm {
+  background: rgba(14, 18, 40, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+#chatInputForm:focus-within {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18), 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Speech bubbles modern polish */
+.chat-bubble, #chatMessagesContainer .glass {
+  background: rgba(14, 18, 40, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  padding: 1.1rem 1.25rem !important;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ---------- 11. Reduced motion ------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -420,3 +502,4 @@ h1, h2, h3, h4 {
     scroll-behavior: auto !important;
   }
 }
+
