@@ -540,7 +540,7 @@ aside.hidden.sm\:flex {
   #chatStreamHeader > div:first-child > div:last-child > div:last-child p { font-size: 11px; }
   #leftChatSection #chatMessagesContainer > div { max-width: 100% !important; }
   #chatMessagesContainer .glass { padding: 12px !important; font-size: 14px; }
-  #chatMessageInput { font-size: 16px !important; }
+  #chatMessageInput { font-size: 16px !important; min-height: 48px; padding-block: 12px; }
   #chatSendBtn, #chatMicBtn, label[for="chatPhotoInput"] {
     min-width: 48px !important; min-height: 48px !important;
     display: flex; align-items: center; justify-content: center;
@@ -572,6 +572,16 @@ aside.hidden.sm\:flex {
 @media print {
   .cm-sheet-handle, .cm-loading-overlay { display: none !important; }
   .katex, .katex-display, .katex-block { color: #111827 !important; overflow: visible !important; }
+}
+
+/* Footer links wrap instead of disappearing outside narrow landing pages. */
+footer > div > div { min-width: 0; flex-wrap: wrap; justify-content: center; }
+@media (max-width: 1023px), (pointer: coarse) {
+  button:not([data-tap-tight]), [role="button"]:not([data-tap-tight]),
+  #topWorkspaceNav a, #chatSendBtn, #chatMicBtn, label[for="chatPhotoInput"] {
+    min-width: 48px !important; min-height: 48px !important;
+  }
+  footer a { min-height: 48px; display: inline-flex; align-items: center; }
 }
 
 /* ---------- 12. Reduced motion ------------------------------------------- */
