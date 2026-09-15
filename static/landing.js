@@ -98,9 +98,16 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
 
     try {
+      // The AI endpoints now require a session. This public teaser has no user,
+      // so it asks the server for a short-lived anonymous guest session.
+      const guestToken = (typeof window.cmGetGuestToken === 'function')
+        ? await window.cmGetGuestToken() : '';
       const res = await fetch('/api/chat-teach', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          guestToken ? { 'Authorization': 'Bearer ' + guestToken } : {}
+        ),
         body: JSON.stringify({
           message: rawQuery,
           student_name: 'Learner',
@@ -118,10 +125,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       const reply = data.reply_text || data.speech_text || 'Conceptual breakdown ready in classroom!';
-      const analogy = data.analogy_card?.title ? `<div class="mt-2 text-[11px] text-amber-300 font-sans">💡 <strong>${data.analogy_card.title}:</strong> ${data.analogy_card.description || ''}</div>` : '';
+      // Escape first, then apply the markdown-lite transforms. Doing it the
+      // other way round lets model output inject raw HTML into the page.
+      const esc = window.cmEscape || function (v) { return String(v == null ? '' : v); };
+      const analogy = data.analogy_card?.title
+        ? `<div class="mt-2 text-[11px] text-amber-300 font-sans">💡 <strong>${esc(data.analogy_card.title)}:</strong> ${esc(data.analogy_card.description || '')}</div>`
+        : '';
 
-      // Format markdown-like bold and line breaks
-      const formatted = reply
+      // Format markdown-like bold and line breaks (reply is already escaped)
+      const formatted = esc(reply)
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n\n/g, '<br/><br/>')
         .replace(/\n/g, '<br/>');

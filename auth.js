@@ -7,6 +7,86 @@
 // Paste your Google Cloud OAuth Client ID below or store in localStorage as 'clearmind_google_client_id'
 window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || localStorage.getItem('clearmind_google_client_id') || '61854617680-nvv67578jejp9qo1kcaeshb5f31o3p69.apps.googleusercontent.com';
 
+// Escapes all five HTML-significant characters. The common DOM textContent
+// trick only covers & < >, which lets server data break out of HTML attributes.
+window.cmEscape = function (value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+// Never call res.json() before checking res.ok: a non-JSON error body (a proxy
+// 502 or framework 500 HTML page) throws and masks the real failure.
+async function cmParseJson(res, fallbackMessage) {
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
+  }
+  if (!res.ok) {
+    throw new Error((data && data.detail) || fallbackMessage || 'Request failed.');
+  }
+  return data || {};
+}
+
+// Session token issued at login/register; authorizes the AI API calls.
+window.cmSessionToken = function () {
+  try {
+    const raw = localStorage.getItem('clearmind_auth_user');
+    return raw ? (JSON.parse(raw).session_token || '') : '';
+  } catch (e) {
+    return '';
+  }
+};
+
+// Attach the session token to every /api/* call from one place, so individual
+// call sites cannot forget to authorize themselves.
+if (!window.__cmFetchPatched) {
+  window.__cmFetchPatched = true;
+  const cmOriginalFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    try {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (url.indexOf('/api/') !== -1) {
+        init = init || {};
+        const headers = new Headers(init.headers || {});
+        const token = (typeof window.cmSessionToken === 'function') ? window.cmSessionToken() : '';
+        if (token && !headers.has('Authorization')) {
+          headers.set('Authorization', 'Bearer ' + token);
+        }
+        init = Object.assign({}, init, { headers: headers });
+      }
+    } catch (e) {
+      /* never block a request on header bookkeeping */
+    }
+    return cmOriginalFetch(input, init).then(function (res) {
+      if (res && res.status === 401 && typeof window.cmOnSessionExpired === 'function') {
+        window.cmOnSessionExpired();
+      }
+      return res;
+    });
+  };
+}
+
+// Short-lived anonymous session for the public landing-page teaser. Cached in
+// sessionStorage so we only mint one per tab.
+window.cmGetGuestToken = async function () {
+  try {
+    const cached = sessionStorage.getItem('clearmind_guest_token');
+    if (cached) return cached;
+    const res = await fetch('/api/auth/guest', { method: 'POST' });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const token = data.session_token || '';
+    if (token) sessionStorage.setItem('clearmind_guest_token', token);
+    return token;
+  } catch (e) {
+    return '';
+  }
+};
+
 window.AuthEngine = {
   currentUser: null,
   activeTab: 'signup', // 'signup' | 'signin'
@@ -96,13 +176,15 @@ window.AuthEngine = {
       }).join(''));
 
       const payload = JSON.parse(jsonPayload);
-      console.log('🎉 Verified Google Account:', payload.email, payload.name);
+      console.log('🎉 Google Account payload received:', payload.email);
 
-      // Call backend Google SSO endpoint to register/retrieve user_id and persistent persona
+      // Send the raw Google ID token so the SERVER can verify it. Never let the
+      // backend trust a client-supplied email - that is an auth bypass.
       const syncRes = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          credential: response.credential || '',
           name: payload.name || payload.given_name || 'Learner',
           email: payload.email,
           avatar: payload.picture || '',
@@ -118,6 +200,7 @@ window.AuthEngine = {
           email: data.user.email,
           avatar: data.user.avatar || payload.picture,
           role: data.user.role || 'student',
+          session_token: data.session_token || '',
           isGuest: false,
           provider: 'google'
         };
@@ -345,16 +428,14 @@ window.AuthEngine = {
           body: JSON.stringify({ name, email, password })
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || 'Registration failed. Please try again.');
-        }
+        const data = await cmParseJson(res, 'Registration failed. Please try again.');
 
         this.currentUser = {
           user_id: data.user.user_id,
           name: data.user.name,
           email: data.user.email,
           role: data.user.role || 'student',
+          session_token: data.session_token || '',
           isGuest: false,
           provider: 'email'
         };
@@ -383,16 +464,14 @@ window.AuthEngine = {
           body: JSON.stringify({ email, password })
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || 'Invalid email or password.');
-        }
+        const data = await cmParseJson(res, 'Invalid email or password.');
 
         this.currentUser = {
           user_id: data.user.user_id,
           name: data.user.name,
           email: data.user.email,
           role: data.user.role || 'student',
+          session_token: data.session_token || '',
           isGuest: false,
           provider: 'email'
         };
@@ -455,9 +534,9 @@ window.AuthEngine = {
     const navGuestBtn = document.getElementById('navGuestBtn');
 
     if (this.currentUser && !this.currentUser.isGuest) {
-      const userIdBadge = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${this.currentUser.user_id}</span>` : '';
+      const userIdBadge = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${window.cmEscape(this.currentUser.user_id)}</span>` : '';
       if (navBtn) {
-        navBtn.innerHTML = `<span>👤 ${this.currentUser.name}${userIdBadge}</span>`;
+        navBtn.innerHTML = `<span>👤 ${window.cmEscape(this.currentUser.name)}${userIdBadge}</span>`;
         navBtn.className = 'btn-secondary text-xs flex items-center gap-1.5 cursor-pointer';
         navBtn.title = `Logged in as ${this.currentUser.email} (${this.currentUser.user_id || ''})`;
         navBtn.onclick = (e) => {
@@ -513,10 +592,10 @@ window.AuthEngine = {
 
     menu.innerHTML = `
       <div class="pb-2 border-b border-white/10">
-        <div class="font-bold text-white">${this.currentUser?.name || 'Student'}</div>
-        <div class="text-[11px] text-slate-400 truncate">${this.currentUser?.email || ''}</div>
+        <div class="font-bold text-white">${window.cmEscape(this.currentUser?.name || 'Student')}</div>
+        <div class="text-[11px] text-slate-400 truncate">${window.cmEscape(this.currentUser?.email || '')}</div>
         <div class="mt-1 inline-block px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/80 text-[10px] font-mono font-bold text-cyan-300">
-          ${this.currentUser?.user_id || 'CMP-STUDENT'}
+          ${window.cmEscape(this.currentUser?.user_id || 'CMP-STUDENT')}
         </div>
       </div>
       <a href="/classroom" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/10 text-slate-200 transition font-medium">

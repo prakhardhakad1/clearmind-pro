@@ -24,9 +24,11 @@ from typing import List, Optional, Dict, Any
 import urllib.parse
 import sqlite3
 import hashlib
+import hmac
 import secrets
-from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks
+import time
+from datetime import datetime, timezone
+from fastapi import FastAPI, HTTPException, Request, Response, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response as PlainResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -46,6 +48,18 @@ import edge_tts
 # ---------------------------------------------------------------------------
 ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=ENV_PATH)
+
+# --- Allowed browser origins for CORS (comma-separated) ---------------------
+# Never use "*" together with allow_credentials=True: Starlette echoes the
+# request Origin back, which lets ANY site make credentialed cross-origin calls.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
+if not ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:8000", "http://127.0.0.1:8000",
+        "http://localhost:5500", "http://127.0.0.1:5500",
+    ]
 
 app = FastAPI(title="ClearMind Pro", version="5.0.0")
 
@@ -86,10 +100,10 @@ app.add_middleware(VercelRouteMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
 
 @app.middleware("http")
@@ -98,6 +112,12 @@ async def add_no_cache_header(request: Request, call_next):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    # Baseline hardening. A strict CSP is deliberately NOT set here: the pages
+    # rely on inline <script> blocks and would break without nonce plumbing.
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     return response
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -358,15 +378,16 @@ class AnalogyCard(BaseModel):
     description: str = Field(description="Clear explanation of the concept using everyday physical metaphor")
 
 class ChatTeachRequest(BaseModel):
-    topic: str = ""
-    message: str
+    # Every field is bounded: these endpoints proxy straight into a paid LLM API.
+    topic: str = Field("", max_length=200)
+    message: str = Field(..., max_length=4000)
     conversation_history: List[Dict[str, str]] = []
-    language: str = "hinglish"
-    student_name: str = "Student"
-    level: str = "College / University"
-    mode: str = "direct" # "direct" or "socratic"
-    persona: Optional[str] = "mentor"
-    image_base64: Optional[str] = None
+    language: str = Field("hinglish", max_length=16)
+    student_name: str = Field("Student", max_length=60)
+    level: str = Field("College / University", max_length=60)
+    mode: str = Field("direct", max_length=16) # "direct" or "socratic"
+    persona: Optional[str] = Field("mentor", max_length=32)
+    image_base64: Optional[str] = Field(None, max_length=3500000)  # ~2.5 MB of binary
 
 class ChatTeachResponse(BaseModel):
     reply_text: str
@@ -440,9 +461,9 @@ class MustKnowQuestion(BaseModel):
     solution_steps: List[str]
 
 class ExamCheatSheetRequest(BaseModel):
-    topic: str = "Introduction to Python"
-    language: str = "hinglish"
-    level: str = "College / University"
+    topic: str = Field("Introduction to Python", max_length=200)
+    language: str = Field("hinglish", max_length=16)
+    level: str = Field("College / University", max_length=60)
 
 class ExamCheatSheetResponse(BaseModel):
     topic: str
@@ -467,11 +488,11 @@ class BlitzQuestion(BaseModel):
     explanation: str
 
 class BlitzQuizRequest(BaseModel):
-    topic: str = "Introduction to Python"
-    language: str = "hinglish"
-    num_questions: int = 8
-    time_limit_seconds: int = 60
-    difficulty: str = "Standard"
+    topic: str = Field("Introduction to Python", max_length=200)
+    language: str = Field("hinglish", max_length=16)
+    num_questions: int = Field(8, ge=1, le=30)
+    time_limit_seconds: int = Field(60, ge=10, le=3600)
+    difficulty: str = Field("Standard", max_length=32)
 
 class BlitzQuizResponse(BaseModel):
     topic: str
@@ -487,17 +508,17 @@ class FlashcardItem(BaseModel):
     hint: Optional[str] = None
 
 class FlashcardsRequest(BaseModel):
-    topic: str = "Introduction to Python"
-    language: str = "hinglish"
-    count: int = 6
+    topic: str = Field("Introduction to Python", max_length=200)
+    language: str = Field("hinglish", max_length=16)
+    count: int = Field(6, ge=1, le=40)
 
 class FlashcardsResponse(BaseModel):
     topic: str
     cards: List[FlashcardItem]
 
 class TTSRequest(BaseModel):
-    text: str
-    language: str = "hinglish"
+    text: str = Field(..., max_length=5000)
+    language: str = Field("hinglish", max_length=16)
 
 
 
@@ -542,11 +563,29 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         """)
-        # Seed or update default admin credentials with requested password
-        now = datetime.utcnow().isoformat()
-        admin_pwd_hash = hashlib.sha256("@PrakharDhakad1234543211".encode("utf-8")).hexdigest()
+        # Seed or update default admin credentials.
+        #
+        # SECURITY: the admin password used to be a hardcoded literal here, which
+        # means it lives in git history and must be treated as compromised.
+        # Rotate it by setting ADMIN_PASSWORD in the environment. When it is not
+        # set we leave any existing admin hash untouched rather than restoring a
+        # publicly-known value; if no admin exists yet we mint a random one.
+        now = datetime.now(timezone.utc).isoformat()
+        admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
         cursor.execute("SELECT id FROM users WHERE email = 'admin@clearmind.ai' OR user_id = 'CMP-ADMIN'")
         existing_admin = cursor.fetchone()
+        if not admin_password and existing_admin:
+            logger.info("ADMIN_PASSWORD not set - leaving existing admin credentials unchanged.")
+            conn.commit()
+            conn.close()
+            return
+        if not admin_password:
+            admin_password = secrets.token_urlsafe(16)
+            logger.warning(
+                "ADMIN_PASSWORD not set - generated a random admin password for this "
+                "boot. Set ADMIN_PASSWORD in the environment to make it permanent."
+            )
+        admin_pwd_hash = hash_password(admin_password)
         if not existing_admin:
             cursor.execute("""
                 INSERT INTO users (user_id, name, email, password_hash, role, created_at)
@@ -574,11 +613,23 @@ def init_db():
     except Exception as err:
         logger.error(f"Failed to initialize SQLite DB: {err}")
 
-init_db()
+# NOTE: init_db() is invoked at the bottom of this file. It depends on
+# hash_password(), which is defined further down, so calling it here would
+# raise NameError at import time.
 
 # Turso Cloud (LibSQL) Cloud Resilience Tier (AWS AP South Mumbai)
 TURSO_DB_URL = os.getenv("TURSO_DB_URL", "https://clearmind-db-prakhardhakad1.aws-ap-south-1.turso.io")
-TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODkyMTY5NDAsImlkIjoiMDFhMDk1YTEtYzUwMS03NmJjLWIzNTMtNmYwNjg1NmJmNjFmIiwia2lkIjoiUXo2Wmx2cnFxcE92OFFXcjdIbUl2S0RQbVB1UnlGVXJ1eThTdUd5S2YzYyIsInJpZCI6ImIxM2Q0YmI5LWJiOGYtNGE0My1iMjZmLWZlMjJlZGRmYTkyMiJ9.9k0uyRo9X-TzgwYwxza21sy15Ps-NofRcpdSm0cm0D1liHjXfxX_LGl1kHtTjyC295ITNm6OvPJafR2W4nnvDw")
+# SECURITY: a Turso auth token used to be hardcoded here as an os.getenv fallback.
+# It is committed in git history, so it must be treated as compromised:
+#   1. Rotate the token in the Turso dashboard.
+#   2. Put the new one in .env / Render as TURSO_AUTH_TOKEN.
+# Never re-add a credential literal to this file.
+TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+if not TURSO_AUTH_TOKEN:
+    logger.error(
+        "TURSO_AUTH_TOKEN is not set - durable sync to Turso is DISABLED. "
+        "Accounts created now will be lost on restart."
+    )
 
 def turso_sync_records(statements: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Background task to sync database records permanently to Turso Cloud in Mumbai."""
@@ -723,18 +774,75 @@ def sync_turso_to_local_cache():
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (v[0], v[6] or "mentor", v[7] or "school", v[8] or "Class 12", v[9] or "CBSE", v[10] or "45 mins / day", v[11] or "", v[12] or "[]", v[13] or "{}", v[14] or "[]", v[15] or ""))
             
-            # If records were deleted from Turso, delete them from local cache as well
+            # If records were deleted from Turso, delete them from local cache as well.
+            # Guard: a partial or truncated remote response must never be able to
+            # wipe the local cache, so sanity-check the row count before pruning.
             if turso_uids:
-                placeholders = ",".join(["?"] * len(turso_uids))
-                cursor.execute(f"DELETE FROM users WHERE user_id NOT IN ({placeholders})", turso_uids)
-                cursor.execute(f"DELETE FROM user_profiles WHERE user_id NOT IN ({placeholders})", turso_uids)
+                cursor.execute("SELECT COUNT(*) FROM users")
+                local_count = cursor.fetchone()[0] or 0
+                if local_count and len(turso_uids) < local_count * 0.5:
+                    logger.warning(
+                        "Refusing to prune local cache: Turso returned %d users but %d exist "
+                        "locally. Skipping destructive sync.", len(turso_uids), local_count
+                    )
+                else:
+                    placeholders = ",".join(["?"] * len(turso_uids))
+                    cursor.execute(f"DELETE FROM users WHERE user_id NOT IN ({placeholders})", turso_uids)
+                    cursor.execute(f"DELETE FROM user_profiles WHERE user_id NOT IN ({placeholders})", turso_uids)
             conn.commit()
             conn.close()
     except Exception as e:
         logger.warning(f"Turso cache sync notice: {e}")
 
+# Password hashing: PBKDF2-HMAC-SHA256 with a per-password random salt.
+# Legacy unsalted SHA-256 hashes are still accepted once and then transparently
+# upgraded to the new format on first successful login (see verify_password).
+PBKDF2_ITERATIONS = 200000
+
 def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+    return "pbkdf2_sha256${}${}${}".format(
+        PBKDF2_ITERATIONS,
+        base64.b64encode(salt).decode("utf-8"),
+        base64.b64encode(dk).decode("utf-8"),
+    )
+
+def _legacy_sha256(password: str) -> str:
     return hashlib.sha256(password.strip().encode("utf-8")).hexdigest()
+
+def verify_password(password: str, stored: str) -> bool:
+    """Constant-time check against either the new PBKDF2 or the legacy SHA-256 format."""
+    if not stored:
+        return False
+    if stored.startswith("pbkdf2_sha256$"):
+        try:
+            _, iters, salt_b64, dk_b64 = stored.split("$")
+            dk = hashlib.pbkdf2_hmac(
+                "sha256", password.encode("utf-8"), base64.b64decode(salt_b64), int(iters)
+            )
+            return hmac.compare_digest(base64.b64encode(dk).decode("utf-8"), dk_b64)
+        except Exception:
+            return False
+    return hmac.compare_digest(stored, _legacy_sha256(password))
+
+def needs_password_upgrade(stored: str) -> bool:
+    return not (stored or "").startswith("pbkdf2_sha256$")
+
+def upgrade_user_password(user_id: str, password: str) -> None:
+    """Re-hash a legacy SHA-256 password into PBKDF2 in the local cache and Turso."""
+    try:
+        new_hash = hash_password(password)
+        conn = sqlite3.connect(get_db_path())
+        conn.execute("UPDATE users SET password_hash = ? WHERE user_id = ?", (new_hash, user_id))
+        conn.commit()
+        conn.close()
+        turso_sync_records([{
+            "sql": "UPDATE users SET password_hash = ? WHERE user_id = ?",
+            "args": [new_hash, user_id],
+        }])
+    except Exception as e:
+        logger.warning(f"Password upgrade skipped for {user_id}: {e}")
 
 def generate_user_id() -> str:
     num = secrets.randbelow(90000) + 10000
@@ -759,25 +867,65 @@ def is_valid_email(email: str) -> bool:
     return True
 
 class UserRegisterRequest(BaseModel):
-    name: str
-    email: str
-    password: str
-    persona: Optional[str] = "mentor"
-    level: Optional[str] = "Class 12"
+    name: str = Field(..., max_length=80)
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., min_length=6, max_length=200)
+    persona: Optional[str] = Field("mentor", max_length=32)
+    level: Optional[str] = Field("Class 12", max_length=40)
 
 class UserLoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=200)
 
 class AdminLoginRequest(BaseModel):
-    user_id: str
-    password: str
+    user_id: str = Field(..., max_length=64)
+    password: str = Field(..., max_length=200)
 
-ADMIN_SESSION_SECRET = os.getenv("ADMIN_SESSION_SECRET", "clearmind_secure_admin_2026_vault_key")
+ADMIN_SESSION_SECRET = os.getenv("ADMIN_SESSION_SECRET", "").strip()
+if not ADMIN_SESSION_SECRET:
+    # Fail closed. Never fall back to a publicly-known constant: a random
+    # per-process secret means old tokens simply stop validating on restart.
+    ADMIN_SESSION_SECRET = secrets.token_urlsafe(48)
+    logger.warning(
+        "ADMIN_SESSION_SECRET is not set - generated an ephemeral one. "
+        "Admin sessions will not survive a restart. Set it in .env / Render."
+    )
+
+ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "28800"))  # 8 hours
+ADMIN_UIDS = ("CMP-ADMIN", "admin@clearmind.ai")
+
+def _sign(payload: str, secret: Optional[str] = None) -> str:
+    return hmac.new(
+        (secret or ADMIN_SESSION_SECRET).encode("utf-8"),
+        payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+def _b64e(raw: str) -> str:
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8").rstrip("=")
+
+def _b64d(raw: str) -> str:
+    return base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-8")
 
 def make_admin_token(admin_uid: str) -> str:
-    raw = f"{admin_uid}:{ADMIN_SESSION_SECRET}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    """Signed, expiring admin token: base64(uid:expires_at).hmac_sha256"""
+    payload = f"{admin_uid}:{int(time.time()) + ADMIN_TOKEN_TTL_SECONDS}"
+    return f"{_b64e(payload)}.{_sign(payload)}"
+
+def verify_admin_token(token: str) -> bool:
+    if not token or "." not in token:
+        return False
+    raw, _, sig = token.rpartition(".")
+    try:
+        payload = _b64d(raw)
+        uid, expires_at = payload.rsplit(":", 1)
+    except Exception:
+        return False
+    if not hmac.compare_digest(sig, _sign(payload)):
+        return False
+    if int(expires_at) < int(time.time()):
+        return False
+    return uid in ADMIN_UIDS
 
 def verify_admin_auth(request: Request) -> bool:
     auth_header = request.headers.get("authorization", "")
@@ -786,15 +934,12 @@ def verify_admin_auth(request: Request) -> bool:
         token = auth_header[7:].strip()
     elif request.headers.get("x-admin-token"):
         token = request.headers.get("x-admin-token").strip()
-    
-    if token and (token == make_admin_token("CMP-ADMIN") or token == make_admin_token("admin@clearmind.ai")):
-        return True
-    return False
+    return verify_admin_token(token)
 
 class SyncProfileRequest(BaseModel):
-    user_id: str
-    name: Optional[str] = None
-    persona: Optional[str] = "mentor"
+    user_id: str = Field(..., max_length=64)
+    name: Optional[str] = Field(None, max_length=80)
+    persona: Optional[str] = Field("mentor", max_length=32)
     identity: Optional[str] = "school"
     level: Optional[str] = "Class 12"
     board: Optional[str] = "CBSE"
@@ -805,10 +950,77 @@ class SyncProfileRequest(BaseModel):
     learning_styles: Optional[List[str]] = []
 
 class GoogleAuthSyncRequest(BaseModel):
-    name: str
-    email: str
-    avatar: Optional[str] = ""
-    sub: Optional[str] = ""
+    # `credential` is the Google ID token. It is REQUIRED: identity is taken from
+    # the verified token, never from these client-supplied fields.
+    credential: Optional[str] = Field(None, max_length=4096)
+    name: str = Field(..., max_length=80)
+    email: str = Field(..., max_length=254)
+    avatar: Optional[str] = Field("", max_length=500)
+    sub: Optional[str] = Field("", max_length=100)
+
+# ---------------------------------------------------------------------------
+# Session tokens & rate limiting
+# ---------------------------------------------------------------------------
+STUDENT_SESSION_SECRET = os.getenv("STUDENT_SESSION_SECRET", "").strip() or ADMIN_SESSION_SECRET
+STUDENT_TOKEN_TTL_SECONDS = int(os.getenv("STUDENT_TOKEN_TTL_SECONDS", "2592000"))  # 30 days
+GUEST_TOKEN_TTL_SECONDS = int(os.getenv("GUEST_TOKEN_TTL_SECONDS", "3600"))         # 1 hour
+
+def make_session_token(user_id: str, ttl: int = None) -> str:
+    payload = "s:{}:{}".format(user_id, int(time.time()) + (ttl or STUDENT_TOKEN_TTL_SECONDS))
+    return "{}.{}".format(_b64e(payload), _sign(payload, STUDENT_SESSION_SECRET))
+
+def get_session_user_id(token: str) -> Optional[str]:
+    if not token or "." not in token:
+        return None
+    raw, _, sig = token.rpartition(".")
+    try:
+        payload = _b64d(raw)
+        kind, user_id, expires_at = payload.split(":", 2)
+    except Exception:
+        return None
+    if kind != "s" or not hmac.compare_digest(sig, _sign(payload, STUDENT_SESSION_SECRET)):
+        return None
+    if int(expires_at) < int(time.time()):
+        return None
+    return user_id
+
+def get_bearer_token(request: Request) -> str:
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:].strip()
+    return (request.headers.get("x-session-token") or "").strip()
+
+async def require_session(request: Request) -> str:
+    """Dependency: reject unless the call carries a valid (student or guest) session token."""
+    uid = get_session_user_id(get_bearer_token(request))
+    if not uid:
+        raise HTTPException(
+            status_code=401,
+            detail="session_expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return uid
+
+# --- Sliding-window rate limiter -------------------------------------------
+# In-memory / per-process: correct for a single-instance deploy. If you ever run
+# more than one instance, move this to Redis (or Turso) so limits are shared.
+_RATE_BUCKETS: Dict[str, List[float]] = {}
+_RATE_LOCK = asyncio.Lock()
+
+async def rate_limit(request: Request, key: str, limit: int, window: float = 60.0) -> None:
+    client = request.client.host if request.client else "unknown"
+    bucket_key = "{}:{}".format(key, client)
+    now = time.monotonic()
+    async with _RATE_LOCK:
+        hits = [t for t in _RATE_BUCKETS.get(bucket_key, []) if now - t < window]
+        if len(hits) >= limit:
+            _RATE_BUCKETS[bucket_key] = hits
+            raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
+        hits.append(now)
+        _RATE_BUCKETS[bucket_key] = hits
+        if len(_RATE_BUCKETS) > 10000:  # bound memory: drop fully-expired buckets
+            for k in [k for k, v in _RATE_BUCKETS.items() if not v or now - v[-1] > window]:
+                _RATE_BUCKETS.pop(k, None)
 
 # ---------------------------------------------------------------------------
 # API Endpoints
@@ -826,7 +1038,13 @@ async def get_status():
 
 @app.post("/api/auth/register")
 @app.post("/auth/register")
-async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTasks):
+async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTasks, request: Request):
+    await rate_limit(request, "register", limit=5, window=3600.0)
+    # sqlite3 is blocking; run it in a worker so it cannot stall the event loop
+    return await asyncio.to_thread(_auth_register_sync, req)
+
+
+def _auth_register_sync(req: UserRegisterRequest):
     email_clean = req.email.strip().lower()
     name_clean = req.name.strip()
     if not email_clean or not req.password:
@@ -835,8 +1053,8 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
     if not is_valid_email(email_clean):
         raise HTTPException(status_code=400, detail="Please enter a valid email address (e.g. name@domain.com).")
         
-    if len(req.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+    if len(req.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long.")
     
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
@@ -859,7 +1077,7 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
         user_id = generate_user_id()
     
     pwd_hash = hash_password(req.password)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     cursor.execute("""
         INSERT INTO users (user_id, name, email, password_hash, role, created_at)
         VALUES (?, ?, ?, ?, 'student', ?)
@@ -875,7 +1093,7 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
     conn.close()
     
     # Permanent sync to Turso Cloud (AWS Mumbai)
-    turso_sync_records([
+    sync_result = turso_sync_records([
         {
             "sql": "INSERT OR REPLACE INTO users (user_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)",
             "args": [user_id, name_clean or email_clean.split('@')[0], email_clean, pwd_hash, now]
@@ -885,9 +1103,20 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
             "args": [user_id, req.persona or "mentor", req.level or "Class 12", default_subjects, now]
         }
     ])
-    
+
+    # Turso is the durable store and the local DB is an ephemeral cache. If the
+    # durable write fails the account would silently vanish on the next cold
+    # start, so surface it instead of reporting success.
+    if sync_result and sync_result.get("error"):
+        logger.error(f"Durable sync failed for {user_id}: {sync_result['error']}")
+        raise HTTPException(
+            status_code=503,
+            detail="Could not save your account to the cloud database. Please try again.",
+        )
+
     return {
         "status": "success",
+        "session_token": make_session_token(user_id),
         "user": {
             "user_id": user_id,
             "name": name_clean or email_clean.split('@')[0],
@@ -909,7 +1138,12 @@ async def auth_register(req: UserRegisterRequest, background_tasks: BackgroundTa
 
 @app.post("/api/auth/login")
 @app.post("/auth/login")
-async def auth_login(req: UserLoginRequest):
+async def auth_login(req: UserLoginRequest, request: Request):
+    await rate_limit(request, "login", limit=10, window=300.0)
+    return await asyncio.to_thread(_auth_login_sync, req)
+
+
+def _auth_login_sync(req: UserLoginRequest):
     login_id_clean = req.email.strip()
     if not login_id_clean or not req.password:
         raise HTTPException(status_code=400, detail="Email/User ID and password are required.")
@@ -920,8 +1154,6 @@ async def auth_login(req: UserLoginRequest):
     if not is_email and not is_uid:
         raise HTTPException(status_code=400, detail="Please enter a valid email address or User ID.")
         
-    pwd_hash = hash_password(req.password)
-    
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -938,11 +1170,14 @@ async def auth_login(req: UserLoginRequest):
         if turso_data and turso_data.get("user"):
             user_row = tuple(turso_data["user"])
     
-    if not user_row or user_row[3] != pwd_hash:
+    if not user_row or not verify_password(req.password, user_row[3]):
         conn.close()
         raise HTTPException(status_code=401, detail="Invalid email/ID or password.")
     
     user_id = user_row[0]
+    # Transparently upgrade legacy unsalted SHA-256 hashes on first successful login
+    if needs_password_upgrade(user_row[3]):
+        upgrade_user_password(user_id, req.password)
     cursor.execute("""
         SELECT persona, identity, level, board, daily_rhythm, target_goal, subjects, sub_details, learning_styles, updated_at
         FROM user_profiles WHERE user_id = ?
@@ -965,6 +1200,7 @@ async def auth_login(req: UserLoginRequest):
     
     return {
         "status": "success",
+        "session_token": make_session_token(user_id),
         "user": {
             "user_id": user_id,
             "name": user_row[1],
@@ -975,12 +1211,54 @@ async def auth_login(req: UserLoginRequest):
         "profile": profile_data
     }
 
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+
+async def verify_google_id_token(credential: Optional[str]) -> Dict[str, Any]:
+    """Verify a Google ID token server-side.
+
+    Without this, /api/auth/google trusts a client-supplied email and hands out
+    a session for ANY account - a complete authentication bypass.
+    """
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Google sign-in is not configured on this server (GOOGLE_CLIENT_ID missing).",
+        )
+    if not credential:
+        raise HTTPException(status_code=401, detail="Missing Google credential.")
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            resp = await client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": credential},
+            )
+    except Exception as e:
+        logger.warning(f"Google token verification request failed: {e}")
+        raise HTTPException(status_code=503, detail="Could not verify Google credential.")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid Google credential.")
+    claims = resp.json()
+    if claims.get("aud") != GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=401, detail="Google credential audience mismatch.")
+    if str(claims.get("email_verified", "false")).lower() not in ("true", "1"):
+        raise HTTPException(status_code=401, detail="Google email is not verified.")
+    if not claims.get("email"):
+        raise HTTPException(status_code=401, detail="Google credential has no email.")
+    return claims
+
 @app.post("/api/auth/google")
 @app.post("/auth/google")
-async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTasks):
-    email_clean = req.email.strip().lower()
-    name_clean = req.name.strip() or email_clean.split('@')[0]
-    
+async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTasks, request: Request):
+    await rate_limit(request, "google", limit=10, window=300.0)
+    claims = await verify_google_id_token(req.credential)
+    return await asyncio.to_thread(_auth_google_sync, req, claims)
+
+
+def _auth_google_sync(req: GoogleAuthSyncRequest, claims: Dict[str, Any]):
+    # Identity comes from the verified token, never from the request body.
+    email_clean = (claims.get("email") or "").strip().lower()
+    name_clean = (claims.get("name") or req.name or email_clean.split('@')[0]).strip()
+
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -997,7 +1275,7 @@ async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTa
             u_vals = turso_data["user"]
             user_row = (u_vals[0], u_vals[1], u_vals[2], u_vals[4], u_vals[5])
     
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     is_new = False
     if not user_row:
         is_new = True
@@ -1058,6 +1336,7 @@ async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTa
     
     return {
         "status": "success",
+        "session_token": make_session_token(user_id),
         "user": {
             "user_id": user_id,
             "name": name_clean,
@@ -1069,17 +1348,30 @@ async def auth_google(req: GoogleAuthSyncRequest, background_tasks: BackgroundTa
         "isNew": is_new
     }
 
-@app.post("/api/auth/sync-profile")
-@app.post("/auth/sync-profile")
-async def sync_profile(req: SyncProfileRequest, background_tasks: BackgroundTasks):
+@app.post("/api/auth/sync-profile", dependencies=[Depends(require_session)])
+@app.post("/auth/sync-profile", dependencies=[Depends(require_session)])
+async def sync_profile(
+    req: SyncProfileRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    uid: str = Depends(require_session),
+):
     if not req.user_id:
         raise HTTPException(status_code=400, detail="User ID is required.")
-    
+
+    # user_id is client-supplied. Without this check anyone could overwrite
+    # another account's profile (and previously mint a session for it).
+    if uid != req.user_id and not verify_admin_auth(request):
+        raise HTTPException(status_code=403, detail="Not authorized to modify this profile.")
+    return await asyncio.to_thread(_sync_profile_sync, req)
+
+
+def _sync_profile_sync(req: SyncProfileRequest):
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     if req.name:
         cursor.execute("UPDATE users SET name = ? WHERE user_id = ?", (req.name.strip(), req.user_id))
     
@@ -1154,7 +1446,25 @@ async def sync_profile(req: SyncProfileRequest, background_tasks: BackgroundTask
     })
     turso_sync_records(turso_stmts)
     
+    # NOTE: no session_token here. Issuing one for a client-supplied user_id was
+    # an account-takeover path; sessions are only minted by the login routes.
     return {"status": "success", "user_id": req.user_id, "updated_at": now}
+
+@app.post("/api/auth/guest")
+@app.post("/auth/guest")
+async def auth_guest(request: Request):
+    """Short-lived anonymous session for the public landing-page demo.
+
+    Keeps /api/chat-teach authenticated without shipping a static token to the
+    browser: the guest id is random and the token expires in an hour.
+    """
+    await rate_limit(request, "guest", limit=20, window=3600.0)
+    guest_id = "GUEST-" + secrets.token_hex(8)
+    return {
+        "status": "success",
+        "session_token": make_session_token(guest_id, ttl=GUEST_TOKEN_TTL_SECONDS),
+        "user_id": guest_id,
+    }
 
 def build_fallback_curriculum(identity: str, level: str, board: str, stream: Optional[str], subjects: List[str]) -> Dict[str, Any]:
     """Generates clean curriculum syllabus and 2D prerequisite tree based on academic taxonomy."""
@@ -1265,9 +1575,10 @@ def build_fallback_curriculum(identity: str, level: str, board: str, stream: Opt
         "summary": f"Curriculum calibrated for {level} ({board}) with {len(subjects)} subjects."
     }
 
-@app.post("/api/curriculum/auto-set", response_model=CurriculumAutoSetResponse)
-@app.post("/curriculum/auto-set", response_model=CurriculumAutoSetResponse)
-async def auto_set_curriculum(req: CurriculumAutoSetRequest, background_tasks: BackgroundTasks):
+@app.post("/api/curriculum/auto-set", response_model=CurriculumAutoSetResponse, dependencies=[Depends(require_session)])
+@app.post("/curriculum/auto-set", response_model=CurriculumAutoSetResponse, dependencies=[Depends(require_session)])
+async def auto_set_curriculum(req: CurriculumAutoSetRequest, background_tasks: BackgroundTasks, request: Request):
+    await rate_limit(request, "curriculum", limit=20, window=60.0)
     """
     Intelligently auto-sets syllabus chapters, starting topic, and 2D prerequisite tree
     tailored to the student's exact academic tier, grade, board, and selected subjects.
@@ -1356,7 +1667,7 @@ CRITICAL RULES:
     # Persist updated profile in SQLite & Turso Cloud
     if req.user_id:
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             db_path = get_db_path()
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -1427,9 +1738,13 @@ CRITICAL RULES:
 
 @app.post("/api/admin/login")
 @app.post("/admin/login")
-async def admin_login(req: AdminLoginRequest):
+async def admin_login(req: AdminLoginRequest, request: Request):
+    await rate_limit(request, "admin_login", limit=5, window=300.0)
+    return await asyncio.to_thread(_admin_login_sync, req)
+
+
+def _admin_login_sync(req: AdminLoginRequest):
     uid_clean = req.user_id.strip()
-    pwd_hash = hash_password(req.password)
     
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
@@ -1442,8 +1757,11 @@ async def admin_login(req: AdminLoginRequest):
     row = cursor.fetchone()
     conn.close()
     
-    if not row or row[3] != pwd_hash:
+    if not row or not verify_password(req.password, row[3]):
         raise HTTPException(status_code=401, detail="Invalid Admin User ID or Password.")
+    
+    if needs_password_upgrade(row[3]):
+        upgrade_user_password(row[0], req.password)
     
     token = make_admin_token(row[0])
     return {
@@ -1462,7 +1780,10 @@ async def admin_login(req: AdminLoginRequest):
 async def admin_metrics(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
-        
+    return await asyncio.to_thread(_admin_metrics_sync)
+
+
+def _admin_metrics_sync():
     # Aggregate fresh records from Turso Cloud
     sync_turso_to_local_cache()
     
@@ -1500,7 +1821,10 @@ async def admin_metrics(request: Request):
 async def admin_users(request: Request):
     if not verify_admin_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized. Admin authentication required.")
-        
+    return await asyncio.to_thread(_admin_users_sync)
+
+
+def _admin_users_sync():
     # Aggregate fresh records from Turso Cloud
     sync_turso_to_local_cache()
     
@@ -1545,9 +1869,10 @@ async def admin_users(request: Request):
     
     return {"status": "success", "count": len(users_list), "users": users_list}
 
-@app.post("/api/chat-teach", response_model=ChatTeachResponse)
-@app.post("/chat-teach", response_model=ChatTeachResponse)
+@app.post("/api/chat-teach", response_model=ChatTeachResponse, dependencies=[Depends(require_session)])
+@app.post("/chat-teach", response_model=ChatTeachResponse, dependencies=[Depends(require_session)])
 async def chat_teach(req: ChatTeachRequest, request: Request):
+    await rate_limit(request, "chat", limit=30, window=60.0)
     user_msg = req.message.strip()
     raw_topic = req.topic.strip()
     if any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
@@ -1813,9 +2138,10 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
         ] if display_topic else None
     )
 
-@app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
-@app.post("/exam-cheat-sheet", response_model=ExamCheatSheetResponse)
+@app.post("/api/exam-cheat-sheet", response_model=ExamCheatSheetResponse, dependencies=[Depends(require_session)])
+@app.post("/exam-cheat-sheet", response_model=ExamCheatSheetResponse, dependencies=[Depends(require_session)])
 async def get_exam_cheat_sheet(req: ExamCheatSheetRequest, request: Request):
+    await rate_limit(request, "cheatsheet", limit=20, window=60.0)
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
         topic = "Core Fundamentals & Key Formulas"
@@ -1944,9 +2270,10 @@ Return strictly a valid JSON object matching this schema:
         must_know_5mark_question=f"Derive the fundamental rate relationship for {topic} with a step-by-step example."
     )
 
-@app.post("/api/blitz-quiz", response_model=BlitzQuizResponse)
-@app.post("/blitz-quiz", response_model=BlitzQuizResponse)
+@app.post("/api/blitz-quiz", response_model=BlitzQuizResponse, dependencies=[Depends(require_session)])
+@app.post("/blitz-quiz", response_model=BlitzQuizResponse, dependencies=[Depends(require_session)])
 async def get_blitz_quiz(req: BlitzQuizRequest, request: Request):
+    await rate_limit(request, "blitz", limit=20, window=60.0)
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
         topic = "Core Fundamentals & Applied Concepts"
@@ -2018,9 +2345,10 @@ Return strictly a valid JSON object:
 
     return BlitzQuizResponse(topic=topic, questions=q_list[:q_count], time_limit_seconds=req.time_limit_seconds)
 
-@app.post("/api/flashcards", response_model=FlashcardsResponse)
-@app.post("/flashcards", response_model=FlashcardsResponse)
+@app.post("/api/flashcards", response_model=FlashcardsResponse, dependencies=[Depends(require_session)])
+@app.post("/flashcards", response_model=FlashcardsResponse, dependencies=[Depends(require_session)])
 async def get_flashcards(req: FlashcardsRequest, request: Request):
+    await rate_limit(request, "flashcards", limit=20, window=60.0)
     raw_topic = req.topic.strip()
     if not raw_topic or any(p in raw_topic.lower() for p in ["general science", "problem solving", "choose any topic", "what would you like to learn"]):
         topic = "Core Fundamentals & Key Concepts"
@@ -2093,9 +2421,10 @@ Return strictly a valid JSON object:
 
     return FlashcardsResponse(topic=topic, cards=cards[:card_count])
 
-@app.post("/api/tts")
-@app.post("/tts")
-async def generate_tts(req: TTSRequest):
+@app.post("/api/tts", dependencies=[Depends(require_session)])
+@app.post("/tts", dependencies=[Depends(require_session)])
+async def generate_tts(req: TTSRequest, request: Request):
+    await rate_limit(request, "tts", limit=30, window=60.0)
     clean = clean_speech_text(req.text)
     voice = NEURAL_VOICES.get(req.language, NEURAL_VOICES["hinglish"])
     try:
@@ -2199,5 +2528,9 @@ async def get_manifest():
 
 # Mount /static directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")
+
+# Create tables and seed the admin account. Runs last because it needs the
+# password-hashing helpers defined above.
+init_db()
 
 

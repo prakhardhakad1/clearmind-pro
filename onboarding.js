@@ -599,7 +599,7 @@ window.OnboardingWizard = {
             '<div class="flex items-start gap-2.5 min-w-0 flex-1">' +
               '<span class="text-base shrink-0 mt-0.5">' + priorityIcon + '</span>' +
               '<div class="min-w-0 flex-1">' +
-                '<div class="text-sm sm:text-base font-bold text-white leading-snug break-words">' + sub.name + '</div>' +
+                '<div class="text-sm sm:text-base font-bold text-white leading-snug break-words">' + (window.cmEscape ? window.cmEscape(sub.name) : String(sub.name == null ? '' : sub.name)) + '</div>' +
                 '<div class="text-[11px] font-semibold ' + priorityColor + ' mt-0.5">' + priorityLabel + '</div>' +
               '</div>' +
             '</div>' +
@@ -913,7 +913,7 @@ window.OnboardingWizard = {
         summaryCard.innerHTML = 
           '<div class="text-center py-8 px-4">' +
             '<div class="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce shadow-lg shadow-emerald-500/20">🎉</div>' +
-            '<h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Welcome aboard, ' + (this.profile.user?.name || 'Learner') + '!</h3>' +
+            '<h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Welcome aboard, ' + (window.cmEscape ? window.cmEscape(this.profile.user?.name || 'Learner') : String(this.profile.user?.name || 'Learner')) + '!</h3>' +
             '<p class="text-xs sm:text-sm text-gray-300 max-w-md mx-auto mb-6">Luna AI is calibrated to your syllabus with the <strong class="text-cyan-300">' + personaTitle + '</strong> pedagogical persona.</p>' +
             '<div class="flex flex-col sm:flex-row items-center justify-center gap-3">' +
               '<a href="/classroom" class="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 text-slate-950 font-black text-sm shadow-xl shadow-cyan-500/30 hover:scale-105 active:scale-[0.98] transition-all text-center">Enter Classroom Cockpit 🚀</a>' +

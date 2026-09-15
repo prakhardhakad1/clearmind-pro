@@ -678,11 +678,69 @@
   // UTILITIES: HTML ESCAPING, MARKDOWN & LATEX KATEX RENDERING
   // =========================================================================
   function escapeHtml(text) {
-    if (!text) return "";
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
+    if (text === null || text === undefined) return "";
+    // NOTE: the old implementation used textContent -> innerHTML, which escapes
+    // only & < > and NOT " or '. That silently broke out of HTML attributes in
+    // the onclick="..." / data-* usages below. Escape all five explicitly.
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
+  window.escapeHtml = escapeHtml;
+
+  // Read the session token issued at login (app.html does not load auth.js,
+  // so this getter has to exist here as well).
+  if (typeof window.cmSessionToken !== 'function') {
+    window.cmSessionToken = function () {
+      try {
+        const raw = localStorage.getItem("clearmind_auth_user");
+        return raw ? (JSON.parse(raw).session_token || "") : "";
+      } catch (e) {
+        return "";
+      }
+    };
+  }
+
+  // Attach the session token to every /api/* call from one place, so individual
+  // call sites cannot forget to authorize themselves.
+  if (!window.__cmFetchPatched) {
+    window.__cmFetchPatched = true;
+    const cmOriginalFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+      try {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (url.indexOf('/api/') !== -1) {
+          init = init || {};
+          const headers = new Headers(init.headers || {});
+          const token = (typeof window.cmSessionToken === 'function') ? window.cmSessionToken() : '';
+          if (token && !headers.has('Authorization')) {
+            headers.set('Authorization', 'Bearer ' + token);
+          }
+          init = Object.assign({}, init, { headers: headers });
+        }
+      } catch (e) {
+        /* never block a request on header bookkeeping */
+      }
+      return cmOriginalFetch(input, init).then(function (res) {
+        if (res && res.status === 401 && typeof window.cmOnSessionExpired === 'function') {
+          window.cmOnSessionExpired();
+        }
+        return res;
+      });
+    };
+  }
+
+  window.cmOnSessionExpired = function () {
+    if (window.__cmSessionExpiredFired) return;
+    window.__cmSessionExpiredFired = true;
+    try { localStorage.removeItem("clearmind_auth_user"); } catch (e) {}
+    try { if (window.AuthEngine) { window.AuthEngine.currentUser = null; } } catch (e) {}
+    alert("Your session has expired. Please sign in again.");
+    window.location.href = "/?login=1";
+  };
 
   function formatMarkdown(raw) {
     if (!raw) return "";
@@ -2201,7 +2259,7 @@
         ${escapeHtml(q.question)}
       </p>
       <div id="blitzOptionsGrid" class="grid gap-2.5 pt-2">
-        ${q.options
+        ${(Array.isArray(q.options) ? q.options : [])
           .map(
             (opt, idx) => `
           <button data-opt="${idx}" class="blitz-opt-btn p-3.5 rounded-xl glass hover:bg-violet-600/20 border border-white/10 hover:border-violet-500/40 text-xs font-bold text-white text-left transition flex items-center justify-between cursor-pointer active:scale-98 shadow-sm">
@@ -4652,7 +4710,14 @@
     // Reset Session / Clear Data Button in Dock
     document.getElementById("dockResetBtn")?.addEventListener("click", () => {
       if (confirm("Reset study session and configure new profile?")) {
+        // Preserve the auth session. A blanket clear() logged the user out
+        // while AuthEngine still rendered them as signed in - UI/storage desync.
+        let savedAuth = null;
+        try { savedAuth = localStorage.getItem("clearmind_auth_user"); } catch (e) { savedAuth = null; }
         localStorage.clear();
+        if (savedAuth) {
+          try { localStorage.setItem("clearmind_auth_user", savedAuth); } catch (e) {}
+        }
         studentProfile = { name: "", avatar: "🎓", level: "College / University" };
         totalXP = 0;
         currentStreak = 1;

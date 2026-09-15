@@ -4,10 +4,27 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # NOTE: no persistent disk on purpose. The local SQLite file is an ephemeral
+    # L1 cache; Turso is the durable store. Adding a disk would keep PII
+    # (email + password hash) resident on the instance indefinitely.
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
       - key: GEMINI_API_KEY
         sync: false
       - key: GLM_API_KEY
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
+      - key: STUDENT_SESSION_SECRET
+        sync: false
+      - key: TURSO_DB_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: GOOGLE_CLIENT_ID
         sync: false

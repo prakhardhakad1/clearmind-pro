@@ -359,6 +359,16 @@
       }
     }
 
+    // Escape every value that comes back from the API before it touches
+    // innerHTML. Student-controlled fields (name, email, subjects, level) are
+    // rendered here, so an unescaped value is a stored XSS into the admin panel.
+    function esc(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function renderMetrics(metrics) {
       document.getElementById('statTotalUsers').textContent = metrics.total_users || 0;
       
@@ -367,7 +377,7 @@
       document.getElementById('statPersonaCount').textContent = personaKeys.length;
       
       const personaPills = personaKeys.map(k => 
-        `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 capitalize">${k}: ${personas[k]}</span>`
+        `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 capitalize">${esc(k)}: ${esc(personas[k])}</span>`
       ).join(' ');
       document.getElementById('statPersonaPills').innerHTML = personaPills || '<span class="text-slate-500">None</span>';
 
@@ -375,7 +385,7 @@
       const levelKeys = Object.keys(levels);
       document.getElementById('statLevelCount').textContent = levelKeys.length;
       const levelPills = levelKeys.slice(0, 3).map(k => 
-        `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10">${k}: ${levels[k]}</span>`
+        `<span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10">${esc(k)}: ${esc(levels[k])}</span>`
       ).join(' ');
       document.getElementById('statLevelPills').innerHTML = levelPills || '<span class="text-slate-500">None</span>';
     }
@@ -415,7 +425,7 @@
         if (prof.subjects && Array.isArray(prof.subjects)) {
           subjectsList = prof.subjects.slice(0, 3).map(s => {
             const name = typeof s === 'string' ? s : s.name;
-            return `<span class="px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[10px]">${name}</span>`;
+            return `<span class="px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[10px]">${esc(name)}</span>`;
           }).join(' ');
         }
 
@@ -426,23 +436,23 @@
         return `
           <tr class="hover:bg-white/[0.02] transition">
             <td class="py-3 px-3 font-mono font-bold text-cyan-400">
-              <span class="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800/80">${u.user_id}</span>
+              <span class="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800/80">${esc(u.user_id)}</span>
             </td>
-            <td class="py-3 px-3 font-bold text-white">${u.name || 'Learner'}</td>
-            <td class="py-3 px-3 text-slate-300 font-mono text-[11px]">${u.email || '-'}</td>
+            <td class="py-3 px-3 font-bold text-white">${esc(u.name || 'Learner')}</td>
+            <td class="py-3 px-3 text-slate-300 font-mono text-[11px]">${esc(u.email || '-')}</td>
             <td class="py-3 px-3">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-slate-800 text-slate-300'}">${u.role || 'student'}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-slate-800 text-slate-300'}">${esc(u.role || 'student')}</span>
             </td>
             <td class="py-3 px-3">
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${badgeClass}">
-                <span>${icon}</span> <span>${personaKey}</span>
+                <span>${esc(icon)}</span> <span>${esc(personaKey)}</span>
               </span>
             </td>
-            <td class="py-3 px-3 text-slate-300 text-[11px]">${prof.level || 'Class 12'}</td>
+            <td class="py-3 px-3 text-slate-300 text-[11px]">${esc(prof.level || 'Class 12')}</td>
             <td class="py-3 px-3">
               <div class="flex flex-wrap gap-1">${subjectsList || '<span class="text-slate-500">-</span>'}</div>
             </td>
-            <td class="py-3 px-3 text-slate-400 text-[11px]">${dateStr}</td>
+            <td class="py-3 px-3 text-slate-400 text-[11px]">${esc(dateStr)}</td>
           </tr>
         `;
       }).join('');
