@@ -28,6 +28,8 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Polish layer: loaded after Tailwind so it can override runtime utilities -->
+  <link rel="stylesheet" href="/polish.css?v=1.0" />
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -1814,5 +1816,6 @@
 
   <!-- App Core JS -->
   <script src="/app.js?v=38.0"></script>
+  <script src="/polish.js?v=1.0" defer></script>
 </body>
 </html>

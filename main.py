@@ -2522,6 +2522,14 @@ async def get_style_css():
 async def get_sw_js():
     return FileResponse(os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript")
 
+@app.get("/polish.css")
+async def get_polish_css():
+    return FileResponse(os.path.join(STATIC_DIR, "polish.css"), media_type="text/css")
+
+@app.get("/polish.js")
+async def get_polish_js():
+    return FileResponse(os.path.join(STATIC_DIR, "polish.js"), media_type="application/javascript")
+
 @app.get("/manifest.json")
 async def get_manifest():
     return FileResponse(os.path.join(STATIC_DIR, "manifest.json"), media_type="application/json")

@@ -2,12 +2,14 @@
 <html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
   <title>ClearMind Pro — Autonomous AI Learning Platform</title>
   <meta name="description" content="Master any academic syllabus 3x faster with Luna AI, 60s Cheat Sheets, Blitz Battles, and 3D Concept Knowledge Graphs.">
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Polish layer: loaded after Tailwind so it can override runtime utilities -->
+  <link rel="stylesheet" href="/polish.css?v=1.0" />
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -719,5 +721,6 @@
   <script src="./auth.js?v=6.0"></script>
   <script src="./onboarding.js?v=6.0"></script>
   <script src="./landing.js?v=6.0"></script>
+  <script src="/polish.js?v=1.0" defer></script>
 </body>
 </html>

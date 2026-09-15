@@ -1,0 +1,422 @@
+/* ===========================================================================
+   ClearMind Pro — UI/UX Polish Layer
+   ---------------------------------------------------------------------------
+   Pure CSS + tiny JS. No libraries, no DOM changes, no ID changes.
+
+   Loaded AFTER the Tailwind CDN script. The Play CDN generates utilities at
+   runtime and injects them into <head>, so rules that must win over utilities
+   use !important. That is deliberate, not sloppiness.
+
+   Sections:
+     1. Tokens
+     2. Overflow / safe-area guard
+     3. Touch ergonomics (mobile)
+     4. Bottom sheets (mobile)
+     5. Micro-interactions (60fps)
+     6. Skeletons & loading
+     7. Glassmorphism / depth / glow
+     8. KaTeX & whiteboard typography
+     9. Typography contrast & scrollbars
+    10. Reduced motion
+   =========================================================================== */
+
+/* ---------- 1. Tokens ---------------------------------------------------- */
+:root {
+  --cm-bg: #050714;
+  --cm-surface: #0c0e17;
+  --cm-surface-2: #121527;
+  --cm-line: rgba(255, 255, 255, 0.10);
+  --cm-line-strong: rgba(255, 255, 255, 0.18);
+  --cm-cyan: #22d3ee;
+  --cm-violet: #8b5cf6;
+  --cm-fuchsia: #d946ef;
+  --cm-text: #e8ecf8;
+  --cm-muted: #a8b3cf;
+
+  --cm-spring: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --cm-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --cm-sat: env(safe-area-inset-top, 0px);
+  --cm-sab: env(safe-area-inset-bottom, 0px);
+  --cm-sal: env(safe-area-inset-left, 0px);
+  --cm-sar: env(safe-area-inset-right, 0px);
+}
+
+/* ---------- 2. Overflow / safe-area guard -------------------------------- */
+/* `clip` (not `hidden`) prevents horizontal scroll without creating a new
+   scroll container, so position:sticky/fixed children keep working. */
+html {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  overflow-x: clip;
+  background-color: var(--cm-bg);
+  color: var(--cm-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+@supports not (overflow: clip) {
+  html, body { overflow-x: hidden; }
+}
+
+/* Nothing may force the document wider than the viewport. */
+img, svg, video, canvas, iframe, pre, code, table,
+.katex, .katex-display, .katex-block {
+  max-width: 100%;
+}
+
+/* Long unbroken strings (URLs, base64, long equations) must wrap, not scroll. */
+#chatMessagesContainer,
+.chat-bubble,
+.bento-card,
+.glass,
+.cmd-palette-box {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Tap delay removal — every clickable element. */
+button, a, [role="button"], input, select, textarea, summary, label {
+  touch-action: manipulation;
+}
+
+/* ---------- 3. Touch ergonomics ----------------------------------------- */
+@media (max-width: 767px) {
+  /* 48px minimum for anything a thumb is meant to hit. */
+  button:not([data-tap-tight]),
+  [role="button"]:not([data-tap-tight]),
+  .blitz-opt-btn,
+  .cmd-item,
+  .blitz-config-pill,
+  .tab-pill,
+  a[role="button"] {
+    min-height: 48px;
+  }
+
+  /* Give full-width controls breathing room from the rounded screen edges. */
+  #chatInputBarContainer,
+  #chatInputForm {
+    padding-left: calc(0.5rem + var(--cm-sal));
+    padding-right: calc(0.5rem + var(--cm-sar));
+  }
+
+  /* Floating stacks stay clear of the home indicator / gesture bar. */
+  .fixed.bottom-4, .fixed.bottom-5, .fixed.bottom-6,
+  [class*="fixed"][class*="bottom-"] {
+    padding-bottom: var(--cm-sab);
+  }
+
+  /* Quiz options need real vertical padding once they are 48px tall. */
+  .blitz-opt-btn {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    align-items: center;
+  }
+
+  /* Inputs must be >=16px or iOS Safari zooms the page on focus. */
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* ---------- 4. Bottom sheets (mobile) ----------------------------------- */
+@media (max-width: 767px) {
+  #profileModal:not(.hidden),
+  #authModal:not(.hidden),
+  #onboardingModal:not(.hidden),
+  #cmdPaletteModal:not(.hidden),
+  #shortcutsModal:not(.hidden) {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    background: rgba(2, 4, 12, 0.72) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  #profileModal > div:first-child,
+  #authModal > .modal-card,
+  #onboardingModal > .modal-card,
+  #onboardingModal > div:first-child,
+  #cmdPaletteModal > div,
+  #shortcutsModal > div:not(#shortcutsModalBackdrop) {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90dvh !important;
+    margin: 0 !important;
+    border-radius: 26px 26px 0 0 !important;
+    border-bottom: 0 !important;
+    padding-bottom: calc(1.25rem + var(--cm-sab)) !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    animation: cm-sheet-in 0.3s var(--cm-spring) both;
+    box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.55),
+                0 0 0 1px var(--cm-line) !important;
+  }
+
+  /* Drag handle affordance. */
+  #profileModal > div:first-child::before,
+  #authModal > .modal-card::before,
+  #onboardingModal > .modal-card::before,
+  #cmdPaletteModal > div::before,
+  #shortcutsModal > div:not(#shortcutsModalBackdrop)::before {
+    content: "";
+    display: block;
+    width: 44px;
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.3);
+    margin: 0.5rem auto 0.75rem;
+    flex: 0 0 auto;
+  }
+
+  #cmdPaletteModal {
+    align-items: flex-end !important;
+    padding-top: 8dvh !important;
+  }
+}
+
+@keyframes cm-sheet-in {
+  from { transform: translateY(14%); opacity: 0.4; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* ---------- 5. Micro-interactions (60fps) -------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  button, a, [role="button"],
+  .glass, .glass-strong, .bento-card, .lift,
+  .blitz-opt-btn, .cmd-item, .blitz-config-pill {
+    transition:
+      transform 0.18s var(--cm-ease),
+      box-shadow 0.28s var(--cm-ease),
+      background-color 0.2s var(--cm-ease),
+      border-color 0.2s var(--cm-ease),
+      opacity 0.2s var(--cm-ease);
+    will-change: transform;
+  }
+}
+
+/* Tactile press feedback. Excludes 3D/canvas elements whose transform is owned
+   by JS — scaling those would fight the animation loop. */
+@media (prefers-reduced-motion: no-preference) {
+  button:active:not([data-no-tap]),
+  [role="button"]:active:not([data-no-tap]),
+  .blitz-opt-btn:active,
+  .cmd-item:active,
+  .blitz-config-pill:active,
+  .lift:active {
+    transform: scale(0.955);
+  }
+  .bento-card:active, .glass:active {
+    transform: scale(0.99);
+  }
+}
+.card-3d-inner, .card-3d-front, .card-3d-back,
+.motion-stage-canvas, #galaxyCanvas, canvas {
+  will-change: auto !important;
+}
+.card-3d-inner:active, .motion-stage-canvas:active, canvas:active {
+  transform: none !important;
+}
+
+/* Focus rings: visible for keyboards, quiet for mouse/touch. */
+:focus-visible {
+  outline: 2px solid var(--cm-cyan);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---------- 6. Skeletons & loading --------------------------------------- */
+@keyframes cm-shimmer {
+  0%   { background-position: -420px 0; }
+  100% { background-position: 420px 0; }
+}
+@keyframes cm-dot {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.45; }
+  40%           { transform: translateY(-4px); opacity: 1; }
+}
+
+.cm-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.045) 25%,
+    rgba(255, 255, 255, 0.11) 37%,
+    rgba(255, 255, 255, 0.045) 63%
+  );
+  background-size: 840px 100%;
+  animation: cm-shimmer 1.4s linear infinite;
+}
+.cm-skeleton-line { height: 12px; margin: 9px 0; }
+.cm-skeleton-line:last-child { width: 62%; }
+
+/* Upgrade the existing Luna typing bubble into a shimmering skeleton card.
+   Pure CSS — no JS change, DOM untouched. */
+#lunaTypingIndicator .glass {
+  min-width: 190px;
+  padding-block: 0.85rem !important;
+}
+#lunaTypingIndicator .glass::before {
+  content: "";
+  display: block;
+  width: 132px;
+  height: 8px;
+  margin-bottom: 7px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(167, 139, 250, 0.42) 37%,
+    rgba(255, 255, 255, 0.05) 63%
+  );
+  background-size: 420px 100%;
+  animation: cm-shimmer 1.25s linear infinite;
+}
+#lunaTypingIndicator .glass::after {
+  content: "";
+  display: block;
+  width: 88px;
+  height: 8px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(34, 211, 238, 0.3) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  );
+  background-size: 420px 100%;
+  animation: cm-shimmer 1.25s linear infinite reverse;
+}
+
+/* ---------- 7. Glassmorphism / depth / glow ------------------------------ */
+.glass, .glass-strong {
+  border: 1px solid var(--cm-line) !important;
+  background-image: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.018) 45%,
+    rgba(255, 255, 255, 0) 100%
+  ) !important;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.6) !important;
+}
+.glass:hover, .glass-strong:hover {
+  border-color: var(--cm-line-strong) !important;
+}
+
+/* Radial mesh glow behind "active" cards — Linear/Apple-style depth. */
+.bento-card {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--cm-line) !important;
+}
+.bento-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.35s var(--cm-ease);
+  background:
+    radial-gradient(60% 55% at 22% 0%,  rgba(139, 92, 246, 0.20), transparent 70%),
+    radial-gradient(55% 60% at 88% 12%, rgba(34, 211, 238, 0.16), transparent 72%),
+    radial-gradient(70% 70% at 50% 110%, rgba(217, 70, 239, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.bento-card:hover::before,
+.bento-card:focus-within::before,
+.bento-card[aria-selected="true"]::before {
+  opacity: 1;
+}
+
+/* Status pills / badges: razor-sharp edges + subtle inner highlight. */
+.shimmer-badge,
+.motion-hud-badge,
+#chatPersonaBadge,
+.persona-badge-mentor,
+.persona-badge-strict,
+.persona-badge-polymath,
+.persona-badge-socratic,
+.persona-badge-hacker,
+.persona-badge-feynman {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 2px 8px -3px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 8. KaTeX & whiteboard typography ----------------------------- */
+.katex, .katex-display, .katex-block {
+  color: #f4f7ff !important;
+  font-weight: 500;
+  text-rendering: auto;
+}
+.katex-display, .katex-block {
+  padding: 0.75rem 0.35rem !important;
+  margin: 0.6rem 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+/* Long equations scroll instead of blowing out the card on a phone. */
+.katex-display > .katex {
+  white-space: nowrap;
+  padding-right: 0.25rem;
+}
+@media (max-width: 767px) {
+  .katex { font-size: 1.02em; }
+  .katex-display { font-size: 0.98em; }
+}
+
+/* Tutor cue cards: distinct, high-contrast surfaces. */
+#chatMessagesContainer .glass {
+  border: 1px solid var(--cm-line) !important;
+  line-height: 1.65;
+}
+#chatMessagesContainer strong { color: #ffffff; }
+
+/* ---------- 9. Typography contrast & scrollbars --------------------------- */
+h1, h2, h3, h4 {
+  color: #f6f8ff;
+  letter-spacing: -0.015em;
+}
+/* Lift the faintest greys to meet contrast on a near-black background. */
+.text-slate-500 { color: #94a3b8 !important; }
+.text-slate-400 { color: #a9b4cc !important; }
+.text-gray-400  { color: #a5b0c8 !important; }
+.text-slate-300 { color: #c3cbdd !important; }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+
+::selection {
+  background: rgba(139, 92, 246, 0.4);
+  color: #fff;
+}
+
+/* ---------- 10. Reduced motion ------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
