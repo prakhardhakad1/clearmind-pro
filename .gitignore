@@ -10,3 +10,4 @@ cloudflared.exe
 *.zip
 inspect_*.py
 *.db
+agent_screenshot.png

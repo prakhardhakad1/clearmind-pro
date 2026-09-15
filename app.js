@@ -16,6 +16,10 @@
   let activeAudio = null;
   let cachedCheatSheets = {};
   let awardedCheatSheetTopics = new Set();
+  const examLoadState = { sequence: 0, pending: null, languages: new Map() };
+  const blitzLoadState = { sequence: 0, pending: null };
+  const flashcardsLoadState = { sequence: 0, pending: null, languages: new Map() };
+  const featureErrors = new WeakMap();
 
   // Purge any stale generic topic defaults from localStorage
   if (
@@ -1905,66 +1909,144 @@
     }
   }
 
+  function finishFeatureLoad(state, request) {
+    if (request.ticket != null) {
+      request.skeleton.clear(request.host, request.ticket);
+      request.ticket = null;
+    }
+    if (state.pending === request) state.pending = null;
+  }
+
+  function cancelFeatureLoad(state) {
+    state.sequence += 1;
+    if (state.pending) finishFeatureLoad(state, state.pending);
+  }
+
+  function beginFeatureLoad(state, host, topic, language) {
+    cancelFeatureLoad(state);
+    const request = { sequence: state.sequence, host, topic, language, ticket: null, skeleton: window.CMSkeleton };
+    state.pending = request;
+    return request;
+  }
+
+  function showFeatureLoading(request, label) {
+    if (request.host && typeof request.skeleton?.show === "function" && typeof request.skeleton?.clear === "function") {
+      request.ticket = request.skeleton.show(request.host, 3, label);
+    }
+  }
+
+  function isCurrentFeatureLoad(state, request) {
+    return state.pending === request && state.sequence === request.sequence &&
+      activeTopic === request.topic && activeLanguage === request.language;
+  }
+
+  function clearFeatureError(host) {
+    if (!host) return;
+    const error = featureErrors.get(host);
+    if (!error) return;
+    error.notice.remove();
+    error.hiddenChildren.forEach((child) => child.classList.remove("hidden"));
+    featureErrors.delete(host);
+  }
+
+  function showFeatureError(host, message, actions, hideContent = false) {
+    if (!host) return;
+    clearFeatureError(host);
+    const hiddenChildren = hideContent ? Array.from(host.children).filter((child) => !child.classList.contains("hidden")) : [];
+    hiddenChildren.forEach((child) => child.classList.add("hidden"));
+    const notice = document.createElement("div");
+    notice.className = "p-4 rounded-2xl glass-strong border border-rose-500/30 space-y-3 text-sm text-slate-200";
+    notice.setAttribute("role", "alert");
+    const text = document.createElement("p");
+    text.textContent = message;
+    notice.appendChild(text);
+    const buttons = document.createElement("div");
+    buttons.className = "flex flex-wrap gap-2";
+    actions.forEach(({ label, onClick }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "px-4 py-2 rounded-xl glass border border-white/10 text-xs font-bold hover:bg-white/10 transition cursor-pointer";
+      button.textContent = label;
+      button.addEventListener("click", onClick);
+      buttons.appendChild(button);
+    });
+    notice.appendChild(buttons);
+    host.prepend(notice);
+    featureErrors.set(host, { notice, hiddenChildren });
+  }
+
   async function loadExamCheatSheet(forceRegenerate = false) {
     const emptyState = document.getElementById("examNoTopicEmptyState");
     const content = document.getElementById("examSheetContentContainer");
 
     if (!hasActiveTopic()) {
+      cancelFeatureLoad(examLoadState);
+      clearFeatureError(content);
       if (emptyState) emptyState.classList.remove("hidden");
       if (content) content.classList.add("hidden");
       return;
     }
 
+    const requestedTopic = activeTopic;
+    const requestedLanguage = activeLanguage;
     if (emptyState) emptyState.classList.add("hidden");
     if (content) content.classList.remove("hidden");
+    if (examLoadState.pending?.topic === requestedTopic && examLoadState.pending.language === requestedLanguage) return;
+    cancelFeatureLoad(examLoadState);
+    clearFeatureError(content);
 
     const title = document.getElementById("examSheetTopicTitle");
-    if (title) {
-      title.innerHTML = `<span>⚡</span> <span>${escapeHtml(activeTopic)} Cheat Sheet</span>`;
-    }
-
-    if (!forceRegenerate && cachedCheatSheets[activeTopic]) {
-      renderExamCheatSheetData(cachedCheatSheets[activeTopic]);
+    if (title) title.textContent = `${requestedTopic} Cheat Sheet`;
+    const cached = examLoadState.languages.get(requestedTopic) === requestedLanguage ? cachedCheatSheets[requestedTopic] : null;
+    if (!forceRegenerate && cached) {
+      renderExamCheatSheetData(cached);
       return;
     }
 
-    const trap = document.getElementById("examTrapWarningText");
-    const mnem = document.getElementById("examMnemonicText");
-    const q5 = document.getElementById("exam5MarkQuestionText");
-    if (trap) trap.textContent = "Synthesizing examiner traps & formulas...";
-    if (mnem) mnem.textContent = "Generating rapid memory mnemonic...";
-    if (q5) q5.textContent = "Extracting guaranteed 5-mark question...";
-
+    const request = beginFeatureLoad(examLoadState, content, requestedTopic, requestedLanguage);
     try {
+      showFeatureLoading(request, `Generating cheat sheet for ${requestedTopic}`);
       const res = await fetch("/api/exam-cheat-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({
-          topic: activeTopic,
-          language: activeLanguage,
+          topic: requestedTopic,
+          language: requestedLanguage,
           level: studentProfile.level || "College / University"
         })
       });
 
       if (!res.ok) throw new Error("Cheat sheet request failed");
       const d = await res.json();
-      cachedCheatSheets[activeTopic] = d;
+      if (!isCurrentFeatureLoad(examLoadState, request)) return;
+      if (!d || typeof d !== "object" || Array.isArray(d) || d.error || !Object.keys(d).length) {
+        throw new Error("No cheat sheet was returned");
+      }
       renderExamCheatSheetData(d);
+      cachedCheatSheets[requestedTopic] = d;
+      examLoadState.languages.set(requestedTopic, requestedLanguage);
 
       // Award XP once per session for this topic
-      if (!awardedCheatSheetTopics.has(activeTopic)) {
-        awardedCheatSheetTopics.add(activeTopic);
+      if (!awardedCheatSheetTopics.has(requestedTopic)) {
+        awardedCheatSheetTopics.add(requestedTopic);
         addXP(50);
         bumpStreak();
         playSound("fanfare");
         if (typeof confetti === "function") {
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
         }
-        showToast("⚡ Real Exam Cheat Sheet Generated! +50 XP Earned", "success");
+        showToast("Real Exam Cheat Sheet Generated! +50 XP Earned", "success");
       }
     } catch (e) {
+      if (!isCurrentFeatureLoad(examLoadState, request)) return;
       console.warn("Cheat sheet error:", e);
-      showToast("Could not generate cheat sheet from AI.", "error");
+      if (cached) renderExamCheatSheetData(cached);
+      showFeatureError(content, cached ? "Could not refresh this cheat sheet. Your previous sheet is still available." : "Could not generate this cheat sheet. Please try again.", [
+        { label: "Retry", onClick: () => loadExamCheatSheet(true) },
+        { label: "Back to canvas", onClick: () => window.switchCanvasTab("live") }
+      ], !cached);
+    } finally {
+      finishFeatureLoad(examLoadState, request);
     }
   }
 
@@ -2131,7 +2213,8 @@
 
   async function startBlitzBattle() {
     if (!hasActiveTopic()) {
-      showToast("⚠️ Please decide or select a test topic before entering the Arena!", "warning");
+      cancelFeatureLoad(blitzLoadState);
+      showToast("Please decide or select a test topic before entering the Arena!", "warning");
       playSound("error");
       const inp = document.getElementById("blitzCustomTopicInput");
       if (inp) {
@@ -2142,11 +2225,19 @@
       return;
     }
 
+    const requestedTopic = activeTopic;
+    const requestedLanguage = activeLanguage;
+    const requestedCount = blitzConfig.questionCount;
+    const requestedTimeLimit = blitzConfig.timeLimit;
+    if (blitzLoadState.pending?.topic === requestedTopic && blitzLoadState.pending.language === requestedLanguage) return;
+    if (blitzState.isRunning && blitzState.topic === requestedTopic && blitzState.language === requestedLanguage) return;
+
     clearInterval(blitzState.timerInterval);
+    blitzState.timerInterval = null;
     blitzState.isRunning = false;
     blitzState.score = 0;
     blitzState.combo = 1;
-    blitzState.timeLeft = blitzConfig.timeLimit;
+    blitzState.timeLeft = requestedTimeLimit;
     blitzState.currentQuestionIdx = 0;
     blitzState.questions = [];
 
@@ -2154,88 +2245,75 @@
     const activeScreen = document.getElementById("blitzActiveScreen");
     if (setupScreen) setupScreen.classList.add("hidden");
     if (activeScreen) activeScreen.classList.remove("hidden");
+    clearFeatureError(activeScreen);
 
     const tmDisp = document.getElementById("blitzTimerDisplay");
     const scNum = document.getElementById("blitzScoreNum");
     const cbBadge = document.getElementById("blitzComboBadge");
-    const qCard = document.getElementById("blitzQuestionCard");
     const qIdx = document.getElementById("blitzQuestionIdx");
     const qTotal = document.getElementById("blitzTotalQuestions");
-
     if (tmDisp) tmDisp.textContent = formatTimerString(blitzState.timeLeft);
     if (scNum) scNum.textContent = "0";
     if (cbBadge) cbBadge.textContent = "1x COMBO";
     if (qIdx) qIdx.textContent = "1";
-    if (qTotal) qTotal.textContent = String(blitzConfig.questionCount);
+    if (qTotal) qTotal.textContent = String(requestedCount);
 
-    if (qCard) {
-      qCard.innerHTML = `
-        <div class="p-8 text-center space-y-3">
-          <p class="text-xs text-purple-300 font-bold animate-pulse">Loading ${blitzConfig.questionCount} rapid-fire questions for ${escapeHtml(activeTopic || "Arena")}...</p>
-          <p class="text-[11px] text-slate-400">Match duration: ${blitzConfig.timeLimit}s. Timer starts as soon as questions load!</p>
-        </div>`;
-    }
-
+    const request = beginFeatureLoad(blitzLoadState, activeScreen, requestedTopic, requestedLanguage);
     try {
+      showFeatureLoading(request, `Preparing ${requestedCount} questions for ${requestedTopic}`);
       const res = await fetch("/api/blitz-quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({
-          topic: activeTopic || "Core Fundamentals",
-          language: activeLanguage,
-          num_questions: blitzConfig.questionCount,
-          time_limit_seconds: blitzConfig.timeLimit
+          topic: requestedTopic,
+          language: requestedLanguage,
+          num_questions: requestedCount,
+          time_limit_seconds: requestedTimeLimit
         })
       });
+      if (!res.ok) throw new Error("Blitz request failed");
       const d = await res.json();
-      blitzState.questions = d.questions || [];
-    } catch (e) {
-      console.warn("Blitz error:", e);
-    }
+      if (!isCurrentFeatureLoad(blitzLoadState, request)) return;
+      if (!Array.isArray(d?.questions) || !d.questions.length || !d.questions.every((question) =>
+        question && typeof question.question === "string" && question.question.trim() &&
+        Array.isArray(question.options) && question.options.length >= 2 &&
+        question.options.every((option) => typeof option === "string" && option.trim()) &&
+        Number.isInteger(question.correct_index) && question.correct_index >= 0 && question.correct_index < question.options.length
+      )) {
+        throw new Error("No valid Blitz questions were returned");
+      }
+      blitzState.questions = d.questions;
+      blitzState.topic = requestedTopic;
+      blitzState.language = requestedLanguage;
+      blitzState.isRunning = true;
+      renderBlitzQuestion();
 
-    if (!blitzState.questions || !blitzState.questions.length) {
-      blitzState.questions = [
-        {
-          id: 1,
-          question: `What fundamental principle governs ${activeTopic || "this topic"}?`,
-          options: ["Conservation of State", "Random Variance", "Infinite Acceleration"],
-          correct_index: 0,
-          explanation: "Fundamental laws dictate structured conservation."
-        },
-        {
-          id: 2,
-          question: "What is the standard order of operations?",
-          options: ["BODMAS / PEMDAS", "Random order", "Right to Left always"],
-          correct_index: 0,
-          explanation: "Brackets, Orders, Division, Multiplication, Addition, Subtraction."
-        },
-        {
-          id: 3,
-          question: "Which data structure operates on LIFO (Last In First Out)?",
-          options: ["Queue", "Stack", "Array"],
-          correct_index: 1,
-          explanation: "Stacks push and pop from the top."
-        },
-        {
-          id: 4,
-          question: "What is the time complexity of binary search on a sorted array?",
-          options: ["O(1)", "O(n)", "O(log n)"],
-          correct_index: 2,
-          explanation: "Binary search halves the search space at each step."
+      // Start a single timer only after the current request has rendered.
+      blitzState.timerInterval = setInterval(() => {
+        if (blitzLoadState.sequence !== request.sequence || activeTopic !== requestedTopic || activeLanguage !== requestedLanguage) {
+          clearInterval(blitzState.timerInterval);
+          blitzState.timerInterval = null;
+          blitzState.isRunning = false;
+          showBlitzSetup();
+          return;
         }
-      ];
+        blitzState.timeLeft -= 1;
+        if (tmDisp) tmDisp.textContent = formatTimerString(blitzState.timeLeft);
+        if (blitzState.timeLeft <= 10) playSound("tick");
+        if (blitzState.timeLeft <= 0) endBlitzBattle("timeout");
+      }, 1000);
+    } catch (e) {
+      if (!isCurrentFeatureLoad(blitzLoadState, request)) return;
+      console.warn("Blitz error:", e);
+      blitzState.isRunning = false;
+      blitzState.questions = [];
+      showFeatureError(activeScreen, "Could not load questions for this topic. No round has started.", [
+        { label: "Retry", onClick: startBlitzBattle },
+        { label: "Return to setup", onClick: showBlitzSetup }
+      ], true);
+    } finally {
+      finishFeatureLoad(blitzLoadState, request);
     }
-
-    blitzState.isRunning = true;
-    renderBlitzQuestion();
-
-    // Start timer AFTER questions are displayed
-    blitzState.timerInterval = setInterval(() => {
-      blitzState.timeLeft -= 1;
-      if (tmDisp) tmDisp.textContent = formatTimerString(blitzState.timeLeft);
-      if (blitzState.timeLeft <= 10) playSound("tick");
-      if (blitzState.timeLeft <= 0) endBlitzBattle("timeout");
-    }, 1000);
   }
 
   function renderBlitzQuestion() {

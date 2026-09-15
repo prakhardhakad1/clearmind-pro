@@ -16,6 +16,10 @@
   let activeAudio = null;
   let cachedCheatSheets = {};
   let awardedCheatSheetTopics = new Set();
+  const examLoadState = { sequence: 0, pending: null, languages: new Map() };
+  const blitzLoadState = { sequence: 0, pending: null };
+  const flashcardsLoadState = { sequence: 0, pending: null, languages: new Map() };
+  const featureErrors = new WeakMap();
 
   // Purge any stale generic topic defaults from localStorage
   if (
@@ -1905,66 +1909,144 @@
     }
   }
 
+  function finishFeatureLoad(state, request) {
+    if (request.ticket != null) {
+      request.skeleton.clear(request.host, request.ticket);
+      request.ticket = null;
+    }
+    if (state.pending === request) state.pending = null;
+  }
+
+  function cancelFeatureLoad(state) {
+    state.sequence += 1;
+    if (state.pending) finishFeatureLoad(state, state.pending);
+  }
+
+  function beginFeatureLoad(state, host, topic, language) {
+    cancelFeatureLoad(state);
+    const request = { sequence: state.sequence, host, topic, language, ticket: null, skeleton: window.CMSkeleton };
+    state.pending = request;
+    return request;
+  }
+
+  function showFeatureLoading(request, label) {
+    if (request.host && typeof request.skeleton?.show === "function" && typeof request.skeleton?.clear === "function") {
+      request.ticket = request.skeleton.show(request.host, 3, label);
+    }
+  }
+
+  function isCurrentFeatureLoad(state, request) {
+    return state.pending === request && state.sequence === request.sequence &&
+      activeTopic === request.topic && activeLanguage === request.language;
+  }
+
+  function clearFeatureError(host) {
+    if (!host) return;
+    const error = featureErrors.get(host);
+    if (!error) return;
+    error.notice.remove();
+    error.hiddenChildren.forEach((child) => child.classList.remove("hidden"));
+    featureErrors.delete(host);
+  }
+
+  function showFeatureError(host, message, actions, hideContent = false) {
+    if (!host) return;
+    clearFeatureError(host);
+    const hiddenChildren = hideContent ? Array.from(host.children).filter((child) => !child.classList.contains("hidden")) : [];
+    hiddenChildren.forEach((child) => child.classList.add("hidden"));
+    const notice = document.createElement("div");
+    notice.className = "p-4 rounded-2xl glass-strong border border-rose-500/30 space-y-3 text-sm text-slate-200";
+    notice.setAttribute("role", "alert");
+    const text = document.createElement("p");
+    text.textContent = message;
+    notice.appendChild(text);
+    const buttons = document.createElement("div");
+    buttons.className = "flex flex-wrap gap-2";
+    actions.forEach(({ label, onClick }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "px-4 py-2 rounded-xl glass border border-white/10 text-xs font-bold hover:bg-white/10 transition cursor-pointer";
+      button.textContent = label;
+      button.addEventListener("click", onClick);
+      buttons.appendChild(button);
+    });
+    notice.appendChild(buttons);
+    host.prepend(notice);
+    featureErrors.set(host, { notice, hiddenChildren });
+  }
+
   async function loadExamCheatSheet(forceRegenerate = false) {
     const emptyState = document.getElementById("examNoTopicEmptyState");
     const content = document.getElementById("examSheetContentContainer");
 
     if (!hasActiveTopic()) {
+      cancelFeatureLoad(examLoadState);
+      clearFeatureError(content);
       if (emptyState) emptyState.classList.remove("hidden");
       if (content) content.classList.add("hidden");
       return;
     }
 
+    const requestedTopic = activeTopic;
+    const requestedLanguage = activeLanguage;
     if (emptyState) emptyState.classList.add("hidden");
     if (content) content.classList.remove("hidden");
+    if (examLoadState.pending?.topic === requestedTopic && examLoadState.pending.language === requestedLanguage) return;
+    cancelFeatureLoad(examLoadState);
+    clearFeatureError(content);
 
     const title = document.getElementById("examSheetTopicTitle");
-    if (title) {
-      title.innerHTML = `<span>⚡</span> <span>${escapeHtml(activeTopic)} Cheat Sheet</span>`;
-    }
-
-    if (!forceRegenerate && cachedCheatSheets[activeTopic]) {
-      renderExamCheatSheetData(cachedCheatSheets[activeTopic]);
+    if (title) title.textContent = `${requestedTopic} Cheat Sheet`;
+    const cached = examLoadState.languages.get(requestedTopic) === requestedLanguage ? cachedCheatSheets[requestedTopic] : null;
+    if (!forceRegenerate && cached) {
+      renderExamCheatSheetData(cached);
       return;
     }
 
-    const trap = document.getElementById("examTrapWarningText");
-    const mnem = document.getElementById("examMnemonicText");
-    const q5 = document.getElementById("exam5MarkQuestionText");
-    if (trap) trap.textContent = "Synthesizing examiner traps & formulas...";
-    if (mnem) mnem.textContent = "Generating rapid memory mnemonic...";
-    if (q5) q5.textContent = "Extracting guaranteed 5-mark question...";
-
+    const request = beginFeatureLoad(examLoadState, content, requestedTopic, requestedLanguage);
     try {
+      showFeatureLoading(request, `Generating cheat sheet for ${requestedTopic}`);
       const res = await fetch("/api/exam-cheat-sheet", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Gemini-Key": localStorage.getItem("clearmind_gemini_key") || "" },
         body: JSON.stringify({
-          topic: activeTopic,
-          language: activeLanguage,
+          topic: requestedTopic,
+          language: requestedLanguage,
           level: studentProfile.level || "College / University"
         })
       });
 
       if (!res.ok) throw new Error("Cheat sheet request failed");
       const d = await res.json();
-      cachedCheatSheets[activeTopic] = d;
+      if (!isCurrentFeatureLoad(examLoadState, request)) return;
+      if (!d || typeof d !== "object" || Array.isArray(d) || d.error || !Object.keys(d).length) {
+        throw new Error("No cheat sheet was returned");
+      }
       renderExamCheatSheetData(d);
+      cachedCheatSheets[requestedTopic] = d;
+      examLoadState.languages.set(requestedTopic, requestedLanguage);
 
       // Award XP once per session for this topic
-      if (!awardedCheatSheetTopics.has(activeTopic)) {
-        awardedCheatSheetTopics.add(activeTopic);
+      if (!awardedCheatSheetTopics.has(requestedTopic)) {
+        awardedCheatSheetTopics.add(requestedTopic);
         addXP(50);
         bumpStreak();
         playSound("fanfare");
         if (typeof confetti === "function") {
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
         }
-        showToast("⚡ Real Exam Cheat Sheet Generated! +50 XP Earned", "success");
+        showToast("Real Exam Cheat Sheet Generated! +50 XP Earned", "success");
       }
     } catch (e) {
+      if (!isCurrentFeatureLoad(examLoadState, request)) return;
       console.warn("Cheat sheet error:", e);
-      showToast("Could not generate cheat sheet from AI.", "error");
+      if (cached) renderExamCheatSheetData(cached);
+      showFeatureError(content, cached ? "Could not refresh this cheat sheet. Your previous sheet is still available." : "Could not generate this cheat sheet. Please try again.", [
+        { label: "Retry", onClick: () => loadExamCheatSheet(true) },
+        { label: "Back to canvas", onClick: () => window.switchCanvasTab("live") }
+      ], !cached);
+    } finally {
+      finishFeatureLoad(examLoadState, request);
     }
   }
 

@@ -67,15 +67,17 @@ img, svg, video, canvas, iframe, pre, code, table,
   max-width: 100%;
 }
 
-/* Long unbroken strings (URLs, base64, long equations) must wrap, not scroll. */
-#chatMessagesContainer,
-.chat-bubble,
-.bento-card,
-.glass,
-.cmd-palette-box {
+/* Wrap content, not every glass control: wrapping buttons produced one-letter
+   vertical labels when the header ran out of room. Equations scroll locally. */
+#chatMessagesContainer, .chat-bubble, .bento-card, .cmd-palette-box {
+  min-width: 0;
   overflow-wrap: anywhere;
-  word-break: break-word;
+  word-break: normal;
 }
+button, .global-nav-link, .canvas-tab-btn { word-break: normal; }
+#chatMessagesContainer > div > div { min-width: 0; }
+#chatMessagesContainer .katex { overflow-wrap: normal; word-break: normal; }
+.cm-dialog-open { overflow: hidden !important; }
 
 /* Tap delay removal — every clickable element. */
 button, a, [role="button"], input, select, textarea, summary, label {
