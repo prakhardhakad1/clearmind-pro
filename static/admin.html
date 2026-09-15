@@ -6,8 +6,7 @@
   <title>ClearMind Pro — Admin Access Gate</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Polish layer: loaded after Tailwind so it can override runtime utilities -->
-  <link rel="stylesheet" href="/polish.css?v=1.0" />
+  <!-- UI overrides are loaded after the base styles below. -->
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -22,6 +21,7 @@
     }
   </script>
   <link rel="stylesheet" href="/style.css?v=32.0" />
+  <link rel="stylesheet" href="/polish.css?v=2.0" />
   <style>
     body { background-color: #050714; color: #ebeef8; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
     .glass-card { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -489,6 +489,6 @@
       document.getElementById('personaFilterSelect')?.addEventListener('change', applyFilters);
     });
   </script>
-  <script src="/polish.js?v=1.0" defer></script>
+  <script src="/polish.js?v=2.0" defer></script>
 </body>
 </html>

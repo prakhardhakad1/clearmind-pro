@@ -28,8 +28,7 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Polish layer: loaded after Tailwind so it can override runtime utilities -->
-  <link rel="stylesheet" href="/polish.css?v=1.0" />
+  <!-- UI overrides are loaded after the base styles below. -->
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -68,6 +67,7 @@
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="/style.css?v=32.0" />
+  <link rel="stylesheet" href="/polish.css?v=2.0" />
   <!-- KaTeX for Scientific & Mathematical Formula Typography -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -1672,6 +1672,7 @@
           window.location.replace("/?onboard=1");
           return;
         }
+        var pModal = document.getElementById("profileModal");
         var cBtn = document.getElementById("closeProfileModal");
         if (cBtn) {
           cBtn.addEventListener("click", function() {
@@ -1815,6 +1816,6 @@
 
   <!-- App Core JS -->
   <script src="/app.js?v=38.0"></script>
-  <script src="/polish.js?v=1.0" defer></script>
+  <script src="/polish.js?v=2.0" defer></script>
 </body>
 </html>

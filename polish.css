@@ -125,60 +125,55 @@ button, a, [role="button"], input, select, textarea, summary, label {
 }
 
 /* ---------- 4. Bottom sheets (mobile) ----------------------------------- */
+.cm-sheet-handle { display: none; }
 @media (max-width: 767px) {
-  #profileModal:not(.hidden),
-  #authModal:not(.hidden),
-  #onboardingModal:not(.hidden),
-  #cmdPaletteModal:not(.hidden),
-  #shortcutsModal:not(.hidden) {
+  #profileModal:not(.hidden), #authModal.active, #onboardingModal.active,
+  #cmdPaletteModal:not(.hidden), #shortcutsModal:not(.hidden) {
     align-items: flex-end !important;
     justify-content: center !important;
     padding: 0 !important;
     background: rgba(2, 4, 12, 0.72) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
-    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
-
-  #profileModal > div:first-child,
-  #authModal > .modal-card,
-  #onboardingModal > .modal-card,
-  #onboardingModal > div:first-child,
-  #cmdPaletteModal > div,
-  #shortcutsModal > div:not(#shortcutsModalBackdrop) {
+  /* Explicit panels only. Never animate/style a modal backdrop as a sheet. */
+  #profileModal > .cm-sheet-panel, #authModal > .cm-sheet-panel,
+  #onboardingModal > .cm-sheet-panel, #cmdPaletteModal > .cm-sheet-panel,
+  #shortcutsModal > .cm-sheet-panel {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 90dvh !important;
+    max-height: min(90dvh, calc(var(--cm-viewport-height, 100dvh) - 12px)) !important;
     margin: 0 !important;
-    border-radius: 26px 26px 0 0 !important;
+    border-radius: 24px 24px 0 0 !important;
     border-bottom: 0 !important;
-    padding-bottom: calc(1.25rem + var(--cm-sab)) !important;
+    padding-bottom: calc(16px + var(--cm-sab)) !important;
     overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    animation: cm-sheet-in 0.3s var(--cm-spring) both;
-    box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.55),
-                0 0 0 1px var(--cm-line) !important;
+    box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.4) !important;
+    transform: none;
   }
-
-  /* Drag handle affordance. */
-  #profileModal > div:first-child::before,
-  #authModal > .modal-card::before,
-  #onboardingModal > .modal-card::before,
-  #cmdPaletteModal > div::before,
-  #shortcutsModal > div:not(#shortcutsModalBackdrop)::before {
-    content: "";
-    display: block;
-    width: 44px;
-    height: 4px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.3);
-    margin: 0.5rem auto 0.75rem;
-    flex: 0 0 auto;
+  #authModal > .cm-sheet-panel, #profileModal > .cm-sheet-panel,
+  #shortcutsModal > .cm-sheet-panel { overflow-y: auto !important; }
+  #onboardingModal > .cm-sheet-panel { height: 90dvh !important; }
+  #onboardingModal .modal-body-scroll, #cmdPaletteResults { min-height: 0; overscroll-behavior: contain; }
+  .cm-sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 48px;
+    width: 100%;
+    min-height: 48px;
+    margin: 0;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    touch-action: none;
+    cursor: grab;
   }
-
-  #cmdPaletteModal {
-    align-items: flex-end !important;
-    padding-top: 8dvh !important;
-  }
+  .cm-sheet-handle > span { width: 44px; height: 4px; background: #7e8aa7; border-radius: 99px; }
+  .cm-sheet-handle:active { cursor: grabbing; transform: none !important; }
+  #authModal.active > .cm-sheet-panel, #onboardingModal.active > .cm-sheet-panel,
+  #profileModal:not(.hidden) > .cm-sheet-panel, #cmdPaletteModal:not(.hidden) > .cm-sheet-panel,
+  #shortcutsModal:not(.hidden) > .cm-sheet-panel { animation: cm-sheet-in 220ms var(--cm-ease); }
 }
 
 @keyframes cm-sheet-in {
@@ -197,7 +192,7 @@ button, a, [role="button"], input, select, textarea, summary, label {
       background-color 0.2s var(--cm-ease),
       border-color 0.2s var(--cm-ease),
       opacity 0.2s var(--cm-ease);
-    will-change: transform;
+    /* Avoid permanently promoting every card/control to a GPU layer. */
   }
 }
 
@@ -212,17 +207,10 @@ button, a, [role="button"], input, select, textarea, summary, label {
   .lift:active {
     transform: scale(0.955);
   }
-  .bento-card:active, .glass:active {
-    transform: scale(0.99);
-  }
 }
-.card-3d-inner, .card-3d-front, .card-3d-back,
-.motion-stage-canvas, #galaxyCanvas, canvas {
-  will-change: auto !important;
-}
-.card-3d-inner:active, .motion-stage-canvas:active, canvas:active {
-  transform: none !important;
-}
+/* Never transform a whole glass panel or override a flashcard's flipped state.
+   Their existing transforms, canvas sizing and audio animation stay owned by
+   the original feature code. */
 
 /* Focus rings: visible for keyboards, quiet for mouse/touch. */
 :focus-visible {
@@ -257,10 +245,25 @@ button, a, [role="button"], input, select, textarea, summary, label {
 .cm-skeleton-line { height: 12px; margin: 9px 0; }
 .cm-skeleton-line:last-child { width: 62%; }
 
+.cm-loading-host { position: relative; min-height: 180px; }
+.cm-loading-overlay {
+  position: absolute; inset: 0; z-index: 15; min-height: 180px;
+  border: 1px solid var(--cm-line); border-radius: 20px;
+  padding: 24px; background: rgba(12, 14, 23, 0.97);
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+.cm-loading-caption { color: #dce3f4; font-size: 14px; line-height: 1.5; margin-bottom: 14px; }
+.cm-feature-error { border: 1px solid #9f664b; border-radius: 16px; padding: 16px; color: #ffe1c9; background: #271b20; }
+.cm-feature-error button { min-height: 48px; padding: 10px 16px; border: 1px solid #ac7b67; border-radius: 12px; margin-top: 12px; }
+
 /* Upgrade the existing Luna typing bubble into a shimmering skeleton card.
    Pure CSS — no JS change, DOM untouched. */
 #lunaTypingIndicator .glass {
-  min-width: 190px;
+  min-width: 0;
+  width: min(240px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   padding-block: 0.85rem !important;
 }
 #lunaTypingIndicator .glass::before {
@@ -496,7 +499,82 @@ aside.hidden.sm\:flex {
   box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* ---------- 11. Reduced motion ------------------------------------------- */
+/* ---------- 11. Measured viewport and touch corrections ------------------- */
+#globalNavbar > div, #topWorkspaceNav, #pageClassroom > main,
+#leftChatSection, #rightCanvasSection, #chatMessageInput { min-width: 0; }
+#topWorkspaceNav { flex-shrink: 1; max-width: 100%; }
+#chatInputForm { gap: 6px; }
+#chatMessageInput { width: 0; min-width: 0; line-height: 1.5; }
+#chatStreamHeader { gap: 12px; }
+#chatStreamHeader > div:first-child { flex: 1; min-width: 0; }
+#chatStreamHeader > div:first-child > div:last-child { min-width: 0; }
+#chatStreamHeader > div:first-child > div:last-child > div:first-child { flex-wrap: wrap; }
+#chatStreamHeader > div:last-child { flex-shrink: 0; }
+#chatStreamHeader h2 { min-width: 0; flex-wrap: wrap; }
+#chatActiveTopic { overflow-wrap: anywhere; }
+#teachingModeBtn, #chatPersonaBadge { white-space: nowrap; }
+@media (min-width: 1024px) and (max-width: 1535px) {
+  #globalNavbar > div { flex-wrap: wrap; }
+  #topWorkspaceNav { order: 3; width: 100%; justify-content: center; }
+  #globalNavbar > div > div:last-child { margin-left: auto; }
+}
+@media (min-width: 1024px) {
+  #leftChatSection, #rightCanvasSection {
+    height: calc(100dvh - var(--cm-navbar-height, 74px) - 32px);
+    min-height: 420px;
+  }
+  #pageClassroom { min-height: 0; }
+  #chatStreamHeader { flex-wrap: wrap; }
+}
+@media (max-width: 1023px) {
+  body.cm-app { height: var(--cm-viewport-height, 100dvh) !important; min-height: 0 !important; max-height: var(--cm-viewport-height, 100dvh) !important; }
+  body.cm-app #workspacePages { height: auto !important; padding: 0 !important; }
+  body.cm-app #pageClassroom { padding: 4px 8px 0 !important; }
+  #pageClassroom > aside { display: none !important; }
+  #chatStreamHeader { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+  #chatStreamHeader > div:last-child { margin-left: auto; }
+  #chatStreamHeader > div:first-child { flex-basis: 100%; }
+  #chatStreamHeader h2 { font-size: 13px; }
+  #chatStreamHeader h2 #chatActiveTopic { font-family: inherit; font-style: normal; font-size: 13px; }
+  #chatStreamHeader > div:first-child > div:last-child > div:first-child > span { white-space: nowrap; }
+  #chatStreamHeader > div:first-child > div:last-child > div:last-child p { font-size: 11px; }
+  #leftChatSection #chatMessagesContainer > div { max-width: 100% !important; }
+  #chatMessagesContainer .glass { padding: 12px !important; font-size: 14px; }
+  #chatMessageInput { font-size: 16px !important; }
+  #chatSendBtn, #chatMicBtn, label[for="chatPhotoInput"] {
+    min-width: 48px !important; min-height: 48px !important;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #chatInputBarContainer { padding: 6px 6px max(8px, env(safe-area-inset-bottom)) !important; }
+  #chatInputForm { padding: 4px !important; }
+  #suggestedChipsDock { padding: 4px 8px; }
+  #suggestedChipsDock button { white-space: nowrap; }
+  #mobileWorkspaceSegment { order: 2; margin: 4px 0 0 !important; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  #pageClassroom > main { order: 1; }
+  .cm-keyboard-open #suggestedChipsDock, .cm-keyboard-open #mobileWorkspaceSegment { display: none !important; }
+  .cm-keyboard-open #chatStreamHeader { display: none; }
+  #chatStreamHeader, #leftChatSection, #rightCanvasSection { backdrop-filter: none !important; }
+}
+@media (max-width: 767px) {
+  #globalNavbar > div > div:first-child { gap: 8px; min-width: 0; }
+  #globalNavbar > div > div:first-child > a { gap: 6px; min-width: 0; flex: 1; }
+  #globalNavbar > div > div:first-child > a > div:last-child > div > span:last-child { display: none; }
+  #globalNavbar > div > div:first-child > div { gap: 4px; }
+  #globalNavbar [title="Daily Streak"], #globalNavbar [title="Total XP"] { display: none; }
+  #languageSelectMobile { max-width: 108px; min-height: 48px; font-size: 14px !important; }
+  #headerProfileBtnMobile { justify-content: center; }
+  #topWorkspaceNav a { display: inline-flex; min-width: 48px; min-height: 48px; align-items: center; }
+  #topWorkspaceNav button { white-space: nowrap; }
+  a.btn-primary, a.btn-secondary, #authModal input, #profileModal input, #profileModal select { min-height: 48px; }
+  #closeAuthModalBtn { z-index: 2; top: 12px; right: 12px; }
+  #authModal .cm-sheet-handle { width: calc(100% - 48px); }
+}
+@media print {
+  .cm-sheet-handle, .cm-loading-overlay { display: none !important; }
+  .katex, .katex-display, .katex-block { color: #111827 !important; overflow: visible !important; }
+}
+
+/* ---------- 12. Reduced motion ------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

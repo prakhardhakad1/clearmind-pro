@@ -8,8 +8,7 @@
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Polish layer: loaded after Tailwind so it can override runtime utilities -->
-  <link rel="stylesheet" href="/polish.css?v=1.0" />
+  <!-- UI overrides are loaded after the landing styles below. -->
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -46,6 +45,7 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
   <link rel="stylesheet" href="/landing.css">
+  <link rel="stylesheet" href="/polish.css?v=2.0" />
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
 
@@ -721,6 +721,6 @@
   <script src="./auth.js?v=6.0"></script>
   <script src="./onboarding.js?v=6.0"></script>
   <script src="./landing.js?v=6.0"></script>
-  <script src="/polish.js?v=1.0" defer></script>
+  <script src="/polish.js?v=2.0" defer></script>
 </body>
 </html>
