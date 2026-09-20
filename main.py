@@ -2325,8 +2325,8 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
                 speech_text=speech,
                 analogy_card=card,
                 suggested_replies=d.get("suggested_replies") or fallback_replies,
-                canvas_node_title=d.get("canvas_node_title") if det_topic else "",
-                canvas_node_summary=d.get("canvas_node_summary") if det_topic else "",
+                canvas_node_title=(d.get("canvas_node_title") or "") if det_topic else "",
+                canvas_node_summary=(d.get("canvas_node_summary") or "") if det_topic else "",
                 detected_topic=det_topic,
                 audio_base64=audio,
                 roadmap_steps=r_steps if (r_steps and isinstance(r_steps, list) and len(r_steps) > 0) else None
