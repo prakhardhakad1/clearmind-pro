@@ -2225,7 +2225,7 @@ TOPIC DETECTION & DISAMBIGUATION RULES (CRITICAL):
 You MUST respond strictly with a valid JSON object matching this schema:
 {{
   "reply_text": "Engaging conversational explanation formatted in clear markdown with bullet points and code/formula snippets",
-  "speech_text": "Punchy 1-2 sentence conversational voice script without markdown or symbols",
+  "speech_text": "Complete natural conversational voice narration explaining the full response clearly without markdown, asterisks, bullet formatting, or raw symbols",
   "analogy_card": {{
     "title": "Vivid Analogy Title (e.g. 🏍️ The Bike Speedometer or 📦 The Recipe Box)",
     "description": "Clear 1-2 sentence real-world metaphor breaking down the concept"
@@ -2288,14 +2288,18 @@ CRITICAL: Every single text field (reply_text, speech_text, analogy_card, sugges
         user_prompt=user_prompt,
         content_items=content_items,
         custom_key=request.headers.get("x-gemini-key"),
-        max_tokens=900
+        max_tokens=1500
     )
 
     if raw_json:
         d = safe_parse_json(raw_json)
         if d:
             reply = d.get("reply_text") or d.get("explanation") or d.get("content") or d.get("message") or ""
-            speech = clean_speech_text(d.get("speech_text") or reply, req.language)
+            raw_speech = (d.get("speech_text") or "").strip()
+            if not raw_speech or (len(reply) > 120 and len(raw_speech) < len(reply) * 0.65):
+                speech = clean_speech_text(reply, req.language)
+            else:
+                speech = clean_speech_text(raw_speech, req.language)
             raw_det = (d.get("detected_topic") or "").strip()
 
             invalid_topic_tokens = [

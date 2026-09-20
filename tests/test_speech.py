@@ -306,6 +306,18 @@ class SpeechAsyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls[0][0], text.strip())
         self.assertEqual(self.calls[0][1], "en-IN-PrabhatNeural")
 
+    async def test_chat_truncated_speech_text_prefers_full_reply(self):
+        teaser = "Awesome! Let's start from zero."
+        full_lesson = "Relations and functions are fundamental. " * 10
+        self.backend.execute_dual_ai_completion = AsyncMock(return_value=json.dumps({
+            "reply_text": full_lesson,
+            "speech_text": teaser,
+            "detected_topic": "Relations and Functions"
+        }))
+        response = await self.client.post("/api/chat-teach", json={"message": "Relations and Functions", "include_audio": False}, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["speech_text"], full_lesson.strip())
+
     async def test_microphone_is_same_origin_only(self):
         response = await self.post({"text": "Hello"})
         self.assertEqual(response.headers["permissions-policy"], "geolocation=(), microphone=(self), camera=()")

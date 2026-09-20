@@ -1248,7 +1248,11 @@
         </div>`;
     }
 
-    const rawSpeech = (data.speech_text || data.reply_text || "").trim();
+    let rawSpeech = (data.speech_text || "").trim();
+    const rawReply = (data.reply_text || "").trim();
+    if (!rawSpeech || (rawReply.length > 150 && rawSpeech.length < rawReply.length * 0.65)) {
+      rawSpeech = rawReply;
+    }
     const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     d.innerHTML = `
