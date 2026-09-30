@@ -1,21 +1,40 @@
-# 🌸 ClearMind Pro — Multimodal AI Human Tutor, Socratic Voice & Smart Whiteboard
+# 🌸 ClearMind Pro — Multimodal AI Master Tutor & Socratic Voice Classroom
 
-> **🏆 Submission for SPEED August AI Challenge ($1,500 Hackathon)**  
-> *Transforming how humans learn, absorb, and master complex knowledge with Multimodal AI, Real-Time Socratic Dialogue, and Adaptive Visual Diagnostics.*
+[![CodeSprint 2026](https://img.shields.io/badge/CodeSprint_2026-Elite_Coders_Submission-red?style=for-the-badge&logo=devpost)](https://codesprint-by-elitecoders.devpost.com/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel_Active-brightgreen?style=for-the-badge&logo=vercel)](https://clearmind-pro.vercel.app)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Open_Source-181717?style=for-the-badge&logo=github)](https://github.com/prakhardhakad1/clearmind-pro)
+[![Tests Passing](https://img.shields.io/badge/Tests-41%2F41_Passing-success?style=for-the-badge&logo=pytest)](https://github.com/prakhardhakad1/clearmind-pro)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+> **🚀 Official Submission for Elite Coders CodeSprint 2026**  
+> *Turning Ideas into Impactful MVPs: Democratizing elite 1-on-1 Socratic tutoring with real-time neural voice, KaTeX mathematical diagnostics, 3D memory galaxies, and vernacular Hinglish learning for millions of students.*
 
 ---
 
-## 🌟 Overview: Why ClearMind Pro Wins
+## 🌐 Live Access & Instant Demo
 
-Traditional digital learning is broken. Students read dense textbook paragraphs repeatedly with zero comprehension, memorizing keywords for exams without building mental models. When they make an error in a math or science problem, standard chatbots give a wall of text without diagnosing **where** their misconception occurred.
+- **🔗 Live Production URL:** [https://clearmind-pro.vercel.app](https://clearmind-pro.vercel.app)
+- **💻 Classroom Workspace:** [https://clearmind-pro.vercel.app/classroom](https://clearmind-pro.vercel.app/classroom)
+- **📂 Public GitHub Repository:** [https://github.com/prakhardhakad1/clearmind-pro](https://github.com/prakhardhakad1/clearmind-pro)
+- **⚡ Zero-Barrier Instant Access:** No sign-up wall required. Click **"Try Guest Demo"** or log in with one tap to explore all features immediately.
 
-**ClearMind Pro** reimagines education into an **active, intuitive, and empathetic 6-stage mastery cycle**:
-1. 💡 **Intuitive Deconstruction:** Translates complex science, math, and economics into vivid real-world analogies in **10 languages (featuring natural conversational Hinglish)**.
-2. 🎙️ **Hands-Free Socratic Voice Mode:** A live two-way conversational voice coach that doesn't just feed answers—it asks guiding questions to trigger genuine *"Aha!"* moments.
-3. 🖊️ **AI Smart Whiteboard & Misconception Marker:** Digital scratchpad where students draw or upload handwritten steps; AI marks with **Red & Green pens** to pinpoint exact cognitive flaws.
-4. 🕹️ **Generative Dynamic HTML5 Labs:** Live 60 FPS physics, particle, and chemical equilibrium sandboxes generated on-the-fly for any topic.
-5. 👦 **Feynman Reverse-Tutor Arena:** Students prove mastery by teaching a curious AI kid named *Leo*, who asks trap questions and grades clarity.
-6. 🃏 **3D Active-Recall Flashcards & Anki Export:** Spaced repetition decks with 3D flip physics, auto-scheduled review intervals, and 1-click **Anki (.CSV)** / **Markdown (.MD)** downloads.
+---
+
+## 🎯 The Problem & Social Welfare Impact
+
+### The Educational Crisis in India
+Over 250 million students in India face an intensely competitive academic landscape (CBSE, JEE, NEET, CUET, College STEM). Families spend thousands of rupees on high-pressure coaching centers where:
+1. **Passive Memorization Over Mastery:** Students memorize formulas blindly without developing true intuition or first-principles understanding.
+2. **The Language Barrier:** Millions think and speak comfortably in **Hinglish (conversational Hindi-English)**, but textbook materials and standard English tutors create cognitive friction.
+3. **Lack of Personal Diagnostics:** Traditional LLM chatbots dump unstructured walls of text without diagnosing *where* a student's misconception occurred.
+4. **The Forgetting Curve:** Without systematic spaced repetition, up to 75% of learned information decays within 48 hours (Ebbinghaus Law).
+
+### How ClearMind Pro Solves This
+ClearMind Pro transforms education from passive reading into an **active, empathetic, and intuitive multimodal dialogue**:
+- 🗣️ **Speaks & Understands Hinglish:** Explains complex science and math concepts using relatable everyday analogies in natural Hinglish, Hindi, and English.
+- 🎙️ **Hands-Free Socratic Voice Tutor:** Luna does not just hand over final answers; she guides students step-by-step with targeted hints until they reach their own *"Aha!"* moment.
+- 📐 **Visual KaTeX Math & Voice Translation:** Equations ($A \times B$, $\frac{-b \pm \sqrt{b^2-4ac}}{2a}$, $\int x dx$) are rendered cleanly on-screen and vocalized naturally in spoken audio.
+- 🌌 **Cognitive Retention Architecture:** Spaced repetition flashcards (SM-2 scheduler), 3D concept galaxy graphs, and 60-second Blitz battles eliminate the forgetting curve.
 
 ---
 
@@ -23,112 +42,202 @@ Traditional digital learning is broken. Students read dense textbook paragraphs 
 
 ```mermaid
 graph TD
-    A[Student Input: Text / Notes / Textbook Photo / Voice] --> B[FastAPI Gateway Engine]
+    User([🎓 Student]) <--> Client[💻 Frontend SPA: Tailwind Glassmorphic Bento UI + KaTeX + Web Audio API]
     
-    B --> C[Google Gemini Multimodal Vision & Reasoning]
-    B --> D[Microsoft Edge Neural Speech Synthesis Engine]
-    B --> E[Tesseract Client & Local OCR Engine]
-    
-    C --> F1[Metaphorical Simplifier & Knowledge Map]
-    C --> F2[Socratic Conversational Coach]
-    C --> F3[Step-by-Step Misconception Diagnostic Engine]
-    C --> F4[Generative 60FPS Dynamic Canvas Sandbox]
-    C --> F5[Feynman Reverse-Tutor Evaluator]
-    C --> F6[Quick Test Generator: 5-20 Qs]
+    subgraph "Edge Gateway & Application Layer"
+        Client <--> FastAPI[⚡ FastAPI Async Backend Engine]
+        FastAPI <--> TTS[🎙️ Microsoft Edge Neural Speech Pipeline: 220ms Thought Chunks]
+    end
 
-    F1 --> G[Frontend SPA: Tailwind + Mermaid.js + Web Audio SFX + Canvas]
-    F2 --> G
-    F3 --> G
-    F4 --> G
-    F5 --> G
-    F6 --> G
+    subgraph "Dual-Engine AI Intelligence"
+        FastAPI <--> DualAI{🧠 Dual-Engine AI Orchestrator}
+        DualAI -->|Primary Engine| Gemini[🤖 Google Gemini 2.5 / 3.6 Flash: Reasoning & Vision]
+        DualAI -.->|Auto-Failover| GLM[🛡️ Secondary Fallback Model: Zero-Downtime Resilience]
+    end
+
+    subgraph "Persistent Cloud Data Tier"
+        FastAPI <--> Turso[(☁️ Turso Distributed Cloud Database: Mumbai Region)]
+        FastAPI -.-> LocalDB[(💾 SQLite Fast-Cache Fallback: Zero Cold Start)]
+    end
+
+    subgraph "Pedagogical Core Engines"
+        Gemini --> Socratic[💡 Socratic Dialogue & Persona Calibration]
+        Gemini --> MathDiag[📐 LaTeX Mathematical Step Diagnostic]
+        Gemini --> Analogy[🏍️ Everyday Metaphor & Analogy Engine]
+        Gemini --> Feynman[👦 Reverse Feynman Arena: Teach Leo]
+        Gemini --> SimGen[🕹️ 60 FPS HTML5 Dynamic Simulation Generator]
+    end
 ```
 
 ---
 
-## ✨ Key Features Breakdown
+## ✨ Core Feature Highlights
 
-### 🎙️ 1. Real-Time Two-Way Socratic Voice Tutor
-- Hands-free speech recognition paired with **Microsoft Edge Neural Voice Synthesis**.
-- Instead of spoon-feeding answers, Luna uses the Socratic method: acknowledging partial truths, providing hints, and asking probing questions.
-- Dynamic understanding meter tracks student progression (*Struggling $\rightarrow$ Progressing $\rightarrow$ Mastered*).
+### 🎙️ 1. Real-Time Socratic Voice Tutor ("Luna")
+- **Continuous Two-Way Voice:** Speak directly with Luna using speech recognition and ultra-low-latency **Microsoft Edge Neural Voice Synthesis**.
+- **Complete Lesson Narration:** Luna narrates full conceptual explanations (not just 1-sentence teasers), chunking speech into natural thoughts with 220ms pauses between sentences.
+- **Natural Math Pronunciation:** Mathematical symbols, fractions, superscripts, and Greek letters are automatically translated into speakable words ($A \times B \rightarrow$ *"A cross B"*, $x^2 \rightarrow$ *"x squared"*).
+- **6 Calibrated Teaching Personas:**
+  - 🌸 **Empathetic Mentor:** Patient, warm, step-by-step scaffolding.
+  - 💡 **Socratic Guide:** Refuses to spoon-feed answers; asks probing questions.
+  - 🧠 **Feynman ELI5:** Uses zero jargon and vivid real-world metaphors.
+  - ⚡ **Blitz Exam Hacker:** Speed shortcuts, high-yield patterns, and formula mnemonics.
+  - 🔬 **First-Principles Polymath:** Rigorous mathematical proofs from basic axioms.
+  - 📋 **Strict Examiner:** Rigorous grading according to board & competitive exam rubrics.
 
-### 🖊️ 2. AI Smart Whiteboard & Red/Green Pen Diagnostic
-- Draw equations or physics diagrams directly on a digital canvas or upload notebook photos.
-- Step-by-step diagnostic breakdown:
-  - ✅ **Green Checks** for valid logic and formula identification.
-  - ❌ **Red Flags** identifying the exact line where a sign error or cognitive misconception occurred.
-  - 💡 **Memory Mnemonics / Golden Rules** to prevent future mistakes.
+### 📐 2. Step-by-Step LaTeX Diagnostics & Smart Whiteboard
+- Upload textbook photos, handwritten notebook solutions, or draw directly on the interactive canvas.
+- The visual diagnostic engine marks steps with:
+  - ✅ **Green Highlights** for validated steps and correct logic.
+  - ❌ **Red Flags** pinpointing the exact line where a sign mistake, algebraic misstep, or cognitive misconception occurred.
+  - 💡 **Golden Rules & Mnemonics** to permanently prevent recurrence.
 
-### 🕹️ 3. Generative Dynamic HTML5 Canvas Labs
-- Gemini writes self-contained 60 FPS interactive JavaScript physics/chemistry simulations on the fly.
-- Interactive parameter sliders (Velocity, Mass, Temperature, Viscosity) and clickable gravity/force fields.
-- 3 built-in experiment challenges per simulation.
+### 🌌 3. 3D Galaxy Concept Graph & Dynamic Roadmaps
+- View your knowledge landscape rendered as an interactive, connected node graph.
+- Real-time roadmap tracking highlights:
+  - 🟢 **Mastered Milestones**
+  - 🟡 **Current Active Learning Node**
+  - ⚪ **Upcoming Advanced Applications**
 
-### 🃏 4. 3D Flashcards with Spaced Repetition (SM-2) & Anki Export
-- Interactive 3D flip cards with question, answer, and hints.
-- Self-rating buttons (*Easy (7d), Good (3d), Hard (1d)*) that dynamically calculate spaced repetition review schedules.
-- 1-click export to **Anki (.CSV/TSV)**, **Markdown Study Guides**, or **Printable PDF Cheat-Sheets**.
+### 🧠 4. Active-Recall Flashcards with Ebbinghaus Spaced Repetition (SM-2)
+- 3D perspective flip cards with questions, answers, and hints.
+- Dynamic interval scheduling based on user self-evaluation (*Easy 7d, Good 3d, Hard 1d*).
+- 1-click export to **Anki (.CSV/TSV)**, **Markdown Study Guides**, or **Printable Cheat Sheets**.
 
-### 🇮🇳 5. Deep Native Multilingual Support
-- Built-in support for **Hinglish (Hindi + English in Latin script)**, English, Hindi (Devanagari), Spanish, French, German, Japanese, Chinese, Portuguese, and Arabic.
+### ⚔️ 5. 60-Second Blitz Speed Battle Arena
+- Gamified rapid-fire active recall challenges under strict countdown clocks.
+- Combo streaks, XP leveling, and leaderboard tracking to cement recall under pressure.
+
+### 👦 6. Reverse Feynman Arena ("Teach Leo")
+- The ultimate test of mastery: teach a curious, inquisitive AI middle-schooler named *Leo*.
+- Leo asks naive trap questions; Luna grades the student's teaching clarity and reveals hidden blind spots.
+
+### 🕹️ 7. Generative 60 FPS HTML5 Canvas Simulations
+- On-the-fly generation of interactive JavaScript physics, particle, and chemical equilibrium simulations tailored to the current topic with adjustable parameter sliders.
 
 ---
 
-## 🚀 Quickstart Guide
+## 🏆 CodeSprint 2026 Hackathon Alignment Matrix
+
+| Prize Category | Why ClearMind Pro is Built to Win |
+| :--- | :--- |
+| 🥇 **1st Place Overall (Grand Prize)** | **Fully Functional, End-to-End MVP:** Solves the deep cognitive and financial friction of education with multimodal AI, streaming voice, persistent cloud sync, and zero cold-start latency. |
+| 🎨 **Best UI/UX Award** | **Dark Glassmorphic Bento Grid:** Fluid Tailwind CSS architecture, KaTeX mathematical typography, animated audio waveforms, 3D card flips, celebratory confetti, and 100% mobile responsiveness without horizontal scrolling. |
+| 🌐 **Best Open Source Project** | **Production-Grade Open Source Standard:** Comprehensive documentation, clean modular code structure, MIT License, full API contract validation, and 41/41 passing automated tests. |
+| 🤝 **Best Social Welfare Project** | **Democratizing High-Yield Tutoring:** Bridges the economic and vernacular divide across India with fluent Hinglish and Hindi Socratic guidance for students from any socioeconomic background. |
+| 💡 **Best Innovation Award** | **Technical Secret Sauce:** Dual-engine AI failover orchestrator, zero-loss Web Audio API streaming, real-time LaTeX-to-speech phonetic synthesis, and automated cognitive decay scheduling. |
+
+---
+
+## 🛠️ Complete Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend Framework** | Pure modern Vanilla JavaScript (ES2024), HTML5, CSS3 |
+| **UI Design System** | Tailwind CSS, Dark-Mode Glassmorphism, Responsive Bento Grid Layout |
+| **Math & Visuals** | KaTeX (LaTeX typesetting), Mermaid.js, HTML5 Canvas, Canvas-Confetti |
+| **Audio & Voice** | Microsoft Edge Neural TTS (`edge-tts`), Web Speech Recognition, Web Audio API |
+| **Backend Engine** | FastAPI, Uvicorn, Python 3.10+, Pydantic v2 |
+| **AI Models** | Google Gemini (2.5 Flash / 3.6 Flash / 3.7 Pro) via Google GenAI SDK |
+| **AI Resilience** | Dual-Engine Orchestrator with automatic fallback to secondary LLMs |
+| **Cloud Database** | Turso Distributed SQLite (libSQL, AWS Mumbai Region) |
+| **Deployment & Hosting** | Vercel Serverless Functions (`api/index.py`), Global Edge CDN |
+
+---
+
+## 🧪 Rigorous Automated Testing Suite
+
+ClearMind Pro is engineered with test-driven quality assurance across both Python backend and JavaScript client audio pipelines:
+
+```bash
+# 1. Run Python Backend & Speech Suite (25 Tests)
+python -m unittest tests/test_speech.py
+
+# 2. Run Client Audio Playback & Controller Suite (16 Tests)
+node tests/test_playback.cjs
+```
+
+### Test Coverage Highlights:
+- ✅ **Complete Narration Test:** Verifies that `/api/chat-teach` never truncates speech to short teasers and vocalizes the entire lesson.
+- ✅ **LaTeX Math Translation:** Verifies math symbols, powers, roots, and fractions are correctly synthesized into natural spoken words.
+- ✅ **Global Concurrency & Rate Limiting:** Verifies shared token buckets and graceful HTTP 429/503 handling without retry storms.
+- ✅ **Zero Race Conditions:** Simulates audio interruptions, mic muting, typing interruptions, and rapid session changes.
+- ✅ **Asset Parity Assurance:** Verifies bit-for-bit identity between root and static frontend files.
+
+---
+
+## 🚀 Local Setup & Installation
 
 ### Prerequisites
-- Python 3.10+
-- A Google Gemini API Key ([Get a free key here](https://aistudio.google.com/))
+- Python 3.10 or higher
+- Node.js 18+ (for running client test suites)
+- Google Gemini API Key ([Get a free key at Google AI Studio](https://aistudio.google.com/))
 
-### 1. Clone the repository
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/clearmind-pro.git
+git clone https://github.com/prakhardhakad1/clearmind-pro.git
 cd clearmind-pro
 ```
 
-### 2. Install dependencies
+### 2. Set Up Virtual Environment & Dependencies
 ```bash
+# Create and activate virtual environment
+python -m venv venv
+
+# On Windows:
+venv\Scripts\activate
+# On macOS / Linux:
+source venv/bin/activate
+
+# Install required packages
 pip install -r requirements.txt
 ```
 
-### 3. Configure API Key
-Create a `.env` file or export your key:
+### 3. Configure Environment Variables
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+Fill in your keys:
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=your_google_gemini_api_key
 GEMINI_MODEL=gemini-3.6-flash
+TURSO_DB_URL=your_turso_db_url
+TURSO_AUTH_TOKEN=your_turso_token
+ADMIN_SESSION_SECRET=your_admin_secret_string
+STUDENT_SESSION_SECRET=your_student_secret_string
+ADMIN_PASSWORD=your_admin_password
 ```
 
-### 4. Launch the application
+### 4. Run the Development Server
 ```bash
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
-Open **`http://127.0.0.1:8000`** in your browser!
+Navigate to **`http://127.0.0.1:8000`** in your browser.
 
 ---
 
-## 🛠️ Tech Stack
+## 🗺️ Product Roadmap
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Backend** | FastAPI, Uvicorn, Pydantic v2, Python-dotenv |
-| **AI / Multimodal** | Google Gemini (3.6 / 3.7 / 2.5 Flash), Google GenAI SDK |
-| **Voice & Speech** | Microsoft Edge Neural TTS (`edge-tts`), Web Speech Recognition API |
-| **Vision & OCR** | Gemini Multimodal Vision, Tesseract.js, EasyOCR / Pillow |
-| **Frontend UI** | Modern HTML5, Tailwind CSS, Mermaid.js, Canvas Confetti, Web Audio Synth API |
+- [x] Multimodal Vision & Handwritten Note OCR
+- [x] Streaming Microsoft Edge Neural Speech with 220ms thought chunking
+- [x] KaTeX LaTeX mathematical typesetting and voice conversion
+- [x] Dual-engine AI failover resilience
+- [x] Distributed cloud sync via Turso Database
+- [x] 6 Calibrated pedagogical personas & Hinglish language support
+- [ ] Progressive Web App (PWA) with offline offline flashcard caching
+- [ ] Collaborative Peer-to-Peer Blitz Battles via WebSockets
+- [ ] Educator Analytics Dashboard for tracking student cognitive decay metrics
 
 ---
 
-## 🏆 Hackathon Alignment (SPEED August AI Challenge)
+## 👥 Authors & Acknowledgments
 
-| Criteria (25 Pts Each) | How ClearMind Pro Dominates |
-| :--- | :--- |
-| **Educational Impact (25/25)** | Solves cognitive overload, language barriers (Hinglish), and passive memorization with the Feynman Technique, Socratic dialogue, and Red/Green pen error diagnostics. |
-| **Creative AI/ML (25/25)** | Multimodal pipeline combining Vision OCR, real-time Socratic voice reasoning, dynamic 60 FPS code generation, and adaptive difficulty scaling. |
-| **Technical Execution (25/25)** | Clean asynchronous FastAPI backend, zero external audio asset dependencies (pure Web Audio SFX synth), instantaneous Neural TTS streaming, and responsive dark/light UI. |
-| **Pitch & Demo (25/25)** | High-energy, problem-solution storytelling video showcasing active student learning in under 120 seconds. |
+- **Lead Developer & Creator:** Prakhar Dhakad ([@prakhardhakad1](https://github.com/prakhardhakad1))
+- **Hackathon:** Built with ❤️ for **Elite Coders CodeSprint 2026**
+- **Inspiration:** Dedicated to every student striving for conceptual mastery over rote memorization.
 
 ---
 
 ## 📄 License
-MIT License. Built with ❤️ for educators and students worldwide.
+This project is open-source under the [MIT License](LICENSE).
