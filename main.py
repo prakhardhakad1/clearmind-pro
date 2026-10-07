@@ -2829,9 +2829,68 @@ async def get_polish_css():
 async def get_polish_js():
     return FileResponse(os.path.join(STATIC_DIR, "polish.js"), media_type="application/javascript")
 
+# ClearMind Pro Advanced Subsystem Pages
+@app.get("/study-planner")
+@app.get("/study_planner.html")
+@app.get("/planner")
+async def get_study_planner_page():
+    return FileResponse(os.path.join(STATIC_DIR, "study_planner.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache", "Expires": "0"
+    })
+
+@app.get("/leaderboard")
+@app.get("/leaderboard.html")
+@app.get("/arena")
+async def get_leaderboard_page():
+    return FileResponse(os.path.join(STATIC_DIR, "leaderboard.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache", "Expires": "0"
+    })
+
+@app.get("/teacher")
+@app.get("/teacher.html")
+@app.get("/teacher-portal")
+@app.get("/teacher_portal.html")
+async def get_teacher_portal_page():
+    return FileResponse(os.path.join(STATIC_DIR, "teacher_portal.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache", "Expires": "0"
+    })
+
+@app.get("/parent")
+@app.get("/parent.html")
+@app.get("/parent-dashboard")
+@app.get("/parent_dashboard.html")
+async def get_parent_dashboard_page():
+    return FileResponse(os.path.join(STATIC_DIR, "parent_dashboard.html"), headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache", "Expires": "0"
+    })
+
+@app.get("/study_planner.js")
+async def get_study_planner_js():
+    return FileResponse(os.path.join(STATIC_DIR, "study_planner.js"), media_type="application/javascript")
+
+@app.get("/offline_pwa.js")
+async def get_offline_pwa_js():
+    return FileResponse(os.path.join(STATIC_DIR, "offline_pwa.js"), media_type="application/javascript")
+
+@app.get("/i18n_locales.js")
+async def get_i18n_locales_js():
+    return FileResponse(os.path.join(STATIC_DIR, "i18n_locales.js"), media_type="application/javascript")
+
 @app.get("/manifest.json")
 async def get_manifest():
     return FileResponse(os.path.join(STATIC_DIR, "manifest.json"), media_type="application/json")
+
+# Mount API Extension Router
+try:
+    from api_extensions import api_router
+    app.include_router(api_router, prefix="/api")
+    logger.info("Successfully mounted api_extensions router onto /api prefix.")
+except Exception as _e_mount:
+    logger.warning(f"Note: api_extensions mounting deferred: {_e_mount}")
 
 # Mount /static directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")

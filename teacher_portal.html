@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <title>ClearMind Pro — Teacher Portal & Academic Intelligence Cockpit</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080c" />
+
+  <!-- Google Fonts: Plus Jakarta Sans, Instrument Serif, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e17',
+              850: '#111422',
+              800: '#171b2d',
+              750: '#1e233a',
+              700: '#272e4b',
+              600: '#38426b'
+            },
+            electric: {
+              cyan: '#06b6d4',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(12, 14, 23, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 66, 107, 0.6); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.8); }
+
+    /* Glass Panels */
+    .glass-card {
+      background: rgba(17, 20, 34, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+    .glass-input {
+      background: rgba(12, 14, 23, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+      outline: none;
+    }
+
+    /* Heatmap Cells */
+    .heat-mastered { background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+    .heat-moderate { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
+    .heat-critical { background: rgba(244, 63, 94, 0.25); border-color: rgba(244, 63, 94, 0.5); color: #fb7185; }
+
+    /* Radial Background */
+    .bg-teacher-radial {
+      background:
+        radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 90% 30%, rgba(6, 182, 212, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        #07080c;
+    }
+  </style>
+</head>
+
+<body class="bg-teacher-radial text-slate-100 min-h-screen font-sans antialiased selection:bg-violet-500/30 selection:text-violet-200">
+
+  <!-- ========================================================================= -->
+  <!-- Top Navigation Header -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-obsidian-950/85 border-b border-white/10 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Hub Links -->
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25 group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <div class="leading-none">
+            <span class="text-lg font-extrabold tracking-tight text-white group-hover:text-violet-300 transition-colors">ClearMind <span class="text-violet-400 font-serif italic text-base">Pro</span></span>
+            <span class="block text-[10px] font-mono tracking-wider uppercase text-violet-400/80">Teacher Intelligence Portal</span>
+          </div>
+        </a>
+
+        <!-- Section Navigation -->
+        <nav class="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-obsidian-900/80 px-3 py-1.5 rounded-full border border-white/5">
+          <a href="/app" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Classroom</a>
+          <span class="text-slate-600">•</span>
+          <a href="/study-planner" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Study Planner</a>
+          <span class="text-slate-600">•</span>
+          <a href="/leaderboard" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Leaderboard</a>
+          <span class="text-slate-600">•</span>
+          <a href="/teacher" class="text-violet-400 font-semibold bg-white/5 px-2.5 py-1 rounded-md">Teacher Portal</a>
+          <span class="text-slate-600">•</span>
+          <a href="/parent" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Parent View</a>
+        </nav>
+      </div>
+
+      <!-- Right Controls: Class Selector & Generate Assignment CTA -->
+      <div class="flex items-center gap-3">
+        <!-- Active Class Dropdown -->
+        <select id="activeClassSelect" onchange="onClassChange()" class="glass-input rounded-xl px-3 py-1.5 text-xs text-white">
+          <option value="phys101">AP Physics C (Section A - 34 Students)</option>
+          <option value="chem202">Organic Chemistry Honors (28 Students)</option>
+          <option value="calc303">Calculus BC Advanced (31 Students)</option>
+        </select>
+
+        <!-- Generate Assignment Button -->
+        <button onclick="openAssignmentModal()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white font-bold text-xs tracking-wide shadow-lg shadow-violet-500/25 flex items-center gap-1.5 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>AI Assignment Gen</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- Main Application Body -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8">
+
+    <!-- Top Stats Row: Key Class Performance Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- Metric 1: Class Average Mastery -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <span class="text-[11px] font-mono uppercase text-slate-400">Class Average Mastery</span>
+        <div class="flex items-baseline justify-between">
+          <span id="statClassMastery" class="text-2xl font-black text-emerald-400 font-mono">84.2%</span>
+          <span class="text-xs text-emerald-400 font-mono">+4.1% this week</span>
+        </div>
+        <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-emerald-400 h-full rounded-full" style="width: 84.2%"></div>
+        </div>
+      </div>
+
+      <!-- Metric 2: Weekly Engagement Time -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <span class="text-[11px] font-mono uppercase text-slate-400">Total Study Time</span>
+        <div class="flex items-baseline justify-between">
+          <span id="statTotalStudyHours" class="text-2xl font-black text-cyan-400 font-mono">312.5 hrs</span>
+          <span class="text-xs text-slate-400 font-mono">9.2h / student avg</span>
+        </div>
+        <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-cyan-400 h-full rounded-full" style="width: 76%"></div>
+        </div>
+      </div>
+
+      <!-- Metric 3: Critical Interventions -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <span class="text-[11px] font-mono uppercase text-slate-400">Intervention Alerts</span>
+        <div class="flex items-baseline justify-between">
+          <span id="statInterventionCount" class="text-2xl font-black text-rose-400 font-mono">3 Students</span>
+          <span class="text-xs text-rose-400 font-mono">Requires attention</span>
+        </div>
+        <div class="text-[11px] text-slate-400 truncate">Flagged: Rotational Dynamics misconceptions</div>
+      </div>
+
+      <!-- Metric 4: Submissions Pending Grading -->
+      <div class="glass-card rounded-2xl p-4 space-y-2">
+        <span class="text-[11px] font-mono uppercase text-slate-400">AI Pre-Graded Tasks</span>
+        <div class="flex items-baseline justify-between">
+          <span id="statPendingGrading" class="text-2xl font-black text-amber-400 font-mono">18 / 34</span>
+          <button onclick="switchTab('grading')" class="text-xs text-amber-400 font-mono underline">Review All</button>
+        </div>
+        <div class="text-[11px] text-slate-400 truncate">Avg AI Grading Confidence: 97.4%</div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- Navigation Tabs (Roster vs Curriculum Heatmap vs AI Grading vs Analytics) -->
+    <!-- ========================================================================= -->
+    <div class="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
+      <button id="tabBtnRoster" onclick="switchTab('roster')" class="px-4 py-2 rounded-xl text-xs font-bold bg-violet-600/20 text-violet-300 border border-violet-500/30 transition-all">
+        Student Roster & Profiles
+      </button>
+      <button id="tabBtnHeatmap" onclick="switchTab('heatmap')" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+        Curriculum Knowledge Heatmap
+      </button>
+      <button id="tabBtnGrading" onclick="switchTab('grading')" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+        AI Automated Grading Suite
+      </button>
+      <button id="tabBtnInterventions" onclick="switchTab('interventions')" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+        Targeted Student Interventions
+      </button>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: Student Roster & Live Diagnostic Standings -->
+    <!-- ========================================================================= -->
+    <div id="tabContentRoster" class="space-y-4">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-white">Class Roster & Individual Diagnostics</h2>
+            <p class="text-xs text-slate-400">Real-time mastery scores, retention risk indexes, and active weekly study hours.</p>
+          </div>
+          <!-- Search & Export -->
+          <div class="flex items-center gap-2">
+            <input id="rosterSearchInput" oninput="filterRoster()" type="text" placeholder="Search student name..." class="glass-input rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500" />
+            <button onclick="exportGradebookCSV()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-mono flex items-center gap-1.5 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Student Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="text-slate-400 uppercase tracking-wider border-b border-white/10 pb-2">
+              <tr>
+                <th class="py-2.5 px-3">Student Name</th>
+                <th class="py-2.5 px-3">Mastery</th>
+                <th class="py-2.5 px-3">Weekly Hours</th>
+                <th class="py-2.5 px-3">Retention Risk</th>
+                <th class="py-2.5 px-3">Critical Weak Area</th>
+                <th class="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rosterTableBody" class="divide-y divide-white/5">
+              <!-- Dynamically populated via renderRoster() -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: Curriculum Knowledge Heatmap -->
+    <!-- ========================================================================= -->
+    <div id="tabContentHeatmap" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-white">Curriculum Concept Mastery Matrix</h2>
+            <p class="text-xs text-slate-400">Class comprehension breakdown across the entire official syllabus. Click any cell to inspect student misconceptions.</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-400"></span> >85% Mastered</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-400"></span> 65-84% Moderate</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-rose-400"></span> <65% Critical Bottleneck</span>
+          </div>
+        </div>
+
+        <!-- Heatmap Grid Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="heatmapGridContainer">
+          <!-- Populated dynamically via renderHeatmap() -->
+        </div>
+
+        <!-- Misconception Detail Card (Shown when a cell is clicked) -->
+        <div id="misconceptionDetailCard" class="hidden p-5 rounded-2xl bg-obsidian-900 border border-rose-500/30 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono uppercase text-rose-400 font-bold" id="miscTopicTitle">Topic: Rotational Dynamics</span>
+            <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-xs">58.4% Comprehension</span>
+          </div>
+          <p class="text-xs text-slate-300" id="miscDescription">
+            <strong>Dominant Misconception:</strong> 72% of students confuse Angular Momentum with Linear Momentum when analyzing non-central forces. They frequently fail to specify the origin point of torque calculation.
+          </p>
+          <div class="flex gap-2 pt-1">
+            <button onclick="generateRemedialQuiz()" class="px-3.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs font-mono transition-colors">
+              Synthesize 5m Remedial Micro-Lesson
+            </button>
+            <button onclick="document.getElementById('misconceptionDetailCard').classList.add('hidden')" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: Automated AI Grading Suite -->
+    <!-- ========================================================================= -->
+    <div id="tabContentGrading" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-white">Dual AI Submissions Evaluation Suite</h2>
+          <p class="text-xs text-slate-400">Submissions graded instantaneously by Google Gemini 3.8 Flash with multi-criterion rubrics. Review and finalize grades with a single click.</p>
+        </div>
+
+        <div class="space-y-3" id="gradingSubmissionsContainer">
+          <!-- Populated dynamically via renderGradingQueue() -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: Targeted Student Interventions -->
+    <!-- ========================================================================= -->
+    <div id="tabContentInterventions" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-white">Early Warning & Student Intervention Radar</h2>
+          <p class="text-xs text-slate-400">Identifies students at risk of falling behind based on streak degradation, declining retention probability, or repeated blitz battle errors.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="interventionsListContainer">
+          <!-- Populated dynamically via renderInterventions() -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: AI Assignment & Quiz Generator -->
+  <!-- ========================================================================= -->
+  <div id="assignmentModal" class="fixed inset-0 z-50 hidden bg-obsidian-950/85 backdrop-blur-2xl flex items-center justify-center p-4">
+    <div class="glass-card max-w-xl w-full rounded-3xl p-6 lg:p-8 border border-white/10 shadow-2xl relative space-y-5">
+      
+      <button onclick="closeAssignmentModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white">&times;</button>
+
+      <div>
+        <h3 class="text-xl font-bold text-white">AI Assignment Generator</h3>
+        <p class="text-xs text-slate-400">Synthesize customized homework or quiz sheets with automated rubric generation.</p>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-mono text-slate-400 mb-1">Target Topic</label>
+          <input id="assignTopicInput" type="text" placeholder="e.g. Electromagnetic Induction & Lenz's Law" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white" />
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1">Difficulty</label>
+            <select id="assignDiffSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white">
+              <option value="standard">Standard Curriculum</option>
+              <option value="remedial">Remedial Focus</option>
+              <option value="olympiad">Olympiad / Advanced</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1">Questions</label>
+            <select id="assignCountSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white">
+              <option value="5">5 Questions</option>
+              <option value="10" selected>10 Questions</option>
+              <option value="15">15 Questions</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1">Format</label>
+            <select id="assignFormatSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white">
+              <option value="mixed">Mixed (MCQ + Numerical)</option>
+              <option value="mcq">Pure MCQ</option>
+              <option value="essay">Free-Response Essay</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-mono text-slate-400 mb-1">Special Pedagogical Instructions</label>
+          <textarea id="assignNotesInput" rows="2" placeholder="e.g., Emphasize right-hand rule diagrams and Faraday flux derivative calculations..." class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white"></textarea>
+        </div>
+      </div>
+
+      <!-- Live Generated Preview Box -->
+      <div id="assignGeneratedPreview" class="hidden p-4 rounded-xl bg-obsidian-900 border border-white/10 font-mono text-xs space-y-2 max-h-48 overflow-y-auto">
+        <span class="text-cyan-400 font-bold">✓ Assignment Synthesized (Gemini 3.8 Flash):</span>
+        <div id="assignPreviewContent" class="text-slate-300"></div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAssignmentModal()" class="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button id="btnSynthesizeAssign" onclick="synthesizeAssignment()" class="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs">
+          Generate Assignment
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- Complete Embedded Teacher Portal Logic & Intelligence Engine -->
+  <!-- ========================================================================= -->
+  <script>
+    /**
+     * ClearMind Pro — Teacher Portal & Academic Intelligence Engine
+     * Architecture:
+     * 1. Multi-Class Mock Database (Rosters, Performance, Heatmaps)
+     * 2. Curriculum Concept Heatmap Matrix with Click Diagnostics
+     * 3. AI Assignment Synthesizer & Deployment Simulator
+     * 4. Multi-Criterion Automated Grading Suite
+     * 5. Early Warning Intervention Radar
+     */
+
+    const CLASS_DATA = {
+      phys101: {
+        name: "AP Physics C (Section A)",
+        students: [
+          { id: "s1", name: "Alex Rivera", mastery: 91.4, weeklyHours: 12.5, risk: "Low", weakArea: "Rotational Dynamics", lastActive: "10 mins ago" },
+          { id: "s2", name: "Samantha Hayes", mastery: 64.2, weeklyHours: 3.2, risk: "High", weakArea: "Faraday's Law / Lenz", lastActive: "2 days ago" },
+          { id: "s3", name: "Daniel Kim", mastery: 88.0, weeklyHours: 9.8, risk: "Low", weakArea: "Oscillations & Damping", lastActive: "1 hour ago" },
+          { id: "s4", name: "Fatima Al-Mansoor", mastery: 95.6, weeklyHours: 14.1, risk: "Low", weakArea: "None (Exceptional)", lastActive: "25 mins ago" },
+          { id: "s5", name: "Lucas Vance", mastery: 58.7, weeklyHours: 2.5, risk: "High", weakArea: "Gauss Law Integrals", lastActive: "3 days ago" },
+          { id: "s6", name: "Priya Sharma", mastery: 82.3, weeklyHours: 8.4, risk: "Medium", weakArea: "DC Circuits Kirchhoff", lastActive: "4 hours ago" }
+        ],
+        heatmap: [
+          { topic: "Kinematics with Calculus", score: 92.4, status: "mastered" },
+          { topic: "Newton's Laws & Drag Force", score: 87.1, status: "mastered" },
+          { topic: "Work, Energy & Potential Curves", score: 84.5, status: "moderate" },
+          { topic: "Center of Mass & Linear Momentum", score: 79.2, status: "moderate" },
+          { topic: "Rotational Dynamics & Torque", score: 58.4, status: "critical" },
+          { topic: "Oscillations & Simple Harmonic Motion", score: 81.0, status: "moderate" },
+          { topic: "Electrostatics & Gauss's Law", score: 62.8, status: "critical" },
+          { topic: "Electromagnetic Induction & Lenz's Law", score: 54.2, status: "critical" }
+        ],
+        gradingQueue: [
+          { id: "g1", student: "Daniel Kim", task: "Derive Torque on a Compound Pendulum", scoreAi: 95, confidence: 98, aiFeedback: "Excellently accounted for the moment of inertia about the parallel axis." },
+          { id: "g2", student: "Samantha Hayes", task: "Lenz Law Induced Current Direction", scoreAi: 62, confidence: 94, aiFeedback: "Inverted the magnetic field direction when flux was decreasing." },
+          { id: "g3", student: "Priya Sharma", task: "Gauss Law Spherical Shell Potential", scoreAi: 88, confidence: 96, aiFeedback: "Clear integration; minor notation inconsistency at the boundary surface." }
+        ]
+      }
+    };
+
+    let currentClass = CLASS_DATA.phys101;
+
+    function renderRoster() {
+      const tbody = document.getElementById('rosterTableBody');
+      if (!tbody) return;
+
+      tbody.innerHTML = currentClass.students.map(s => `
+        <tr class="hover:bg-white/[0.02] transition-colors">
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-obsidian-950 border border-white/10 overflow-hidden">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(s.name)}" alt="${s.name}" class="w-full h-full object-cover" />
+              </div>
+              <span class="font-bold text-white">${s.name}</span>
+            </div>
+          </td>
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2">
+              <span class="font-bold ${s.mastery >= 85 ? 'text-emerald-400' : s.mastery >= 70 ? 'text-amber-400' : 'text-rose-400'}">${s.mastery}%</span>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-slate-300">${s.weeklyHours} hrs</td>
+          <td class="py-3 px-3">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.risk === 'Low' ? 'bg-emerald-500/20 text-emerald-300' : s.risk === 'Medium' ? 'bg-amber-500/20 text-amber-300' : 'bg-rose-500/20 text-rose-300'}">
+              ${s.risk} Risk
+            </span>
+          </td>
+          <td class="py-3 px-3 text-slate-400 truncate max-w-[180px]">${s.weakArea}</td>
+          <td class="py-3 px-3 text-right">
+            <button onclick="alert('Viewing comprehensive diagnostic report for ' + '${s.name}')" class="text-cyan-400 hover:underline">
+              Inspect Profile
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderHeatmap() {
+      const container = document.getElementById('heatmapGridContainer');
+      if (!container) return;
+
+      container.innerHTML = currentClass.heatmap.map((item, idx) => {
+        const cls = item.status === 'mastered' ? 'heat-mastered' : item.status === 'moderate' ? 'heat-moderate' : 'heat-critical';
+        return `
+          <div onclick="inspectHeatmapItem(${idx})" class="p-4 rounded-xl border ${cls} cursor-pointer hover:scale-[1.02] transition-transform space-y-2">
+            <div class="flex items-center justify-between text-[11px] font-mono">
+              <span class="truncate font-bold">${item.topic}</span>
+              <span class="font-bold ml-2">${item.score}%</span>
+            </div>
+            <div class="w-full bg-black/40 h-1.5 rounded-full overflow-hidden">
+              <div class="h-full bg-current rounded-full" style="width: ${item.score}%"></div>
+            </div>
+            <div class="text-[10px] uppercase font-mono opacity-80 pt-1">Click to diagnose →</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function inspectHeatmapItem(idx) {
+      const item = currentClass.heatmap[idx];
+      const card = document.getElementById('misconceptionDetailCard');
+      document.getElementById('miscTopicTitle').innerText = `Topic: ${item.topic}`;
+      document.getElementById('miscDescription').innerHTML = `<strong>Dominant Misconception (${item.score}% Comprehension):</strong> Analysis indicates 68% of students struggle with foundational proofs and mathematical approximations in this domain.`;
+      card.classList.remove('hidden');
+    }
+
+    function renderGradingQueue() {
+      const container = document.getElementById('gradingSubmissionsContainer');
+      if (!container) return;
+
+      container.innerHTML = currentClass.gradingQueue.map((g, idx) => `
+        <div class="p-4 rounded-xl bg-obsidian-900 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${g.student}</span>
+              <span class="text-slate-500">•</span>
+              <span class="font-mono text-cyan-400">${g.task}</span>
+            </div>
+            <p class="text-slate-300 italic">"AI Rationale: ${g.aiFeedback}"</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="text-right font-mono">
+              <div class="font-bold text-emerald-400 text-sm">${g.scoreAi} / 100</div>
+              <div class="text-[10px] text-slate-500">${g.confidence}% Confidence</div>
+            </div>
+            <button onclick="approveGrade(${idx})" class="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-bold font-mono transition-colors">
+              Approve Grade
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function approveGrade(idx) {
+      currentClass.gradingQueue.splice(idx, 1);
+      renderGradingQueue();
+      alert('Grade confirmed and synced with student gradebook!');
+    }
+
+    function renderInterventions() {
+      const container = document.getElementById('interventionsListContainer');
+      if (!container) return;
+
+      const flagged = currentClass.students.filter(s => s.risk === 'High' || s.mastery < 70);
+      container.innerHTML = flagged.map(s => `
+        <div class="p-4 rounded-xl bg-rose-950/20 border border-rose-500/30 space-y-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white">${s.name}</span>
+            <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono text-[10px]">Urgent Intervention</span>
+          </div>
+          <div class="text-slate-300">
+            Mastery score dropped to <strong class="text-rose-400 font-mono">${s.mastery}%</strong>. Critical stumbling block in <strong class="text-white">${s.weakArea}</strong>.
+          </div>
+          <button onclick="alert('Assigned AI Remedial Pack to ' + '${s.name}')" class="w-full py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-mono font-bold transition-colors">
+            Dispatch Micro-Remediation Sheet
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // --- Tab Switching ---
+    function switchTab(tabId) {
+      ['roster', 'heatmap', 'grading', 'interventions'].forEach(t => {
+        const content = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === tabId) {
+          content.classList.remove('hidden');
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-violet-600/20 text-violet-300 border border-violet-500/30 transition-all';
+        } else {
+          content.classList.add('hidden');
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all';
+        }
+      });
+    }
+
+    function openAssignmentModal() {
+      document.getElementById('assignmentModal').classList.remove('hidden');
+    }
+
+    function closeAssignmentModal() {
+      document.getElementById('assignmentModal').classList.add('hidden');
+    }
+
+    function synthesizeAssignment() {
+      const topic = document.getElementById('assignTopicInput').value.trim() || 'Faraday Law & Lenz Law';
+      const count = document.getElementById('assignCountSelect').value;
+      const diff = document.getElementById('assignDiffSelect').value;
+
+      const preview = document.getElementById('assignGeneratedPreview');
+      const previewContent = document.getElementById('assignPreviewContent');
+      preview.classList.remove('hidden');
+
+      previewContent.innerHTML = `
+        1. [Analytical] Calculate the induced electromotive force in a rotating rectangular coil (Area: 0.05m²) in a 0.4T field at 60 rad/s.<br/>
+        2. [Conceptual] Apply Lenz's Law to determine eddy current damping across a conducting aluminum plate.<br/>
+        3. [Step-by-Step] Differentiate magnetic flux Φ = 3t² + 2t - 1 Weber to evaluate EMF at t = 2.0s.<br/>
+        <em>(+${count - 3} additional questions generated with full rubrics)</em>
+      `;
+
+      document.getElementById('btnSynthesizeAssign').innerText = 'Deploy to Class Roster';
+      document.getElementById('btnSynthesizeAssign').onclick = function() {
+        alert(`Successfully deployed "${topic}" assignment to all ${currentClass.students.length} students in Section A!`);
+        closeAssignmentModal();
+      };
+    }
+
+    function exportGradebookCSV() {
+      let csv = "Student Name,Mastery %,Weekly Hours,Retention Risk,Weak Area\n";
+      currentClass.students.forEach(s => {
+        csv += `"${s.name}",${s.mastery},${s.weeklyHours},"${s.risk}","${s.weakArea}"\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "ClearMind_Class_Gradebook.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderRoster();
+      renderHeatmap();
+      renderGradingQueue();
+      renderInterventions();
+    });
+  </script>
+</body>
+</html>

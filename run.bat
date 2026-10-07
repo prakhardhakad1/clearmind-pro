@@ -19,13 +19,21 @@ echo.
 :: Automatically open browser after 2 seconds
 start "" powershell -WindowStyle Hidden -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8000'"
 
-:: Start Uvicorn FastAPI Server (0.0.0.0 allows mobile & local network access)
+:: Check if Node is available
+where node >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [*] Launching high-performance ClearMind Pro server via Node.js...
+    node server.js
+    exit /b
+)
+
+:: Fallback: Start Uvicorn FastAPI Server
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] ClearMind Pro failed to start.
-    echo Please make sure Python and the required packages are installed.
+    echo Please make sure Node.js or Python is installed.
     echo.
     pause
 )

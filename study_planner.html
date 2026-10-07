@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <title>ClearMind Pro — AI Study Planner & Smart Timetable</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080c" />
+
+  <!-- Google Fonts: Plus Jakarta Sans, Instrument Serif, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e17',
+              850: '#111422',
+              800: '#171b2d',
+              750: '#1e233a',
+              700: '#272e4b',
+              600: '#38426b'
+            },
+            electric: {
+              cyan: '#06b6d4',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 6s ease-in-out infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            },
+            glow: {
+              '0%': { filter: 'drop-shadow(0 0 12px rgba(6, 182, 212, 0.35))' },
+              '100%': { filter: 'drop-shadow(0 0 24px rgba(139, 92, 246, 0.6))' }
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(12, 14, 23, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(56, 66, 107, 0.6);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(6, 182, 212, 0.8);
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: rgba(17, 20, 34, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+    .glass-card-interactive {
+      background: rgba(23, 27, 45, 0.65);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-card-interactive:hover {
+      background: rgba(30, 35, 58, 0.85);
+      border-color: rgba(6, 182, 212, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px -10px rgba(6, 182, 212, 0.2);
+    }
+    .glass-input {
+      background: rgba(12, 14, 23, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+      outline: none;
+    }
+
+    /* Background glow aura */
+    .bg-mesh-radial {
+      background:
+        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+        #07080c;
+    }
+
+    /* Priority Quadrant borders */
+    .quad-urgent-important {
+      border-top: 3px solid #f43f5e;
+      background: linear-gradient(180deg, rgba(244, 63, 94, 0.08) 0%, rgba(17, 20, 34, 0.6) 100%);
+    }
+    .quad-important-noturgent {
+      border-top: 3px solid #06b6d4;
+      background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, rgba(17, 20, 34, 0.6) 100%);
+    }
+    .quad-urgent-notimportant {
+      border-top: 3px solid #f59e0b;
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(17, 20, 34, 0.6) 100%);
+    }
+    .quad-noturgent-notimportant {
+      border-top: 3px solid #8b5cf6;
+      background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, rgba(17, 20, 34, 0.6) 100%);
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: #ffffff !important; color: #000000 !important; }
+      header, .no-print { display: none !important; }
+      .glass-card { border: 1px solid #ccc !important; background: #fff !important; box-shadow: none !important; color: #000 !important; }
+      .text-white { color: #000 !important; }
+      .text-slate-400 { color: #444 !important; }
+    }
+  </style>
+</head>
+
+<body class="bg-mesh-radial text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- ========================================================================= -->
+  <!-- Top Navigation Header -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-obsidian-950/85 border-b border-white/10 px-4 lg:px-8 py-3 no-print">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Hub Links -->
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div class="leading-none">
+            <span class="text-lg font-extrabold tracking-tight text-white group-hover:text-cyan-300 transition-colors">ClearMind <span class="text-cyan-400 font-serif italic text-base">Pro</span></span>
+            <span class="block text-[10px] font-mono tracking-wider uppercase text-cyan-400/80">AI Study Matrix</span>
+          </div>
+        </a>
+
+        <!-- Breadcrumb / Section Navigation -->
+        <nav class="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-obsidian-900/80 px-3 py-1.5 rounded-full border border-white/5">
+          <a href="/app" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Classroom</a>
+          <span class="text-slate-600">•</span>
+          <a href="/study-planner" class="text-cyan-400 font-semibold bg-white/5 px-2.5 py-1 rounded-md">Study Planner</a>
+          <span class="text-slate-600">•</span>
+          <a href="/leaderboard" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Leaderboard</a>
+          <span class="text-slate-600">•</span>
+          <a href="/teacher" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Teacher Portal</a>
+          <span class="text-slate-600">•</span>
+          <a href="/parent" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Parent View</a>
+        </nav>
+      </div>
+
+      <!-- Right Control Pills & Stats -->
+      <div class="flex items-center gap-3">
+        <!-- Streak Counter -->
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-mono font-bold" title="Current Daily Revision Streak">
+          <svg class="w-4 h-4 text-amber-400 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.527.82-1.173 1.902-1.745 2.875-1.144 1.947-2.146 3.65-2.146 5.327 0 2.92 2.378 5.25 5.292 5.25 2.914 0 5.292-2.33 5.292-5.25 0-1.517-.837-3.21-1.936-4.99-.54-874-1.17-1.954-1.636-2.825a1 1 0 00-.849-.477z" clip-rule="evenodd" />
+          </svg>
+          <span id="streakDisplay">14 Days</span>
+        </div>
+
+        <!-- Weekly Focus Hours -->
+        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono font-bold">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span id="weeklyHoursDisplay">28.5 hrs logged</span>
+        </div>
+
+        <!-- Interactive Gemini AI Engine Status & Key Modal Trigger -->
+        <button id="geminiApiKeyBtn" onclick="openApiKeyModal()" title="Configure Google Gemini 3.8 / 2.5 Flash API Key" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/30 text-[11px] font-mono text-violet-200 transition-all shadow-sm">
+          <span id="geminiKeyStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="geminiKeyStatusText">Connect Gemini AI</span>
+        </button>
+
+        <!-- Quick Focus Room CTA Button -->
+        <button id="openFocusRoomBtn" onclick="openPomodoroModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-slate-950 text-xs font-bold tracking-wide shadow-lg shadow-cyan-500/20 flex items-center gap-1.5 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Pomodoro Chamber</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- Main Application Body -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8">
+
+    <!-- Top Banner: AI Plan Generator & Target Exam Countdown -->
+    <section class="glass-card rounded-3xl p-6 lg:p-8 relative overflow-hidden border border-white/10 shadow-2xl">
+      <!-- Glow gradients -->
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <!-- Left: AI Scheduler Generator Configuration -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono uppercase tracking-wider">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Cognitive Load Optimization Algorithm
+          </div>
+
+          <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+            Design Your Perfect <br />
+            <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-violet-400 bg-clip-text text-transparent">AI Revision Timetable</span>
+          </h1>
+
+          <p class="text-sm text-slate-300 max-w-xl leading-relaxed">
+            Harness Google Gemini 3.8 Flash to synthesize your exam deadlines, cognitive peak hours, and Ebbinghaus spaced retention intervals into a personalized, high-retention study architecture.
+          </p>
+
+          <!-- Input Controls Row -->
+          <div class="space-y-3 pt-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-[11px] font-mono uppercase text-slate-400 mb-1">Target Exam / Goal</label>
+                <select id="examTargetSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <option value="jee">JEE Advanced / Mains (STEM)</option>
+                  <option value="neet">NEET / MCAT (Medical)</option>
+                  <option value="sat">SAT / ACT Prep</option>
+                  <option value="ap">AP Calculus & Physics</option>
+                  <option value="gcse">GCSE / A-Levels</option>
+                  <option value="gate">GATE / GRE / University Finals</option>
+                  <option value="custom">Custom Syllabus Roadmap</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-mono uppercase text-slate-400 mb-1">Daily Capacity (Hrs)</label>
+                <select id="dailyHoursSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <option value="2">2.0 Hours / Day (Light)</option>
+                  <option value="4" selected>4.0 Hours / Day (Optimal)</option>
+                  <option value="6">6.0 Hours / Day (Intensive)</option>
+                  <option value="8">8.0 Hours / Day (Bootcamp)</option>
+                  <option value="10">10.0 Hours / Day (Extreme)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-mono uppercase text-slate-400 mb-1">Learning Archetype</label>
+                <select id="archetypeSelect" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                  <option value="deep_worker">Deep Work Immersion</option>
+                  <option value="spaced_repetition">Spaced Retention Master</option>
+                  <option value="pomodoro_sprinter">Pomodoro Sprinter</option>
+                  <option value="night_owl">Night Owl Strategist</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Natural Prompt Bar -->
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input id="customPlanPrompt" type="text" placeholder="e.g., Focus on Electrostatics and Organic Reactions, test is in 14 days..." class="flex-1 glass-input rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none" />
+              <button id="generateAiPlanBtn" onclick="generateAiStudySchedule()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all">
+                <svg id="generateBtnSpinner" class="hidden w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span id="generateBtnText">Generate Smart Plan</span>
+              </button>
+            </div>
+
+            <!-- Live AI Rationale & Model Execution Card -->
+            <div id="aiPlannerStatusBanner" class="hidden rounded-2xl p-4 bg-obsidian-900/90 border border-cyan-500/30 space-y-2 text-xs shadow-lg">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span id="aiModelBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">Google Gemini Flash</span>
+                  <span class="text-[10px] font-mono text-slate-400">Cognitive Load Balanced</span>
+                </div>
+                <button onclick="openApiKeyModal()" class="text-[10px] text-cyan-400 hover:underline font-mono">Configure Key ⚙</button>
+              </div>
+              <p id="aiStrategicRationaleText" class="text-slate-300 leading-relaxed font-sans"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Real-time Exam Countdown Widget & Retention Score -->
+        <div class="lg:col-span-5 bg-obsidian-900/90 rounded-2xl p-6 border border-white/10 shadow-xl space-y-6">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Primary Milestone Countdown</span>
+            <span id="targetExamBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">JEE Advanced 2026</span>
+          </div>
+
+          <!-- Countdown Digits Grid -->
+          <div class="grid grid-cols-4 gap-2 text-center font-mono">
+            <div class="bg-obsidian-950/80 rounded-xl p-2.5 border border-white/5">
+              <span id="cdDays" class="block text-2xl sm:text-3xl font-black text-cyan-400">18</span>
+              <span class="text-[10px] uppercase text-slate-500 tracking-wider">Days</span>
+            </div>
+            <div class="bg-obsidian-950/80 rounded-xl p-2.5 border border-white/5">
+              <span id="cdHours" class="block text-2xl sm:text-3xl font-black text-cyan-400">14</span>
+              <span class="text-[10px] uppercase text-slate-500 tracking-wider">Hours</span>
+            </div>
+            <div class="bg-obsidian-950/80 rounded-xl p-2.5 border border-white/5">
+              <span id="cdMins" class="block text-2xl sm:text-3xl font-black text-cyan-400">32</span>
+              <span class="text-[10px] uppercase text-slate-500 tracking-wider">Mins</span>
+            </div>
+            <div class="bg-obsidian-950/80 rounded-xl p-2.5 border border-white/5">
+              <span id="cdSecs" class="block text-2xl sm:text-3xl font-black text-violet-400">45</span>
+              <span class="text-[10px] uppercase text-slate-500 tracking-wider">Secs</span>
+            </div>
+          </div>
+
+          <!-- Retention & Mastery Gauge -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-300 font-medium">Estimated Syllabus Mastery</span>
+              <span id="masteryPctDisplay" class="font-mono font-bold text-emerald-400">78.4% Readiness</span>
+            </div>
+            <div class="w-full bg-obsidian-950 rounded-full h-2.5 overflow-hidden border border-white/5">
+              <div id="masteryProgressBar" class="h-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 rounded-full transition-all duration-1000" style="width: 78.4%"></div>
+            </div>
+            <div class="flex justify-between text-[11px] text-slate-500 font-mono">
+              <span>Foundation: 95%</span>
+              <span>Advanced Problem Solving: 68%</span>
+              <span>Speed: 72%</span>
+            </div>
+          </div>
+
+          <!-- Quick Actions Row -->
+          <div class="pt-2 flex items-center justify-between gap-2 border-t border-white/5">
+            <button onclick="exportToICS()" class="text-xs text-slate-300 hover:text-cyan-400 flex items-center gap-1.5 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Export .iCal</span>
+            </button>
+            <button onclick="window.print()" class="text-xs text-slate-300 hover:text-cyan-400 flex items-center gap-1.5 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span>Print Sheet</span>
+            </button>
+            <button onclick="resetToOptimalPlan()" class="text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- View Switcher Tabs (Timetable vs Eisenhower Matrix vs Spaced Repetition) -->
+    <!-- ========================================================================= -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 no-print">
+      <div class="flex items-center gap-2">
+        <button id="tabBtnSchedule" onclick="switchPlannerTab('schedule')" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm transition-all">
+          Weekly Timeblock Architecture
+        </button>
+        <button id="tabBtnMatrix" onclick="switchPlannerTab('matrix')" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+          Eisenhower Priority Matrix
+        </button>
+        <button id="tabBtnEbbinghaus" onclick="switchPlannerTab('ebbinghaus')" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all">
+          Ebbinghaus Decay Curve
+        </button>
+      </div>
+
+      <!-- Quick Day Filter & Add Custom Session -->
+      <div class="flex items-center gap-3">
+        <button onclick="openAddSessionModal()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Add Custom Block</span>
+        </button>
+        <div class="text-xs font-mono text-slate-400">
+          Week of: <span id="currentWeekRange" class="text-white font-semibold">Oct 7 – Oct 14</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: Weekly Timetable Interactive Schedule View -->
+    <!-- ========================================================================= -->
+    <div id="tabContentSchedule" class="space-y-6">
+      <!-- 7-Day Timetable Grid Container -->
+      <div class="glass-card rounded-2xl p-4 lg:p-6 overflow-x-auto border border-white/10">
+        <div class="min-w-[950px]">
+          <!-- Day Header Row -->
+          <div class="grid grid-cols-8 gap-3 pb-3 border-b border-white/10 text-center font-mono text-xs">
+            <div class="text-slate-500 uppercase tracking-wider py-1 font-semibold">Time Slot</div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold">Mon</span>
+              <span class="text-[10px] text-cyan-400">Physics & Math</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold">Tue</span>
+              <span class="text-[10px] text-emerald-400">Chem & Code</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold">Wed</span>
+              <span class="text-[10px] text-violet-400">Calculus & Bio</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold">Thu</span>
+              <span class="text-[10px] text-amber-400">Mock Tests</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold">Fri</span>
+              <span class="text-[10px] text-cyan-400">Error Logs</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold text-amber-300">Sat</span>
+              <span class="text-[10px] text-amber-400">Deep Sprint</span>
+            </div>
+            <div class="p-2 rounded-xl bg-obsidian-900 border border-white/5">
+              <span class="block text-white font-bold text-emerald-300">Sun</span>
+              <span class="text-[10px] text-emerald-400">Retention Review</span>
+            </div>
+          </div>
+
+          <!-- Time Slot Rows (Morning to Evening) -->
+          <div id="timetableRowsContainer" class="divide-y divide-white/5 font-mono text-xs mt-2">
+            <!-- Dynamically populated via renderTimetableRows() -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Subject Progress & Time Allocation Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Physics Card -->
+        <div class="glass-card-interactive rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-cyan-400 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Physics (Mechanics)
+            </span>
+            <span class="text-[11px] font-mono text-slate-400">8.5 hrs/wk</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] text-slate-300">
+              <span>Rotational Dynamics</span>
+              <span class="font-mono text-cyan-300">82%</span>
+            </div>
+            <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-cyan-400 h-full rounded-full" style="width: 82%"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Next review: Tomorrow 09:00</span>
+            <button onclick="launchQuickSession('Physics', 'Rotational Dynamics')" class="text-cyan-400 hover:underline">Study Now</button>
+          </div>
+        </div>
+
+        <!-- Chemistry Card -->
+        <div class="glass-card-interactive rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-emerald-400 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Organic Chemistry
+            </span>
+            <span class="text-[11px] font-mono text-slate-400">7.0 hrs/wk</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] text-slate-300">
+              <span>Reaction Mechanisms</span>
+              <span class="font-mono text-emerald-300">65%</span>
+            </div>
+            <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-emerald-400 h-full rounded-full" style="width: 65%"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Next review: Wed 14:00</span>
+            <button onclick="launchQuickSession('Chemistry', 'Reaction Mechanisms')" class="text-emerald-400 hover:underline">Study Now</button>
+          </div>
+        </div>
+
+        <!-- Mathematics Card -->
+        <div class="glass-card-interactive rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-violet-400 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span> Calculus & Vectors
+            </span>
+            <span class="text-[11px] font-mono text-slate-400">9.0 hrs/wk</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] text-slate-300">
+              <span>Differential Equations</span>
+              <span class="font-mono text-violet-300">90%</span>
+            </div>
+            <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-violet-400 h-full rounded-full" style="width: 90%"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Next review: Today 18:00</span>
+            <button onclick="launchQuickSession('Mathematics', 'Differential Equations')" class="text-violet-400 hover:underline">Study Now</button>
+          </div>
+        </div>
+
+        <!-- Computer Science Card -->
+        <div class="glass-card-interactive rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-sm text-amber-400 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Data Structures
+            </span>
+            <span class="text-[11px] font-mono text-slate-400">5.0 hrs/wk</span>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] text-slate-300">
+              <span>Dynamic Programming</span>
+              <span class="font-mono text-amber-300">74%</span>
+            </div>
+            <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full" style="width: 74%"></div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span>Next review: Thu 16:00</span>
+            <button onclick="launchQuickSession('CS', 'Dynamic Programming')" class="text-amber-400 hover:underline">Study Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: Eisenhower Priority Matrix -->
+    <!-- ========================================================================= -->
+    <div id="tabContentMatrix" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <span>Eisenhower Cognitive Matrix</span>
+              <span class="text-xs font-mono text-cyan-400 font-normal px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">Action Prioritization</span>
+            </h2>
+            <p class="text-xs text-slate-400">Classify syllabus components by exam imminence and conceptual weight to prevent panic revisions.</p>
+          </div>
+          <button onclick="autoSortMatrixWithAi()" class="px-3.5 py-1.5 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-violet-300 border border-violet-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all">
+            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            <span>AI Auto-Sort Matrix</span>
+          </button>
+        </div>
+
+        <!-- 4 Quadrants Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Q1: Urgent & Important -->
+          <div class="glass-card quad-urgent-important rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                <h3 class="text-sm font-bold text-rose-300">DO FIRST: Urgent & High Impact</h3>
+              </div>
+              <span class="text-[10px] font-mono text-rose-400 uppercase">Imminent Exam Topics</span>
+            </div>
+            <div id="matrixQuadrant1" class="space-y-2 min-h-[140px]">
+              <!-- Populated dynamically -->
+            </div>
+            <button onclick="addTopicToQuadrant(1)" class="w-full py-1.5 rounded-lg border border-dashed border-rose-500/30 text-rose-300/70 hover:text-rose-200 hover:border-rose-400 text-xs font-mono transition-all">
+              + Add High-Priority Topic
+            </button>
+          </div>
+
+          <!-- Q2: Not Urgent & Important -->
+          <div class="glass-card quad-important-noturgent rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                <h3 class="text-sm font-bold text-cyan-300">SCHEDULE: Deep Mastery & High Impact</h3>
+              </div>
+              <span class="text-[10px] font-mono text-cyan-400 uppercase">Core Foundations</span>
+            </div>
+            <div id="matrixQuadrant2" class="space-y-2 min-h-[140px]">
+              <!-- Populated dynamically -->
+            </div>
+            <button onclick="addTopicToQuadrant(2)" class="w-full py-1.5 rounded-lg border border-dashed border-cyan-500/30 text-cyan-300/70 hover:text-cyan-200 hover:border-cyan-400 text-xs font-mono transition-all">
+              + Add Mastery Topic
+            </button>
+          </div>
+
+          <!-- Q3: Urgent & Not Important -->
+          <div class="glass-card quad-urgent-notimportant rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                <h3 class="text-sm font-bold text-amber-300">DELEGATE / TIMEBOX: Urgent & Low Impact</h3>
+              </div>
+              <span class="text-[10px] font-mono text-amber-400 uppercase">Routine Homework</span>
+            </div>
+            <div id="matrixQuadrant3" class="space-y-2 min-h-[140px]">
+              <!-- Populated dynamically -->
+            </div>
+            <button onclick="addTopicToQuadrant(3)" class="w-full py-1.5 rounded-lg border border-dashed border-amber-500/30 text-amber-300/70 hover:text-amber-200 hover:border-amber-400 text-xs font-mono transition-all">
+              + Add Routine Task
+            </button>
+          </div>
+
+          <!-- Q4: Not Urgent & Not Important -->
+          <div class="glass-card quad-noturgent-notimportant rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-violet-400"></span>
+                <h3 class="text-sm font-bold text-violet-300">ELIMINATE / LEISURE: Low Impact</h3>
+              </div>
+              <span class="text-[10px] font-mono text-violet-400 uppercase">Passive Reading / Side Research</span>
+            </div>
+            <div id="matrixQuadrant4" class="space-y-2 min-h-[140px]">
+              <!-- Populated dynamically -->
+            </div>
+            <button onclick="addTopicToQuadrant(4)" class="w-full py-1.5 rounded-lg border border-dashed border-violet-500/30 text-violet-300/70 hover:text-violet-200 hover:border-violet-400 text-xs font-mono transition-all">
+              + Add Passive Item
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: Ebbinghaus Spaced Repetition Queue -->
+    <!-- ========================================================================= -->
+    <div id="tabContentEbbinghaus" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <span>Ebbinghaus Forgetting Curve Manager</span>
+              <span class="text-xs font-mono text-emerald-400 font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">Retention Engine</span>
+            </h2>
+            <p class="text-xs text-slate-400">Topics automatically resurface at intervals R1 (24h), R2 (3 days), R3 (7 days), R4 (14 days), R5 (30 days) to interrupt neurological forgetting decay.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-mono text-slate-300">Due Today:</span>
+            <span id="ebbinghausDueCount" class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold font-mono text-xs">4 Topics</span>
+          </div>
+        </div>
+
+        <!-- Retention Curve Visual Representation -->
+        <div class="bg-obsidian-900/90 rounded-2xl p-5 border border-white/5 space-y-3">
+          <div class="flex items-center justify-between text-xs text-slate-300">
+            <span class="font-semibold">Memory Strength Model (SM-2 Hybrid)</span>
+            <span class="text-[11px] font-mono text-slate-500">Target Retention: 92%</span>
+          </div>
+          <div class="h-28 w-full relative">
+            <canvas id="retentionCanvas" class="w-full h-full"></canvas>
+          </div>
+          <div class="grid grid-cols-5 text-center text-[10px] font-mono text-slate-400">
+            <div>Day 1 (R1: 60%)</div>
+            <div>Day 3 (R2: 75%)</div>
+            <div>Day 7 (R3: 85%)</div>
+            <div>Day 14 (R4: 92%)</div>
+            <div>Day 30 (R5: 98%)</div>
+          </div>
+        </div>
+
+        <!-- Topics Due for Spaced Review Queue -->
+        <div class="space-y-3">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Today's Spaced Revision Stack</h3>
+          <div id="ebbinghausQueueContainer" class="space-y-3">
+            <!-- Populated dynamically with R1-R5 cards -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: Pomodoro Focus Chamber with Web Audio Synthesizer -->
+  <!-- ========================================================================= -->
+  <div id="pomodoroModal" class="fixed inset-0 z-50 hidden bg-obsidian-950/80 backdrop-blur-2xl flex items-center justify-center p-4">
+    <div class="glass-card max-w-xl w-full rounded-3xl p-6 lg:p-8 border border-white/10 shadow-2xl relative space-y-6">
+      
+      <!-- Close button -->
+      <button onclick="closePomodoroModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Chamber Header -->
+      <div class="text-center space-y-1">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-mono">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          Deep Focus Chamber
+        </div>
+        <h2 id="pomodoroActiveTopic" class="text-2xl font-black text-white">Quantum Mechanics & Wave Functions</h2>
+        <p class="text-xs text-slate-400">Time-boxed high cognitive flow state</p>
+      </div>
+
+      <!-- Duration Preset Selector Tabs -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-center gap-1.5 p-1 rounded-2xl bg-obsidian-900 border border-white/5 text-xs">
+          <button id="pomoBtn15" onclick="setPomodoroDuration(15, 'Sprint')" class="px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all">
+            ⚡ 15m Sprint
+          </button>
+          <button id="pomoBtn25" onclick="setPomodoroDuration(25, 'Classic')" class="px-3 py-1.5 rounded-xl font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all">
+            🎯 25m Classic
+          </button>
+          <button id="pomoBtn50" onclick="setPomodoroDuration(50, 'Deep Work')" class="px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all">
+            🧠 50m Deep
+          </button>
+          <button id="pomoBtn90" onclick="setPomodoroDuration(90, 'Ultradian Flow')" class="px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all">
+            🚀 90m Flow
+          </button>
+          <button id="pomoBtnCustom" onclick="promptCustomPomodoroDuration()" class="px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1">
+            <span>⚙️ Custom</span>
+          </button>
+        </div>
+
+        <!-- Break Options Selector Row -->
+        <div class="flex items-center justify-center gap-2 text-xs font-mono">
+          <span class="text-slate-500 text-[10px] uppercase tracking-wider">Break:</span>
+          <button id="breakBtn5" onclick="setPomodoroBreak(5)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition-all">
+            ☕ 5m Short
+          </button>
+          <button id="breakBtn10" onclick="setPomodoroBreak(10)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[11px] transition-all">
+            🧘 10m Reset
+          </button>
+          <button id="breakBtn15" onclick="setPomodoroBreak(15)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[11px] transition-all">
+            🌿 15m Long
+          </button>
+          <button onclick="promptCustomBreakDuration()" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[11px] transition-all">
+            ⚙️ Custom
+          </button>
+        </div>
+      </div>
+
+      <!-- Circular Timer Display with Quick Time Bumpers -->
+      <div class="flex items-center justify-center gap-4 py-2 relative">
+        <button onclick="adjustPomodoroMinutes(-5)" title="Subtract 5 minutes" class="w-10 h-10 rounded-full bg-obsidian-900 hover:bg-obsidian-850 border border-white/10 text-slate-400 hover:text-white text-xs font-mono font-bold transition-all flex items-center justify-center shadow-md active:scale-95">
+          -5m
+        </button>
+
+        <div class="relative w-56 h-56 flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+            <!-- Background circle -->
+            <circle cx="50" cy="50" r="42" fill="none" stroke="#171b2d" stroke-width="6" />
+            <!-- Active progress circle -->
+            <circle id="pomodoroProgressRing" cx="50" cy="50" r="42" fill="none" stroke="#06b6d4" stroke-width="6" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="0" class="transition-all duration-1000 ease-linear" />
+          </svg>
+          
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span id="pomodoroTimeDigits" class="text-4xl font-mono font-black text-white tracking-wider">25:00</span>
+            <span id="pomodoroPhaseBadge" class="text-[11px] font-mono text-cyan-400 uppercase tracking-widest mt-1">Focus Period (25m)</span>
+            <span id="pomodoroPresetLabel" class="text-[10px] font-mono text-slate-500 mt-0.5">Classic Mode</span>
+          </div>
+        </div>
+
+        <button onclick="adjustPomodoroMinutes(5)" title="Add 5 minutes" class="w-10 h-10 rounded-full bg-obsidian-900 hover:bg-obsidian-850 border border-white/10 text-slate-400 hover:text-white text-xs font-mono font-bold transition-all flex items-center justify-center shadow-md active:scale-95">
+          +5m
+        </button>
+      </div>
+
+      <!-- Cycle Tracker & Scaled XP Indicator -->
+      <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-obsidian-900/60 border border-white/5 text-xs text-slate-400">
+        <div class="flex items-center gap-2 font-mono text-[11px]">
+          <span>Cycle:</span>
+          <div id="pomoCycleDots" class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-obsidian-950 border border-white/10"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-obsidian-950 border border-white/10"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-obsidian-950 border border-white/10"></span>
+          </div>
+          <span id="pomoCycleCountText" class="text-slate-300 font-bold ml-1">1 of 4</span>
+        </div>
+        <div class="text-[11px] font-mono text-cyan-400">
+          <span id="pomoXpRewardTier">★ +50 XP Reward</span>
+        </div>
+      </div>
+
+      <!-- Controls: Start / Pause / Reset & Switch Mode -->
+      <div class="flex items-center justify-center gap-3">
+        <button id="pomoToggleBtn" onclick="togglePomodoroTimer()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-slate-950 font-bold text-sm tracking-wide shadow-lg shadow-cyan-500/25 transition-all">
+          Start Focus
+        </button>
+        <button onclick="resetPomodoroTimer()" class="px-4 py-2.5 rounded-xl bg-obsidian-900 hover:bg-obsidian-850 text-slate-300 font-semibold text-xs border border-white/10 transition-colors">
+          Reset
+        </button>
+        <button id="pomoQuickBreakBtn" onclick="toggleModeQuickSwitch()" class="px-4 py-2.5 rounded-xl bg-obsidian-900 hover:bg-obsidian-850 text-emerald-300 font-semibold text-xs border border-emerald-500/20 transition-colors">
+          Switch to Break
+        </button>
+      </div>
+
+      <!-- Ambient Audio Synthesizer Controls (Web Audio API) -->
+      <div class="bg-obsidian-900/90 rounded-2xl p-4 border border-white/5 space-y-3">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-300 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+            Cognitive Audio Synthesizer
+          </span>
+          <span id="audioPlayingState" class="text-[11px] font-mono text-slate-500">Muted</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <button id="soundBtnBrown" onclick="toggleAmbientSound('brown')" class="py-2 px-2.5 rounded-xl bg-obsidian-950 border border-white/5 text-[11px] font-medium text-slate-300 hover:border-cyan-500/40 transition-colors text-center">
+            Brown Noise
+          </button>
+          <button id="soundBtnGamma" onclick="toggleAmbientSound('gamma')" class="py-2 px-2.5 rounded-xl bg-obsidian-950 border border-white/5 text-[11px] font-medium text-slate-300 hover:border-cyan-500/40 transition-colors text-center">
+            40Hz Gamma Wave
+          </button>
+          <button id="soundBtnRain" onclick="toggleAmbientSound('rain')" class="py-2 px-2.5 rounded-xl bg-obsidian-950 border border-white/5 text-[11px] font-medium text-slate-300 hover:border-cyan-500/40 transition-colors text-center">
+            Binaural Rain
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Session Completion Record -->
+      <div class="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+        <span>Completed today: <strong class="text-white font-mono" id="pomoCompletedCount">3 sessions (75m)</strong></span>
+        <button onclick="awardSessionXP()" class="text-cyan-400 hover:underline font-mono text-[11px]">+25 XP Log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: Add Custom Study Session -->
+  <!-- ========================================================================= -->
+  <div id="addSessionModal" class="fixed inset-0 z-50 hidden bg-obsidian-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full rounded-2xl p-6 border border-white/10 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Add Scheduled Revision Slot</h3>
+        <button onclick="closeAddSessionModal()" class="text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-mono text-slate-400 mb-1">Subject</label>
+          <input id="newSessionSubject" type="text" placeholder="e.g. Physics, Chemistry, Calculus..." class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-slate-400 mb-1">Topic / Chapter</label>
+          <input id="newSessionTopic" type="text" placeholder="e.g. Thermodynamics, Optics, Recursion..." class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1">Day of Week</label>
+            <select id="newSessionDay" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white">
+              <option value="Mon">Monday</option>
+              <option value="Tue">Tuesday</option>
+              <option value="Wed">Wednesday</option>
+              <option value="Thu">Thursday</option>
+              <option value="Fri">Friday</option>
+              <option value="Sat">Saturday</option>
+              <option value="Sun">Sunday</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1">Time Slot</label>
+            <select id="newSessionSlot" class="w-full glass-input rounded-xl px-3 py-2 text-xs text-white">
+              <option value="09:00">09:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="14:00">02:00 PM</option>
+              <option value="16:00">04:00 PM</option>
+              <option value="18:00">06:00 PM</option>
+              <option value="20:00">08:00 PM</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-2">
+        <button onclick="closeAddSessionModal()" class="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button onclick="saveCustomSession()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs">Save Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: Google Gemini AI Engine Configuration -->
+  <!-- ========================================================================= -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 hidden bg-obsidian-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-violet-500/20">
+            ⚡
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Google Gemini AI Engine</h3>
+            <p class="text-[11px] text-slate-400">Gemini 3.8 / 2.5 Flash Live Integration</p>
+          </div>
+        </div>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white text-lg p-1">&times;</button>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-obsidian-900/90 border border-white/5 space-y-2">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Connect your free Google Gemini API Key to unlock <strong>live, adaptive generative reasoning</strong> tailored to your target exam, circadian focus peaks, and spaced retention intervals.
+        </p>
+        <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 font-semibold underline">
+          <span>Get free API key at Google AI Studio</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-[11px] font-mono uppercase text-slate-400">Gemini API Key</label>
+        <div class="relative">
+          <input id="geminiApiKeyInput" type="password" placeholder="AIzaSy..." class="w-full glass-input rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none pr-10" />
+          <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs">👁️</button>
+        </div>
+        <div id="apiKeyValidationMessage" class="text-[11px] font-mono min-h-[1rem]"></div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="testAndSaveApiKey()" id="saveApiKeyBtn" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-cyan-500/20 transition-all flex items-center justify-center gap-2">
+          <span>Save & Verify Key</span>
+        </button>
+        <button onclick="clearApiKey()" class="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-semibold border border-white/5 transition-colors">
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- Advanced Planner Subsystem -->
+  <script src="/study_planner.js"></script>
+
+  <!-- Complete Embedded Planner Logic & Synthesis Engine -->
+  <!-- ========================================================================= -->
+  <script>
+    /**
+     * ClearMind Pro — AI Study Planner & Cognitive Timetable Engine
+     * Architecture:
+     * 1. Data Store & State Machine (Local persistence + Remote sync)
+     * 2. AI Generator Bridge (Gemini 3.6/3.8 Flash Dual Engine)
+     * 3. Weekly Matrix Renderer & Ebbinghaus Decay Calculator
+     * 4. Web Audio Synthesizer (Brown noise, Gamma 40Hz, Rain generator)
+     * 5. Interactive Pomodoro & XP Gamification
+     */
+
+    // --- State Management ---
+    const PLANNER_STORAGE_KEY = 'clearmind_study_planner_state_v1';
+    
+    const DEFAULT_PLANNER_STATE = {
+      exam: {
+        name: 'JEE Advanced & Mains',
+        code: 'jee',
+        targetDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(),
+        readinessPct: 78.4,
+      },
+      stats: {
+        streakDays: 14,
+        weeklyHours: 28.5,
+        pomoCompletedToday: 3,
+        totalPomoMinutesToday: 75,
+        userXp: 4850
+      },
+      schedule: [
+        { id: 's1', day: 'Mon', time: '09:00', duration: 120, subject: 'Physics', topic: 'Rotational Dynamics & Torque', color: 'cyan', completed: true, ebbinghausTier: 'R2' },
+        { id: 's2', day: 'Mon', time: '14:00', duration: 90, subject: 'Mathematics', topic: 'Definite Integration & Areas', color: 'violet', completed: true, ebbinghausTier: 'R3' },
+        { id: 's3', day: 'Mon', time: '18:00', duration: 60, subject: 'Chemistry', topic: 'Thermodynamic Cycles & Enthalpy', color: 'emerald', completed: false, ebbinghausTier: 'R1' },
+        { id: 's4', day: 'Tue', time: '09:00', duration: 120, subject: 'Chemistry', topic: 'Organic Reaction Mechanisms (SN1/SN2)', color: 'emerald', completed: false, ebbinghausTier: 'R1' },
+        { id: 's5', day: 'Tue', time: '14:00', duration: 90, subject: 'Physics', topic: 'Electromagnetism & Faraday Law', color: 'cyan', completed: false, ebbinghausTier: 'R2' },
+        { id: 's6', day: 'Tue', time: '18:00', duration: 60, subject: 'Computer Science', topic: 'Tree Traversal & Graph BFS', color: 'amber', completed: false, ebbinghausTier: 'R4' },
+        { id: 's7', day: 'Wed', time: '09:00', duration: 120, subject: 'Mathematics', topic: 'Differential Equations & Degree', color: 'violet', completed: false, ebbinghausTier: 'R3' },
+        { id: 's8', day: 'Wed', time: '14:00', duration: 90, subject: 'Biology', topic: 'Genetics & Punnett Squares', color: 'rose', completed: false, ebbinghausTier: 'R1' },
+        { id: 's9', day: 'Thu', time: '09:00', duration: 180, subject: 'Full Mock Test', topic: 'All Subjects Paper 1 Simulation', color: 'amber', completed: false, ebbinghausTier: 'Test' },
+        { id: 's10', day: 'Fri', time: '09:00', duration: 120, subject: 'Physics', topic: 'Ray Optics & Wave Interference', color: 'cyan', completed: false, ebbinghausTier: 'R2' },
+        { id: 's11', day: 'Fri', time: '14:00', duration: 90, subject: 'Chemistry', topic: 'Coordination Chemistry & Isomerism', color: 'emerald', completed: false, ebbinghausTier: 'R3' },
+        { id: 's12', day: 'Sat', time: '10:00', duration: 150, subject: 'Mathematics', topic: 'Probability & Permutations', color: 'violet', completed: false, ebbinghausTier: 'R1' },
+        { id: 's13', day: 'Sun', time: '11:00', duration: 120, subject: 'Spaced Review', topic: 'All Week Error Log Flashcards', color: 'emerald', completed: false, ebbinghausTier: 'R5' }
+      ],
+      matrix: {
+        q1: [
+          { id: 'm1', text: 'Rotational Mechanics Problems (Impending Mock)', subject: 'Physics' },
+          { id: 'm2', text: 'SN1 vs SN2 Nucleophilic Mechanisms', subject: 'Chemistry' }
+        ],
+        q2: [
+          { id: 'm3', text: 'Differential Equation Proofs & Intuition', subject: 'Mathematics' },
+          { id: 'm4', text: 'Data Structures: Red-Black Trees', subject: 'Computer Science' }
+        ],
+        q3: [
+          { id: 'm5', text: 'Lab Manual Write-up Submissions', subject: 'Homework' },
+          { id: 'm6', text: 'Formula Cheat Sheet Printing & Formatting', subject: 'Admin' }
+        ],
+        q4: [
+          { id: 'm7', text: 'Browsing Physics Forum Discussions', subject: 'Passive' },
+          { id: 'm8', text: 'Re-watching General Strategy Videos', subject: 'Passive' }
+        ]
+      },
+      ebbinghausQueue: [
+        { id: 'eb1', topic: 'Faraday’s Law of Induction', subject: 'Physics', tier: 'R1', due: 'Today (Day 1)', retention: 62 },
+        { id: 'eb2', topic: 'SN1 / SN2 Kinetics', subject: 'Chemistry', tier: 'R2', due: 'Today (Day 3)', retention: 74 },
+        { id: 'eb3', topic: 'Taylor Series Expansion', subject: 'Mathematics', tier: 'R3', due: 'Today (Day 7)', retention: 86 },
+        { id: 'eb4', topic: 'Dynamic Programming Top-Down', subject: 'CS', tier: 'R4', due: 'Today (Day 14)', retention: 91 }
+      ]
+    };
+
+    let plannerState = loadPlannerState();
+
+    function loadPlannerState() {
+      try {
+        const raw = localStorage.getItem(PLANNER_STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.warn('Failed to load planner state from localStorage:', e);
+      }
+      return JSON.parse(JSON.stringify(DEFAULT_PLANNER_STATE));
+    }
+
+    function savePlannerState() {
+      try {
+        localStorage.setItem(PLANNER_STORAGE_KEY, JSON.stringify(plannerState));
+      } catch (e) {
+        console.error('Failed to save planner state:', e);
+      }
+    }
+
+    // --- Tab Switching Logic ---
+    function switchPlannerTab(tabName) {
+      const tabs = ['schedule', 'matrix', 'ebbinghaus'];
+      tabs.forEach(t => {
+        const content = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === tabName) {
+          content.classList.remove('hidden');
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm transition-all';
+        } else {
+          content.classList.add('hidden');
+          btn.className = 'px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition-all';
+        }
+      });
+
+      if (tabName === 'ebbinghaus') {
+        renderRetentionCurve();
+      }
+    }
+
+    // --- Timetable Grid Rendering ---
+    function renderTimetableRows() {
+      const container = document.getElementById('timetableRowsContainer');
+      if (!container) return;
+
+      const timeSlots = ['09:00', '11:00', '14:00', '16:00', '18:00', '20:00'];
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+      let html = '';
+      timeSlots.forEach(slot => {
+        html += `<div class="grid grid-cols-8 gap-3 py-3 items-start">`;
+        html += `<div class="text-slate-400 font-mono text-center pt-2 font-semibold">${slot}</div>`;
+
+        days.forEach(day => {
+          const sessions = plannerState.schedule.filter(s => s.day === day && s.time === slot);
+          if (sessions.length > 0) {
+            const s = sessions[0];
+            const colorClasses = {
+              cyan: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:border-cyan-400',
+              emerald: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:border-emerald-400',
+              violet: 'bg-violet-500/10 border-violet-500/30 text-violet-300 hover:border-violet-400',
+              amber: 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:border-amber-400',
+              rose: 'bg-rose-500/10 border-rose-500/30 text-rose-300 hover:border-rose-400'
+            }[s.color || 'cyan'];
+
+            html += `
+              <div onclick="launchQuickSession('${s.subject}', '${s.topic}')" class="cursor-pointer p-2.5 rounded-xl border ${colorClasses} transition-all duration-200 hover:-translate-y-0.5 shadow-sm space-y-1">
+                <div class="flex items-center justify-between text-[10px] font-bold">
+                  <span class="truncate">${s.subject}</span>
+                  <span class="px-1.5 py-0.2 rounded bg-black/40 font-mono">${s.ebbinghausTier || 'Study'}</span>
+                </div>
+                <div class="text-[11px] font-medium text-white truncate" title="${s.topic}">${s.topic}</div>
+                <div class="flex items-center justify-between text-[9px] text-slate-400 pt-0.5">
+                  <span>${s.duration} mins</span>
+                  ${s.completed ? '<span class="text-emerald-400">✓ Done</span>' : '<span class="text-cyan-400">Start</span>'}
+                </div>
+              </div>
+            `;
+          } else {
+            html += `
+              <div onclick="openAddSessionModalFor('${day}', '${slot}')" class="min-h-[56px] rounded-xl border border-dashed border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.02] flex items-center justify-center cursor-pointer transition-colors group">
+                <span class="text-slate-600 group-hover:text-cyan-400 text-xs">+</span>
+              </div>
+            `;
+          }
+        });
+
+        html += `</div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // --- Eisenhower Matrix Rendering ---
+    function renderMatrix() {
+      ['q1', 'q2', 'q3', 'q4'].forEach((quadKey, idx) => {
+        const container = document.getElementById(`matrixQuadrant${idx + 1}`);
+        if (!container) return;
+
+        const items = plannerState.matrix[quadKey] || [];
+        if (items.length === 0) {
+          container.innerHTML = `<div class="text-[11px] text-slate-500 italic py-4 text-center">No active tasks in this quadrant.</div>`;
+          return;
+        }
+
+        container.innerHTML = items.map((item, itemIdx) => `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-obsidian-950/70 border border-white/5 text-xs text-slate-200">
+            <div class="flex items-center gap-2 truncate">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span class="truncate font-medium">${item.text}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-slate-400">${item.subject}</span>
+              <button onclick="removeMatrixItem('${quadKey}', ${itemIdx})" class="text-slate-500 hover:text-rose-400 text-sm leading-none">&times;</button>
+            </div>
+          </div>
+        `).join('');
+      });
+    }
+
+    function removeMatrixItem(quadKey, index) {
+      plannerState.matrix[quadKey].splice(index, 1);
+      savePlannerState();
+      renderMatrix();
+    }
+
+    function addTopicToQuadrant(quadNum) {
+      const text = prompt('Enter topic or task name:');
+      if (!text || !text.trim()) return;
+      const subject = prompt('Enter subject (e.g. Physics, Math):', 'General') || 'General';
+
+      plannerState.matrix[`q${quadNum}`].push({
+        id: 'm_' + Date.now(),
+        text: text.trim(),
+        subject: subject.trim()
+      });
+      savePlannerState();
+      renderMatrix();
+    }
+
+    // --- Ebbinghaus Queue & Retention Curve Rendering ---
+    function renderEbbinghausQueue() {
+      const container = document.getElementById('ebbinghausQueueContainer');
+      const countEl = document.getElementById('ebbinghausDueCount');
+      if (!container) return;
+
+      const queue = plannerState.ebbinghausQueue || [];
+      if (countEl) countEl.innerText = `${queue.length} Topics Due`;
+
+      if (queue.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-400 py-6 text-center">All spaced reviews completed for today! Great job.</div>`;
+        return;
+      }
+
+      container.innerHTML = queue.map((item, idx) => `
+        <div class="p-4 rounded-xl bg-obsidian-900/80 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 text-xs">
+              <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">${item.tier} Interval</span>
+              <span class="text-slate-400 font-mono">${item.subject}</span>
+              <span class="text-slate-500">• Due ${item.due}</span>
+            </div>
+            <div class="text-sm font-bold text-white">${item.topic}</div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="recordRetentionResult(${idx}, 'forgot')" class="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 text-xs font-semibold transition-colors">
+              Forgot (Reset R1)
+            </button>
+            <button onclick="recordRetentionResult(${idx}, 'hesitated')" class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-xs font-semibold transition-colors">
+              Hesitated (Repeat)
+            </button>
+            <button onclick="recordRetentionResult(${idx}, 'mastered')" class="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-xs font-bold transition-colors">
+              Mastered (Advance)
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function recordRetentionResult(idx, result) {
+      const item = plannerState.ebbinghausQueue[idx];
+      if (!item) return;
+
+      if (result === 'mastered') {
+        const nextTiers = { R1: 'R2', R2: 'R3', R3: 'R4', R4: 'R5', R5: 'Graduated' };
+        item.tier = nextTiers[item.tier] || 'Graduated';
+        awardXP(35, `Mastered ${item.topic} in Spaced Review!`);
+      } else if (result === 'forgot') {
+        item.tier = 'R1';
+        awardXP(10, `Reviewed ${item.topic}`);
+      }
+
+      plannerState.ebbinghausQueue.splice(idx, 1);
+      savePlannerState();
+      renderEbbinghausQueue();
+    }
+
+    function renderRetentionCurve() {
+      const canvas = document.getElementById('retentionCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.parentElement.clientWidth;
+      const h = canvas.height = canvas.parentElement.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += h / 4) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Draw Ebbinghaus Decay curve without review (Red dashed)
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(244, 63, 94, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.moveTo(20, 15);
+      for (let x = 20; x < w - 20; x++) {
+        const progress = (x - 20) / (w - 40);
+        // Exponential decay R = e^(-t/S)
+        const yVal = 15 + (h - 30) * (1 - Math.exp(-progress * 3.5));
+        ctx.lineTo(x, yVal);
+      }
+      ctx.stroke();
+
+      // Draw ClearMind Interrupted Decay curve (Cyan solid glow)
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 10;
+      
+      const checkpoints = [
+        { x: 0.0, yPct: 0.1 },
+        { x: 0.2, yPct: 0.35 },
+        { x: 0.21, yPct: 0.12 }, // Review 1 jump
+        { x: 0.45, yPct: 0.28 },
+        { x: 0.46, yPct: 0.10 }, // Review 2 jump
+        { x: 0.75, yPct: 0.20 },
+        { x: 0.76, yPct: 0.08 }, // Review 3 jump
+        { x: 1.0, yPct: 0.12 }
+      ];
+
+      checkpoints.forEach((pt, i) => {
+        const actualX = 20 + pt.x * (w - 40);
+        const actualY = 15 + pt.yPct * (h - 30);
+        if (i === 0) ctx.moveTo(actualX, actualY);
+        else ctx.lineTo(actualX, actualY);
+      });
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // --- Countdown Timer Engine ---
+    function updateCountdown() {
+      const targetDate = new Date(plannerState.exam.targetDate).getTime();
+      const now = Date.now();
+      const diff = Math.max(0, targetDate - now);
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+      const elDays = document.getElementById('cdDays');
+      const elHours = document.getElementById('cdHours');
+      const elMins = document.getElementById('cdMins');
+      const elSecs = document.getElementById('cdSecs');
+
+      if (elDays) elDays.innerText = String(days).padStart(2, '0');
+      if (elHours) elHours.innerText = String(hours).padStart(2, '0');
+      if (elMins) elMins.innerText = String(mins).padStart(2, '0');
+      if (elSecs) elSecs.innerText = String(secs).padStart(2, '0');
+    }
+
+    // --- Google Gemini API Key Management ---
+    function getStoredGeminiKey() {
+      return (localStorage.getItem('clearmind_gemini_key') || '').trim();
+    }
+
+    function updateApiKeyStatusDisplay() {
+      const key = getStoredGeminiKey();
+      const dot = document.getElementById('geminiKeyStatusDot');
+      const text = document.getElementById('geminiKeyStatusText');
+      if (dot && text) {
+        if (key) {
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50';
+          text.innerText = 'Gemini 3.8 Active';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+          text.innerText = 'Connect Gemini AI';
+        }
+      }
+    }
+
+    function openApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      const input = document.getElementById('geminiApiKeyInput');
+      const msg = document.getElementById('apiKeyValidationMessage');
+      if (input) input.value = getStoredGeminiKey();
+      if (msg) msg.innerHTML = '';
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('geminiApiKeyInput');
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    }
+
+    async function testAndSaveApiKey() {
+      const input = document.getElementById('geminiApiKeyInput');
+      const msg = document.getElementById('apiKeyValidationMessage');
+      const btn = document.getElementById('saveApiKeyBtn');
+      const key = (input ? input.value : '').trim();
+
+      if (!key) {
+        msg.innerHTML = '<span class="text-rose-400">Please paste a valid Gemini API Key from Google AI Studio.</span>';
+        return;
+      }
+
+      msg.innerHTML = '<span class="text-cyan-400 animate-pulse">Testing connection to Google Gemini Generative API...</span>';
+      if (btn) btn.disabled = true;
+
+      try {
+        const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "Respond only with JSON: {\"status\":\"ok\"}" }] }],
+            generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+          })
+        });
+
+        if (testRes.ok) {
+          localStorage.setItem('clearmind_gemini_key', key);
+          msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Successfully connected to Gemini Flash! Key saved.</span>';
+          updateApiKeyStatusDisplay();
+          setTimeout(() => {
+            closeApiKeyModal();
+            showToast('Google Gemini AI Connected! Ready for live schedule generation.');
+          }, 1200);
+        } else {
+          const bRes = await fetch('/api/gemini/validate-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key })
+          });
+          const bData = await bRes.json();
+          if (bData && bData.valid) {
+            localStorage.setItem('clearmind_gemini_key', key);
+            msg.innerHTML = '<span class="text-emerald-400 font-bold">✓ Verified via ClearMind Server! Key saved.</span>';
+            updateApiKeyStatusDisplay();
+            setTimeout(() => {
+              closeApiKeyModal();
+              showToast('Google Gemini AI Connected!');
+            }, 1200);
+          } else {
+            msg.innerHTML = `<span class="text-rose-400">Connection error: ${bData?.error || 'Invalid API Key or quota exceeded. Verify at aistudio.google.com.'}</span>`;
+          }
+        }
+      } catch (err) {
+        localStorage.setItem('clearmind_gemini_key', key);
+        msg.innerHTML = '<span class="text-amber-400">Saved locally. ClearMind server will route calls with your key.</span>';
+        updateApiKeyStatusDisplay();
+        setTimeout(closeApiKeyModal, 1500);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function clearApiKey() {
+      localStorage.removeItem('clearmind_gemini_key');
+      const input = document.getElementById('geminiApiKeyInput');
+      const msg = document.getElementById('apiKeyValidationMessage');
+      if (input) input.value = '';
+      if (msg) msg.innerHTML = '<span class="text-slate-400">API Key cleared. Reverted to algorithmic synthesizer.</span>';
+      updateApiKeyStatusDisplay();
+      showToast('Gemini API Key removed.');
+    }
+
+    // --- Direct Browser AI Generation with Google Gemini 3.8 / 2.5 Flash ---
+    async function callDirectGeminiApi(apiKey, examCode, dailyHours, archetype, notes) {
+      const sysInstruction = `You are ClearMind Pro Cognitive Curriculum Architect.
+Generate an optimal, personalized 7-day revision schedule (Monday to Sunday) and a 4-quadrant Eisenhower priority matrix for a student.
+Format your response STRICTLY as a single valid JSON object matching this schema:
+{
+  "exam_name": "string",
+  "ai_model": "Google Gemini 3.8 / 2.5 Flash",
+  "strategic_rationale": "2-3 sentences explaining the cognitive load balancing and spaced repetition logic for this student",
+  "schedule": [
+    {
+      "day": "Mon|Tue|Wed|Thu|Fri|Sat|Sun",
+      "time": "09:00|11:00|14:00|16:00|18:00|20:00",
+      "duration": 90,
+      "subject": "Physics|Chemistry|Mathematics|Biology|Computer Science|SAT Math|Reading",
+      "topic": "Specific topic name",
+      "color": "cyan|emerald|violet|amber|rose",
+      "ebbinghausTier": "R1|R2|R3|R4|Test"
+    }
+  ],
+  "matrix": {
+    "q1": [{"text": "string", "subject": "string"}],
+    "q2": [{"text": "string", "subject": "string"}],
+    "q3": [{"text": "string", "subject": "string"}],
+    "q4": [{"text": "string", "subject": "string"}]
+  }
+}`;
+
+      const promptText = `Target Exam: ${examCode.toUpperCase()}
+Daily Capacity: ${dailyHours} hours/day
+Student Archetype: ${archetype}
+Student Focus/Weak Points: ${notes || "Comprehensive high-yield coverage"}
+Create between 10 to 18 realistic study sessions spread across the week with optimal cognitive spacing.`;
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${sysInstruction}\n\n${promptText}` }] }],
+          generationConfig: {
+            temperature: 0.4,
+            responseMimeType: "application/json"
+          }
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Google Gemini API responded with status ${res.status}`);
+      }
+
+      const resJson = await res.json();
+      const rawText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error("No response text from Gemini");
+
+      const cleaned = rawText.trim().replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+      const parsed = JSON.parse(cleaned);
+      parsed.is_real_ai = true;
+      parsed.model = "Google Gemini 3.8 / 2.5 Flash (Direct Browser Engine)";
+      return parsed;
+    }
+
+    function applyGeneratedSchedule(data, examCode) {
+      plannerState.schedule = data.schedule;
+      if (data.matrix) plannerState.matrix = data.matrix;
+      savePlannerState();
+      renderTimetableRows();
+      renderMatrix();
+
+      const banner = document.getElementById('aiPlannerStatusBanner');
+      const badge = document.getElementById('aiModelBadge');
+      const rationaleText = document.getElementById('aiStrategicRationaleText');
+      if (banner && rationaleText) {
+        banner.classList.remove('hidden');
+        if (badge) badge.innerText = data.model || 'Google Gemini Flash';
+        rationaleText.innerHTML = `<strong>Cognitive Strategy:</strong> ${data.strategic_rationale || 'Schedule balanced across circadian alertness windows and spaced repetition intervals.'}`;
+      }
+
+      const examBadge = document.getElementById('targetExamBadge');
+      if (examBadge) examBadge.innerText = (data.exam_name || examCode.toUpperCase()).slice(0, 24);
+
+      if (data.is_real_ai) {
+        showToast(`⚡ Generated with Live Google Gemini Flash! ${data.schedule.length} sessions synthesized.`);
+      } else {
+        showToast(`Synthesized with Algorithmic Synthesizer. Connect a free Gemini key for live reasoning!`);
+      }
+    }
+
+    // --- AI Plan Generation Engine ---
+    async function generateAiStudySchedule() {
+      const examSelect = document.getElementById('examTargetSelect');
+      const hoursSelect = document.getElementById('dailyHoursSelect');
+      const archetypeSelect = document.getElementById('archetypeSelect');
+      const promptInput = document.getElementById('customPlanPrompt');
+
+      const spinner = document.getElementById('generateBtnSpinner');
+      const btnText = document.getElementById('generateBtnText');
+
+      spinner.classList.remove('hidden');
+      btnText.innerText = 'Synthesizing with AI...';
+
+      const examCode = examSelect.value;
+      const dailyHours = hoursSelect.value;
+      const archetype = archetypeSelect.value;
+      const userPrompt = promptInput.value.trim();
+      const apiKey = getStoredGeminiKey();
+
+      try {
+        let aiPlanData = null;
+
+        // Step 1: Call Backend with client's API Key if available
+        try {
+          const response = await fetch('/api/study-plan/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Gemini-Key': apiKey
+            },
+            body: JSON.stringify({
+              exam_code: examCode,
+              daily_hours: parseFloat(dailyHours),
+              archetype: archetype,
+              notes: userPrompt,
+              api_key: apiKey
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.schedule && data.schedule.length > 0) {
+              aiPlanData = data;
+            }
+          }
+        } catch (serverErr) {
+          console.warn('Backend call failed, trying direct Google Gemini API...', serverErr);
+        }
+
+        // Step 2: Direct Client-Side Gemini Fallback if server ran offline or returned algorithmic plan
+        if ((!aiPlanData || !aiPlanData.is_real_ai) && apiKey) {
+          try {
+            const directAiData = await callDirectGeminiApi(apiKey, examCode, dailyHours, archetype, userPrompt);
+            if (directAiData && directAiData.schedule) {
+              aiPlanData = directAiData;
+            }
+          } catch (directErr) {
+            console.warn('Direct Gemini call failed:', directErr);
+          }
+        }
+
+        // Step 3: Apply Generated Plan
+        if (aiPlanData && aiPlanData.schedule) {
+          applyGeneratedSchedule(aiPlanData, examCode);
+        } else {
+          fallbackLocalAiGeneration(examCode, dailyHours, archetype, userPrompt);
+        }
+      } catch (err) {
+        console.error('Plan generation error:', err);
+        fallbackLocalAiGeneration(examCode, dailyHours, archetype, userPrompt);
+      } finally {
+        spinner.classList.add('hidden');
+        btnText.innerText = 'Generate Smart Plan';
+      }
+    }
+
+    function fallbackLocalAiGeneration(examCode, dailyHours, archetype, userPrompt) {
+      if (window.ClearMindStudyPlanner && window.ClearMindStudyPlanner.AiStudyPlanSynthesizer) {
+        const synth = new window.ClearMindStudyPlanner.AiStudyPlanSynthesizer();
+        const plan = synth.synthesizePlan({
+          examCode: examCode,
+          dailyHours: parseFloat(dailyHours) || 4,
+          chronotype: archetype === 'night_owl' ? 'night_owl' : 'intermediate'
+        });
+        if (plan && plan.weeklySchedule) {
+          applyGeneratedSchedule({
+            is_real_ai: false,
+            model: "ClearMind Cognitive Algorithmic Engine",
+            exam_name: plan.examName,
+            strategic_rationale: "Synthesized via curriculum weightings and circadian focus blocks. Connect your free Google Gemini API Key for live AI reasoning!",
+            schedule: plan.weeklySchedule,
+            matrix: plannerState.matrix
+          }, examCode);
+          return;
+        }
+      }
+
+      // Hardened fallback
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const schedule = days.map((day, i) => ({
+        day: day,
+        time: i % 2 === 0 ? '09:00' : '14:00',
+        duration: 90,
+        subject: examCode === 'neet' ? 'Biology' : (examCode === 'sat' ? 'SAT Math' : 'Physics'),
+        topic: `Core Syllabus Mastery Module ${i + 1}`,
+        color: 'cyan',
+        ebbinghausTier: `R${(i % 4) + 1}`
+      }));
+      applyGeneratedSchedule({
+        is_real_ai: false,
+        model: "ClearMind Algorithmic Engine",
+        exam_name: `${examCode.toUpperCase()} Plan`,
+        strategic_rationale: "Default syllabus distribution. Connect your free Gemini API key to activate live generative reasoning!",
+        schedule: schedule,
+        matrix: plannerState.matrix
+      }, examCode);
+    }
+
+    // --- Web Audio Synthesizer (Pomodoro Ambient Sound Generator) ---
+    let audioCtx = null;
+    let activeAudioNodes = [];
+    let currentSoundPlaying = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function stopAmbientSounds() {
+      activeAudioNodes.forEach(node => {
+        try { node.stop ? node.stop() : node.disconnect(); } catch (e) {}
+      });
+      activeAudioNodes = [];
+      currentSoundPlaying = null;
+      document.getElementById('audioPlayingState').innerText = 'Muted';
+      ['Brown', 'Gamma', 'Rain'].forEach(name => {
+        const btn = document.getElementById(`soundBtn${name}`);
+        if (btn) btn.classList.remove('border-cyan-400', 'bg-cyan-500/20', 'text-cyan-300');
+      });
+    }
+
+    function toggleAmbientSound(type) {
+      if (currentSoundPlaying === type) {
+        stopAmbientSounds();
+        return;
+      }
+      stopAmbientSounds();
+      const ctx = getAudioContext();
+
+      if (type === 'brown') {
+        // Brown noise generator via buffer
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = data[i];
+          data[i] *= 3.5; // Gain boost
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400;
+
+        const gain = ctx.createGain();
+        gain.gain.value = 0.15;
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+
+        activeAudioNodes.push(noise, filter, gain);
+        currentSoundPlaying = 'brown';
+        document.getElementById('soundBtnBrown').classList.add('border-cyan-400', 'bg-cyan-500/20', 'text-cyan-300');
+        document.getElementById('audioPlayingState').innerText = 'Brown Noise Active';
+
+      } else if (type === 'gamma') {
+        // Binaural 40Hz Gamma wave (Base 200Hz left, 240Hz right)
+        const oscL = ctx.createOscillator();
+        const oscR = ctx.createOscillator();
+        oscL.type = 'sine';
+        oscR.type = 'sine';
+        oscL.frequency.value = 200;
+        oscR.frequency.value = 240;
+
+        const merger = ctx.createChannelMerger(2);
+        const gain = ctx.createGain();
+        gain.gain.value = 0.08;
+
+        oscL.connect(merger, 0, 0);
+        oscR.connect(merger, 0, 1);
+        merger.connect(gain);
+        gain.connect(ctx.destination);
+
+        oscL.start();
+        oscR.start();
+        activeAudioNodes.push(oscL, oscR, gain);
+        currentSoundPlaying = 'gamma';
+        document.getElementById('soundBtnGamma').classList.add('border-cyan-400', 'bg-cyan-500/20', 'text-cyan-300');
+        document.getElementById('audioPlayingState').innerText = '40Hz Gamma Wave Active';
+
+      } else if (type === 'rain') {
+        // Pink / Rain bandpass simulator
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.4;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1200;
+        filter.Q.value = 0.8;
+
+        const gain = ctx.createGain();
+        gain.gain.value = 0.12;
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+
+        activeAudioNodes.push(noise, filter, gain);
+        currentSoundPlaying = 'rain';
+        document.getElementById('soundBtnRain').classList.add('border-cyan-400', 'bg-cyan-500/20', 'text-cyan-300');
+        document.getElementById('audioPlayingState').innerText = 'Binaural Rain Active';
+      }
+    }
+
+    function playChime() {
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.5); // A5
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.8);
+      } catch (e) {}
+    }
+
+    // --- Pomodoro State & Multi-Duration Timer Engine ---
+    let pomodoroInterval = null;
+    let pomodoroFocusMinutes = 25;
+    let pomodoroBreakMinutes = 5;
+    let pomodoroTotalSeconds = 25 * 60;
+    let pomodoroSecondsLeft = 25 * 60;
+    let pomodoroIsRunning = false;
+    let pomodoroPhase = 'focus'; // 'focus' | 'break'
+    let pomodoroCurrentCycle = 1;
+    let pomodoroPresetName = 'Classic';
+
+    function openPomodoroModal() {
+      document.getElementById('pomodoroModal').classList.remove('hidden');
+      updatePomodoroDisplay();
+      updateCycleDots();
+      updateXpRewardTier();
+    }
+
+    function closePomodoroModal() {
+      document.getElementById('pomodoroModal').classList.add('hidden');
+    }
+
+    function launchQuickSession(subject, topic) {
+      document.getElementById('pomodoroActiveTopic').innerText = `${subject}: ${topic}`;
+      openPomodoroModal();
+      setPomodoroMode('focus');
+      togglePomodoroTimer();
+    }
+
+    function setPomodoroDuration(minutes, label) {
+      minutes = Math.max(1, Math.min(240, parseInt(minutes) || 25));
+      pomodoroFocusMinutes = minutes;
+      pomodoroPresetName = label || `${minutes}m Custom`;
+
+      // Update preset buttons
+      ['15', '25', '50', '90'].forEach(m => {
+        const btn = document.getElementById(`pomoBtn${m}`);
+        if (btn) {
+          if (m === String(minutes)) {
+            btn.className = 'px-3 py-1.5 rounded-xl font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all';
+          } else {
+            btn.className = 'px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all';
+          }
+        }
+      });
+      const customBtn = document.getElementById('pomoBtnCustom');
+      if (customBtn) {
+        if (!['15', '25', '50', '90'].includes(String(minutes))) {
+          customBtn.className = 'px-3 py-1.5 rounded-xl font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1';
+        } else {
+          customBtn.className = 'px-3 py-1.5 rounded-xl font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1';
+        }
+      }
+
+      setPomodoroMode('focus');
+      const presetLabelEl = document.getElementById('pomodoroPresetLabel');
+      if (presetLabelEl) presetLabelEl.innerText = `${pomodoroPresetName} Mode`;
+      updateXpRewardTier();
+      showToast(`Set Pomodoro to ${minutes}m (${pomodoroPresetName})`);
+    }
+
+    function setPomodoroBreak(minutes) {
+      minutes = Math.max(1, Math.min(60, parseInt(minutes) || 5));
+      pomodoroBreakMinutes = minutes;
+
+      // Update break buttons
+      ['5', '10', '15'].forEach(m => {
+        const btn = document.getElementById(`breakBtn${m}`);
+        if (btn) {
+          if (m === String(minutes)) {
+            btn.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold transition-all';
+          } else {
+            btn.className = 'px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[11px] transition-all';
+          }
+        }
+      });
+
+      setPomodoroMode('break');
+      showToast(`Switched to ${minutes}m Break`);
+    }
+
+    function promptCustomPomodoroDuration() {
+      const input = prompt("Enter custom focus duration in minutes (e.g. 30, 45, 60, 120):", String(pomodoroFocusMinutes));
+      if (input !== null) {
+        const val = parseInt(input.trim());
+        if (!isNaN(val) && val >= 1 && val <= 240) {
+          setPomodoroDuration(val, `${val}m Custom`);
+        } else {
+          alert("Please enter a valid number of minutes between 1 and 240.");
+        }
+      }
+    }
+
+    function promptCustomBreakDuration() {
+      const input = prompt("Enter custom break duration in minutes (e.g. 7, 12, 20):", String(pomodoroBreakMinutes));
+      if (input !== null) {
+        const val = parseInt(input.trim());
+        if (!isNaN(val) && val >= 1 && val <= 60) {
+          setPomodoroBreak(val);
+        } else {
+          alert("Please enter a valid number of break minutes between 1 and 60.");
+        }
+      }
+    }
+
+    function adjustPomodoroMinutes(delta) {
+      if (pomodoroPhase === 'focus') {
+        const newMins = Math.max(1, Math.min(240, Math.round(pomodoroSecondsLeft / 60) + delta));
+        pomodoroFocusMinutes = newMins;
+        pomodoroTotalSeconds = newMins * 60;
+        pomodoroSecondsLeft = newMins * 60;
+        updatePomodoroDisplay();
+        updateXpRewardTier();
+        showToast(`Adjusted focus duration to ${newMins}m`);
+      } else {
+        const newMins = Math.max(1, Math.min(60, Math.round(pomodoroSecondsLeft / 60) + delta));
+        pomodoroBreakMinutes = newMins;
+        pomodoroTotalSeconds = newMins * 60;
+        pomodoroSecondsLeft = newMins * 60;
+        updatePomodoroDisplay();
+        showToast(`Adjusted break duration to ${newMins}m`);
+      }
+    }
+
+    function toggleModeQuickSwitch() {
+      if (pomodoroPhase === 'focus') {
+        setPomodoroMode('break');
+      } else {
+        setPomodoroMode('focus');
+      }
+    }
+
+    function updateXpRewardTier() {
+      const rewardEl = document.getElementById('pomoXpRewardTier');
+      if (rewardEl) {
+        const xp = Math.max(15, Math.round(pomodoroFocusMinutes * 2));
+        rewardEl.innerText = `★ +${xp} XP Reward`;
+      }
+    }
+
+    function updateCycleDots() {
+      const dotsContainer = document.getElementById('pomoCycleDots');
+      const textEl = document.getElementById('pomoCycleCountText');
+      if (textEl) textEl.innerText = `${pomodoroCurrentCycle} of 4`;
+      if (dotsContainer) {
+        dotsContainer.innerHTML = '';
+        for (let i = 1; i <= 4; i++) {
+          const dot = document.createElement('span');
+          if (i < pomodoroCurrentCycle) {
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+          } else if (i === pomodoroCurrentCycle) {
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-cyan-400 ring-2 ring-cyan-400/40';
+          } else {
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-obsidian-950 border border-white/10';
+          }
+          dotsContainer.appendChild(dot);
+        }
+      }
+    }
+
+    function setPomodoroMode(mode) {
+      pomodoroPhase = mode;
+      clearInterval(pomodoroInterval);
+      pomodoroIsRunning = false;
+      document.getElementById('pomoToggleBtn').innerText = mode === 'focus' ? 'Start Focus' : 'Start Break';
+
+      const quickBtn = document.getElementById('pomoQuickBreakBtn');
+      if (quickBtn) {
+        quickBtn.innerText = mode === 'focus' ? 'Switch to Break' : 'Switch to Focus';
+      }
+
+      if (mode === 'focus') {
+        pomodoroTotalSeconds = pomodoroFocusMinutes * 60;
+        pomodoroSecondsLeft = pomodoroTotalSeconds;
+        document.getElementById('pomodoroPhaseBadge').innerText = `Focus Period (${pomodoroFocusMinutes}m)`;
+        document.getElementById('pomodoroPhaseBadge').className = 'text-[11px] font-mono text-cyan-400 uppercase tracking-widest mt-1';
+        document.getElementById('pomodoroProgressRing').setAttribute('stroke', '#06b6d4');
+      } else {
+        pomodoroTotalSeconds = pomodoroBreakMinutes * 60;
+        pomodoroSecondsLeft = pomodoroTotalSeconds;
+        document.getElementById('pomodoroPhaseBadge').innerText = `Rest & Recharge (${pomodoroBreakMinutes}m)`;
+        document.getElementById('pomodoroPhaseBadge').className = 'text-[11px] font-mono text-emerald-400 uppercase tracking-widest mt-1';
+        document.getElementById('pomodoroProgressRing').setAttribute('stroke', '#10b981');
+      }
+      updatePomodoroDisplay();
+      updateCycleDots();
+      updateXpRewardTier();
+    }
+
+    function togglePomodoroTimer() {
+      const btn = document.getElementById('pomoToggleBtn');
+      if (pomodoroIsRunning) {
+        clearInterval(pomodoroInterval);
+        pomodoroIsRunning = false;
+        btn.innerText = 'Resume Focus';
+      } else {
+        pomodoroIsRunning = true;
+        btn.innerText = 'Pause Focus';
+        pomodoroInterval = setInterval(() => {
+          if (pomodoroSecondsLeft > 0) {
+            pomodoroSecondsLeft--;
+            updatePomodoroDisplay();
+          } else {
+            clearInterval(pomodoroInterval);
+            pomodoroIsRunning = false;
+            playChime();
+            if (pomodoroPhase === 'focus') {
+              awardSessionXP();
+              if (pomodoroCurrentCycle === 1) {
+                alert(`Outstanding flow! You completed 4 study cycles (${pomodoroFocusMinutes}m each). Take a 15m Long Recharge!`);
+                setPomodoroBreak(15);
+              } else {
+                alert(`Focus cycle completed (${pomodoroFocusMinutes}m)! Enjoy a well-deserved ${pomodoroBreakMinutes}m break.`);
+                setPomodoroMode('break');
+              }
+            } else {
+              alert('Break complete! Ready to dive into the next deep work session?');
+              setPomodoroMode('focus');
+            }
+          }
+        }, 1000);
+      }
+    }
+
+    function resetPomodoroTimer() {
+      clearInterval(pomodoroInterval);
+      pomodoroIsRunning = false;
+      pomodoroSecondsLeft = pomodoroTotalSeconds;
+      document.getElementById('pomoToggleBtn').innerText = pomodoroPhase === 'focus' ? 'Start Focus' : 'Start Break';
+      updatePomodoroDisplay();
+    }
+
+    function updatePomodoroDisplay() {
+      const mins = Math.floor(pomodoroSecondsLeft / 60);
+      const secs = pomodoroSecondsLeft % 60;
+      document.getElementById('pomodoroTimeDigits').innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Update SVG ring stroke offset
+      const circleCircumference = 2 * Math.PI * 42; // ~263.89
+      const pct = (pomodoroTotalSeconds - pomodoroSecondsLeft) / pomodoroTotalSeconds;
+      const offset = circleCircumference * (1 - pct);
+      const ring = document.getElementById('pomodoroProgressRing');
+      if (ring) {
+        ring.style.strokeDashoffset = offset;
+      }
+    }
+
+    function awardSessionXP() {
+      const earnedXp = Math.max(15, Math.round(pomodoroFocusMinutes * 2));
+      awardXP(earnedXp, `Completed ${pomodoroFocusMinutes}m Focus Session (+${earnedXp} XP)`);
+      plannerState.stats.pomoCompletedToday++;
+      plannerState.stats.totalPomoMinutesToday += pomodoroFocusMinutes;
+      savePlannerState();
+      document.getElementById('pomoCompletedCount').innerText = `${plannerState.stats.pomoCompletedToday} sessions (${plannerState.stats.totalPomoMinutesToday}m)`;
+      
+      // Advance cycle
+      pomodoroCurrentCycle = (pomodoroCurrentCycle % 4) + 1;
+      updateCycleDots();
+    }
+
+    function awardXP(amount, message) {
+      plannerState.stats.userXp = (plannerState.stats.userXp || 0) + amount;
+      savePlannerState();
+      showToast(message || `+${amount} XP Earned!`);
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-5 right-5 z-50 px-4 py-2.5 rounded-xl bg-obsidian-900 border border-cyan-500/40 text-cyan-300 font-mono text-xs shadow-2xl flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0';
+      toast.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span><span>${msg}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // --- Modal Custom Session Handlers ---
+    let targetSlotDay = 'Mon';
+    let targetSlotTime = '09:00';
+
+    function openAddSessionModal() {
+      document.getElementById('addSessionModal').classList.remove('hidden');
+    }
+
+    function openAddSessionModalFor(day, slot) {
+      targetSlotDay = day;
+      targetSlotTime = slot;
+      document.getElementById('newSessionDay').value = day;
+      document.getElementById('newSessionSlot').value = slot;
+      document.getElementById('addSessionModal').classList.remove('hidden');
+    }
+
+    function closeAddSessionModal() {
+      document.getElementById('addSessionModal').classList.add('hidden');
+    }
+
+    function saveCustomSession() {
+      const sub = document.getElementById('newSessionSubject').value.trim();
+      const top = document.getElementById('newSessionTopic').value.trim();
+      const day = document.getElementById('newSessionDay').value;
+      const slot = document.getElementById('newSessionSlot').value;
+
+      if (!sub || !top) {
+        alert('Please provide both subject and topic name.');
+        return;
+      }
+
+      plannerState.schedule.push({
+        id: 's_' + Date.now(),
+        day: day,
+        time: slot,
+        duration: 90,
+        subject: sub,
+        topic: top,
+        color: 'cyan',
+        completed: false,
+        ebbinghausTier: 'R1'
+      });
+
+      savePlannerState();
+      renderTimetableRows();
+      closeAddSessionModal();
+      showToast('New study session scheduled!');
+    }
+
+    // --- Export to iCalendar (.ics) ---
+    function exportToICS() {
+      let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//ClearMind Pro//AI Study Planner//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\n";
+      
+      const dayOffsetMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+      const today = new Date();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+      plannerState.schedule.forEach(s => {
+        const offset = dayOffsetMap[s.day] || 0;
+        const sessionDate = new Date(monday);
+        sessionDate.setDate(monday.getDate() + offset);
+
+        const [hours, mins] = s.time.split(':').map(Number);
+        sessionDate.setHours(hours, mins, 0, 0);
+
+        const endDate = new Date(sessionDate.getTime() + (s.duration || 60) * 60 * 1000);
+
+        const formatDate = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+        icsContent += "BEGIN:VEVENT\n";
+        icsContent += `UID:clearmind_${s.id || Date.now()}@clearmind.pro\n`;
+        icsContent += `DTSTAMP:${formatDate(new Date())}\n`;
+        icsContent += `DTSTART:${formatDate(sessionDate)}\n`;
+        icsContent += `DTEND:${formatDate(endDate)}\n`;
+        icsContent += `SUMMARY:${s.subject}: ${s.topic}\n`;
+        icsContent += `DESCRIPTION:ClearMind Pro Revision Session. Spaced Retention Tier: ${s.ebbinghausTier || 'R1'}\n`;
+        icsContent += "STATUS:CONFIRMED\n";
+        icsContent += "END:VEVENT\n";
+      });
+
+      icsContent += "END:VCALENDAR";
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'ClearMind_Study_Schedule.ics');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Exported iCalendar (.ics) schedule!');
+    }
+
+    function resetToOptimalPlan() {
+      if (confirm('Reset timetable and priority matrix to AI defaults?')) {
+        plannerState = JSON.parse(JSON.stringify(DEFAULT_PLANNER_STATE));
+        savePlannerState();
+        renderTimetableRows();
+        renderMatrix();
+        renderEbbinghausQueue();
+        showToast('Timetable reset to optimal defaults.');
+      }
+    }
+
+    // --- Keyboard Shortcuts & Global Init ---
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+        if (!document.getElementById('pomodoroModal').classList.contains('hidden')) {
+          e.preventDefault();
+          togglePomodoroTimer();
+        }
+      }
+      if (e.code === 'Escape') {
+        closePomodoroModal();
+        closeAddSessionModal();
+        closeApiKeyModal();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateApiKeyStatusDisplay();
+      renderTimetableRows();
+      renderMatrix();
+      renderEbbinghausQueue();
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      window.addEventListener('resize', renderRetentionCurve);
+    });
+  </script>
+</body>
+</html>

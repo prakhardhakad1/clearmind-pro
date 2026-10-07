@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <title>ClearMind Pro — Global Leaderboard & Peer Battle Arena</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080c" />
+
+  <!-- Google Fonts: Plus Jakarta Sans, Instrument Serif, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e17',
+              850: '#111422',
+              800: '#171b2d',
+              750: '#1e233a',
+              700: '#272e4b',
+              600: '#38426b'
+            },
+            electric: {
+              cyan: '#06b6d4',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          },
+          animation: {
+            'glow-gold': 'glowGold 3s ease-in-out infinite alternate',
+            'glow-cyan': 'glowCyan 3s ease-in-out infinite alternate',
+            'float-slow': 'float 5s ease-in-out infinite',
+            'radar-ping': 'radarPing 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+          },
+          keyframes: {
+            glowGold: {
+              '0%': { filter: 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.3))' },
+              '100%': { filter: 'drop-shadow(0 0 25px rgba(245, 158, 11, 0.7))' }
+            },
+            glowCyan: {
+              '0%': { filter: 'drop-shadow(0 0 10px rgba(6, 182, 212, 0.3))' },
+              '100%': { filter: 'drop-shadow(0 0 25px rgba(6, 182, 212, 0.7))' }
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' }
+            },
+            radarPing: {
+              '75%, 100%': { transform: 'scale(2)', opacity: '0' }
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(12, 14, 23, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 66, 107, 0.6); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.8); }
+
+    /* Glass Cards */
+    .glass-panel {
+      background: rgba(17, 20, 34, 0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.6);
+    }
+    .glass-row {
+      background: rgba(23, 27, 45, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-row:hover {
+      background: rgba(30, 35, 58, 0.85);
+      border-color: rgba(6, 182, 212, 0.35);
+      transform: translateX(4px);
+    }
+    .glass-input {
+      background: rgba(12, 14, 23, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: #06b6d4;
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+      outline: none;
+    }
+
+    /* Radial Background */
+    .bg-arena-radial {
+      background:
+        radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 85% 25%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+        #07080c;
+    }
+
+    /* Podium Heights */
+    .podium-1 { height: 210px; }
+    .podium-2 { height: 165px; }
+    .podium-3 { height: 135px; }
+
+    /* Tier Badges */
+    .badge-grandmaster { background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; }
+    .badge-master { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; }
+    .badge-diamond { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #fff; }
+    .badge-platinum { background: linear-gradient(135deg, #10b981, #06b6d4); color: #fff; }
+  </style>
+</head>
+
+<body class="bg-arena-radial text-slate-100 min-h-screen font-sans antialiased selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- ========================================================================= -->
+  <!-- Top Navigation Header -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-obsidian-950/85 border-b border-white/10 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Hub Links -->
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div class="leading-none">
+            <span class="text-lg font-extrabold tracking-tight text-white group-hover:text-amber-300 transition-colors">ClearMind <span class="text-amber-400 font-serif italic text-base">Pro</span></span>
+            <span class="block text-[10px] font-mono tracking-wider uppercase text-amber-400/80">Battle Arena & Global Ranks</span>
+          </div>
+        </a>
+
+        <!-- Breadcrumb / Section Navigation -->
+        <nav class="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-obsidian-900/80 px-3 py-1.5 rounded-full border border-white/5">
+          <a href="/app" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Classroom</a>
+          <span class="text-slate-600">•</span>
+          <a href="/study-planner" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Study Planner</a>
+          <span class="text-slate-600">•</span>
+          <a href="/leaderboard" class="text-amber-400 font-semibold bg-white/5 px-2.5 py-1 rounded-md">Leaderboard</a>
+          <span class="text-slate-600">•</span>
+          <a href="/teacher" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Teacher Portal</a>
+          <span class="text-slate-600">•</span>
+          <a href="/parent" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Parent View</a>
+        </nav>
+      </div>
+
+      <!-- Right Action Items & Quick Status -->
+      <div class="flex items-center gap-3">
+        <!-- Live Rating Elo Pill -->
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-mono font-bold">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <span>Elo Rating: <strong id="headerEloDisplay">1,845</strong></span>
+        </div>
+
+        <!-- Tier Badge -->
+        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full badge-diamond text-[11px] font-bold uppercase tracking-wider shadow-md">
+          <span>Diamond Tier III</span>
+        </div>
+
+        <!-- 1v1 Arena CTA Button -->
+        <button onclick="openMatchmakingModal()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-bold text-xs tracking-wide shadow-lg shadow-amber-500/25 flex items-center gap-1.5 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Find 1v1 Match</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- Main Application Body -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8">
+
+    <!-- Hero Section: Top 3 Global Podium -->
+    <section class="glass-panel rounded-3xl p-6 lg:p-8 relative overflow-hidden border border-white/10">
+      <div class="text-center max-w-2xl mx-auto space-y-2 mb-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-mono uppercase tracking-wider">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" />
+          </svg>
+          Season 4 Grandmaster League
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+          Global Academic Champions
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-300">
+          Rankings synthesized from dual-AI rapid blitz battles, spaced recall accuracy, and complex problem-solving velocity.
+        </p>
+      </div>
+
+      <!-- Animated 3-Tier Podium Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto items-end pt-6">
+        
+        <!-- 2nd Place: Silver -->
+        <div class="order-2 md:order-1 flex flex-col items-center text-center space-y-3">
+          <div class="relative">
+            <div class="w-20 h-20 rounded-2xl p-1 bg-gradient-to-tr from-cyan-400 to-slate-200 shadow-xl shadow-cyan-500/20">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=AriaNova" alt="2nd Place" class="w-full h-full rounded-xl bg-obsidian-900 object-cover" />
+            </div>
+            <div class="absolute -bottom-2 -right-2 w-7 h-7 rounded-lg bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-obsidian-950">
+              #2
+            </div>
+          </div>
+          <div>
+            <div class="font-bold text-white text-base">Aria Chen</div>
+            <div class="text-[11px] font-mono text-cyan-400">Singapore • Raffles Inst.</div>
+          </div>
+          <div class="text-xs font-mono font-bold text-slate-300">
+            25,120 XP <span class="text-emerald-400 ml-1">96.2% Acc</span>
+          </div>
+          <div class="w-full podium-2 rounded-2xl bg-gradient-to-t from-cyan-950/60 to-obsidian-850 border border-cyan-500/30 flex flex-col items-center justify-center p-4">
+            <span class="text-2xl font-serif italic text-cyan-300">II</span>
+            <span class="text-[10px] font-mono uppercase text-slate-400 mt-1">Master Tier</span>
+          </div>
+        </div>
+
+        <!-- 1st Place: Gold Crown -->
+        <div class="order-1 md:order-2 flex flex-col items-center text-center space-y-3 -translate-y-2">
+          <!-- Crown Icon -->
+          <div class="text-amber-400 animate-bounce">
+            <svg class="w-8 h-8 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 011.414 1.137l-1.5 6A1 1 0 0115.5 13H4.5a1 1 0 01-.967-.758l-1.5-6a1 1 0 011.414-1.137l1.6.8L9 4.323V3a1 1 0 011-1zm-5 13a1 1 0 00-1 1v1a1 1 0 001 1h10a1 1 0 001-1v-1a1 1 0 00-1-1H5z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="relative">
+            <div class="w-24 h-24 rounded-2xl p-1 bg-gradient-to-tr from-amber-400 via-rose-500 to-amber-200 shadow-2xl shadow-amber-500/40 animate-glow-gold">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=PrakharAI" alt="1st Place" class="w-full h-full rounded-xl bg-obsidian-900 object-cover" />
+            </div>
+            <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center border-2 border-obsidian-950 shadow-lg">
+              #1
+            </div>
+          </div>
+          <div>
+            <div class="font-extrabold text-white text-lg flex items-center justify-center gap-1.5">
+              <span>Devin Thorne</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            </div>
+            <div class="text-xs font-mono text-amber-400">United States • MIT Campus</div>
+          </div>
+          <div class="text-sm font-mono font-bold text-white">
+            28,450 XP <span class="text-amber-400 ml-1">98.4% Acc</span>
+          </div>
+          <div class="w-full podium-1 rounded-2xl bg-gradient-to-t from-amber-950/60 via-obsidian-800 to-obsidian-850 border border-amber-500/40 flex flex-col items-center justify-center p-4">
+            <span class="text-3xl font-serif italic text-amber-300">I</span>
+            <span class="text-[11px] font-mono uppercase text-amber-400 font-bold mt-1">Grandmaster Deity</span>
+            <span class="text-[10px] font-mono text-slate-400 mt-1">38 Match Win Streak</span>
+          </div>
+        </div>
+
+        <!-- 3rd Place: Bronze / Violet -->
+        <div class="order-3 flex flex-col items-center text-center space-y-3">
+          <div class="relative">
+            <div class="w-20 h-20 rounded-2xl p-1 bg-gradient-to-tr from-violet-400 to-amber-700 shadow-xl shadow-violet-500/20">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=KavyaPatel" alt="3rd Place" class="w-full h-full rounded-xl bg-obsidian-900 object-cover" />
+            </div>
+            <div class="absolute -bottom-2 -right-2 w-7 h-7 rounded-lg bg-violet-400 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-obsidian-950">
+              #3
+            </div>
+          </div>
+          <div>
+            <div class="font-bold text-white text-base">Kavya Sharma</div>
+            <div class="text-[11px] font-mono text-violet-400">India • IIT Bombay</div>
+          </div>
+          <div class="text-xs font-mono font-bold text-slate-300">
+            22,900 XP <span class="text-emerald-400 ml-1">95.0% Acc</span>
+          </div>
+          <div class="w-full podium-3 rounded-2xl bg-gradient-to-t from-violet-950/60 to-obsidian-850 border border-violet-500/30 flex flex-col items-center justify-center p-4">
+            <span class="text-2xl font-serif italic text-violet-300">III</span>
+            <span class="text-[10px] font-mono uppercase text-slate-400 mt-1">Diamond Tier</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- Filters, Search & View Switches -->
+    <!-- ========================================================================= -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
+      
+      <!-- Timeframe Pills -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
+        <button id="filterTimeToday" onclick="setTimeframeFilter('today')" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+          24h Daily Sprint
+        </button>
+        <button id="filterTimeWeekly" onclick="setTimeframeFilter('weekly')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all">
+          Weekly League
+        </button>
+        <button id="filterTimeAllTime" onclick="setTimeframeFilter('alltime')" class="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+          Season All-Time
+        </button>
+      </div>
+
+      <!-- Subject & Region Dropdowns + Search Bar -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Subject selector -->
+        <select id="subjectFilterSelect" onchange="applyFilters()" class="glass-input rounded-xl px-3 py-1.5 text-xs text-white">
+          <option value="all">All Academic Domains</option>
+          <option value="physics">Physics & Mechanics</option>
+          <option value="math">Mathematics & Calculus</option>
+          <option value="chemistry">Organic Chemistry</option>
+          <option value="cs">Computer Science & Algos</option>
+          <option value="biology">Cell & Molecular Biology</option>
+        </select>
+
+        <!-- Region selector -->
+        <select id="regionFilterSelect" onchange="applyFilters()" class="glass-input rounded-xl px-3 py-1.5 text-xs text-white">
+          <option value="global">Worldwide</option>
+          <option value="in">India</option>
+          <option value="us">United States</option>
+          <option value="eu">Europe</option>
+          <option value="asia">Asia-Pacific</option>
+        </select>
+
+        <!-- Search input -->
+        <div class="relative min-w-[200px]">
+          <input id="userSearchInput" oninput="applyFilters()" type="text" placeholder="Search student or school..." class="w-full glass-input rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500" />
+          <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- Main Content: Leaderboard Table + Sidebar Widgets -->
+    <!-- ========================================================================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left (Col 8): Ranked Leaderboard Table -->
+      <div class="lg:col-span-8 glass-panel rounded-2xl p-4 sm:p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>Live Competitor Standings</span>
+            <span id="activeTotalStudents" class="text-xs font-mono text-slate-400 font-normal">(14,820 active scholars)</span>
+          </h2>
+          <span class="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            Syncing every 10s
+          </span>
+        </div>
+
+        <!-- Leaderboard Table List -->
+        <div id="leaderboardListContainer" class="space-y-2">
+          <!-- Dynamically populated via renderLeaderboardList() -->
+        </div>
+
+        <!-- Pagination / Load More -->
+        <div class="pt-4 flex items-center justify-center">
+          <button onclick="loadMoreRankings()" class="px-5 py-2 rounded-xl bg-obsidian-900 hover:bg-obsidian-850 text-slate-300 border border-white/10 text-xs font-semibold font-mono transition-colors">
+            Load Next 25 Scholars ↓
+          </button>
+        </div>
+      </div>
+
+      <!-- Right (Col 4): 1v1 Battle Arena Statcard + Trophy Case -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <!-- 1v1 Matchmaking Arena Launcher Card -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10 relative overflow-hidden space-y-5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono uppercase text-amber-400 tracking-wider">Synchronous Blitz Arena</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">142 In Queue</span>
+          </div>
+
+          <div class="space-y-1">
+            <h3 class="text-xl font-bold text-white">Live 1v1 Knowledge Duel</h3>
+            <p class="text-xs text-slate-300">Challenge an international peer to a 10-question speed battle with dual AI real-time grading.</p>
+          </div>
+
+          <!-- Head to head stats summary -->
+          <div class="grid grid-cols-3 gap-2 text-center font-mono py-2 bg-obsidian-900/80 rounded-xl border border-white/5">
+            <div>
+              <span class="block text-base font-bold text-emerald-400">38</span>
+              <span class="text-[9px] uppercase text-slate-400">Victories</span>
+            </div>
+            <div>
+              <span class="block text-base font-bold text-rose-400">9</span>
+              <span class="text-[9px] uppercase text-slate-400">Defeats</span>
+            </div>
+            <div>
+              <span class="block text-base font-bold text-cyan-400">80.8%</span>
+              <span class="text-[9px] uppercase text-slate-400">Win Rate</span>
+            </div>
+          </div>
+
+          <!-- Launch Button -->
+          <button onclick="openMatchmakingModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-400 hover:to-rose-400 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Enter Matchmaking Lobby</span>
+          </button>
+        </div>
+
+        <!-- Trophy Case & Badge Showcase -->
+        <div class="glass-panel rounded-2xl p-6 border border-white/10 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Trophy Showcase</h3>
+            <span class="text-xs font-mono text-cyan-400">18 / 32 Unlocked</span>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2.5">
+            <!-- Badge 1: 14 Day Streak -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-amber-500/30 text-center cursor-pointer hover:border-amber-400 transition-colors" title="Flamekeeper: 14-Day Revision Streak">
+              <span class="text-2xl">🔥</span>
+              <span class="text-[9px] font-mono font-bold text-amber-400 mt-1">14d Flame</span>
+            </div>
+
+            <!-- Badge 2: Blitz Master -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-cyan-500/30 text-center cursor-pointer hover:border-cyan-400 transition-colors" title="Sub-5-Second Blitz Answer King">
+              <span class="text-2xl">⚡</span>
+              <span class="text-[9px] font-mono font-bold text-cyan-400 mt-1">Speed God</span>
+            </div>
+
+            <!-- Badge 3: Quantum Sage -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-violet-500/30 text-center cursor-pointer hover:border-violet-400 transition-colors" title="Quantum Physics 95%+ Mastery">
+              <span class="text-2xl">⚛️</span>
+              <span class="text-[9px] font-mono font-bold text-violet-400 mt-1">Quantum</span>
+            </div>
+
+            <!-- Badge 4: Calculus Titan -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-emerald-500/30 text-center cursor-pointer hover:border-emerald-400 transition-colors" title="Calculus Definite Integration Flawless">
+              <span class="text-2xl">📐</span>
+              <span class="text-[9px] font-mono font-bold text-emerald-400 mt-1">Integral</span>
+            </div>
+
+            <!-- Badge 5: Ebbinghaus Retainer -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-white/10 text-center cursor-pointer hover:border-white/20 transition-colors" title="500 Spaced Repetitions Mastered">
+              <span class="text-2xl">🧠</span>
+              <span class="text-[9px] font-mono font-bold text-slate-300 mt-1">500 Memory</span>
+            </div>
+
+            <!-- Badge 6: Duelist -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-900 border border-white/10 text-center cursor-pointer hover:border-white/20 transition-colors" title="Won 25 Peer Battles">
+              <span class="text-2xl">⚔️</span>
+              <span class="text-[9px] font-mono font-bold text-slate-300 mt-1">25 Duels</span>
+            </div>
+
+            <!-- Badge 7: Locked Grandmaster -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-950/60 border border-white/5 text-center opacity-40 cursor-not-allowed" title="Reach Top 10 Worldwide (Locked)">
+              <span class="text-2xl grayscale">👑</span>
+              <span class="text-[9px] font-mono text-slate-500 mt-1">Top 10</span>
+            </div>
+
+            <!-- Badge 8: Locked 100 Day -->
+            <div class="group relative flex flex-col items-center p-2.5 rounded-xl bg-obsidian-950/60 border border-white/5 text-center opacity-40 cursor-not-allowed" title="100-Day Study Streak (Locked)">
+              <span class="text-2xl grayscale">🌟</span>
+              <span class="text-[9px] font-mono text-slate-500 mt-1">Century</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- Sticky Bottom Bar: User's Own Real-Time Rank & Promotion Status -->
+    <!-- ========================================================================= -->
+    <div class="sticky bottom-4 z-30 glass-panel rounded-2xl p-4 border border-cyan-500/30 shadow-2xl bg-obsidian-950/90 backdrop-blur-xl">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        
+        <!-- User Avatar & Current Position -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl p-0.5 bg-gradient-to-tr from-cyan-400 to-violet-500">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=CurrentUserYou" alt="You" class="w-full h-full rounded-lg bg-obsidian-900" />
+          </div>
+          <div>
+            <div class="font-bold text-white flex items-center gap-2">
+              <span>You (Alex Rivera)</span>
+              <span class="px-2 py-0.2 rounded-full badge-diamond text-[9px] font-bold">Diamond III</span>
+            </div>
+            <div class="text-[11px] font-mono text-slate-400">
+              Rank <strong class="text-cyan-400">#42</strong> Worldwide • Top 1.2% Percentile
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress to Next Tier -->
+        <div class="flex-1 max-w-xs space-y-1">
+          <div class="flex justify-between text-[11px] text-slate-300 font-mono">
+            <span>Promotion to Master:</span>
+            <span class="text-amber-400 font-bold">350 XP needed</span>
+          </div>
+          <div class="w-full bg-obsidian-900 h-2 rounded-full overflow-hidden border border-white/5">
+            <div class="bg-gradient-to-r from-cyan-400 to-amber-400 h-full rounded-full" style="width: 82%"></div>
+          </div>
+        </div>
+
+        <!-- Quick Battle Launcher -->
+        <div class="flex items-center gap-2">
+          <button onclick="openMatchmakingModal()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-colors">
+            Play Duel (+100 XP)
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: 1v1 Peer Battle Matchmaking Radar & Duel Simulator -->
+  <!-- ========================================================================= -->
+  <div id="matchmakingModal" class="fixed inset-0 z-50 hidden bg-obsidian-950/85 backdrop-blur-2xl flex items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-3xl p-6 lg:p-8 border border-white/10 shadow-2xl relative space-y-6">
+      
+      <!-- Close button -->
+      <button onclick="closeMatchmakingModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- PHASE 1: Searching for Opponent (Radar Animation) -->
+      <div id="duelPhaseSearching" class="text-center space-y-6 py-6">
+        <div class="space-y-1">
+          <h3 class="text-2xl font-black text-white">Searching Global Opponent</h3>
+          <p class="text-xs text-slate-400">Matching with peer at similar Elo rating (1800 - 1900)...</p>
+        </div>
+
+        <!-- Radar Pulse Graphic -->
+        <div class="relative w-36 h-36 mx-auto flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full bg-cyan-500/20 animate-radar-ping"></div>
+          <div class="absolute inset-4 rounded-full bg-cyan-500/30 animate-pulse"></div>
+          <div class="relative w-20 h-20 rounded-full bg-obsidian-900 border-2 border-cyan-400 flex items-center justify-center shadow-xl shadow-cyan-500/40">
+            <svg class="w-8 h-8 text-cyan-400 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="text-xs font-mono text-slate-400">
+          Elapsed: <span id="radarElapsedSeconds" class="text-white font-bold">0:03</span>
+        </div>
+
+        <button onclick="cancelMatchmaking()" class="px-5 py-2 rounded-xl bg-obsidian-900 hover:bg-obsidian-850 text-rose-400 border border-rose-500/20 text-xs font-mono transition-colors">
+          Cancel Search
+        </button>
+      </div>
+
+      <!-- PHASE 2: Opponent Found & Live Rapid Quiz -->
+      <div id="duelPhaseBattle" class="hidden space-y-5">
+        <!-- Versus Banner -->
+        <div class="flex items-center justify-between pb-3 border-b border-white/10">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-300">YOU</div>
+            <div>
+              <div class="text-xs font-bold text-white">Alex Rivera</div>
+              <div id="playerScoreDisplay" class="text-[11px] font-mono text-cyan-400">Score: 0 pts</div>
+            </div>
+          </div>
+
+          <div class="px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 font-mono text-xs font-bold border border-rose-500/30">
+            VS
+          </div>
+
+          <div class="flex items-center gap-2 text-right">
+            <div>
+              <div id="opponentNameDisplay" class="text-xs font-bold text-white">Kenji Sato</div>
+              <div id="opponentScoreDisplay" class="text-[11px] font-mono text-amber-400">Score: 0 pts</div>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-bold text-amber-300">OPP</div>
+          </div>
+        </div>
+
+        <!-- Question Timer & Round Counter -->
+        <div class="flex items-center justify-between text-xs font-mono text-slate-400">
+          <span id="duelRoundCounter">Question 1 of 5</span>
+          <span id="duelTimerSeconds" class="text-amber-400 font-bold">12s Left</span>
+        </div>
+
+        <!-- Question Box -->
+        <div class="p-4 rounded-2xl bg-obsidian-900 border border-white/10 space-y-2">
+          <span class="text-[10px] font-mono uppercase text-cyan-400" id="duelQuestionDomain">Physics • Electromagnetism</span>
+          <p class="text-sm font-semibold text-white leading-relaxed" id="duelQuestionText">
+            What is the SI unit of magnetic flux, and how is it related to the Tesla?
+          </p>
+        </div>
+
+        <!-- 4 Options Grid -->
+        <div id="duelOptionsContainer" class="grid grid-cols-1 gap-2 text-xs">
+          <!-- Populated dynamically via startQuestionRound() -->
+        </div>
+
+        <div id="opponentStatusIndicator" class="text-[11px] font-mono text-slate-400 italic text-center">
+          Opponent is considering option...
+        </div>
+      </div>
+
+      <!-- PHASE 3: Duel Outcome Victory / Defeat Screen -->
+      <div id="duelPhaseResult" class="hidden text-center space-y-5 py-4">
+        <div id="resultHeadline" class="text-3xl font-black text-amber-400">VICTORY!</div>
+        <p id="resultSubtext" class="text-xs text-slate-300">You triumphed with 4/5 correct answers in 28.4 seconds!</p>
+
+        <div class="p-4 rounded-2xl bg-obsidian-900 border border-white/10 max-w-xs mx-auto space-y-2 font-mono text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-400">XP Awarded:</span>
+            <span class="text-amber-400 font-bold">+125 XP</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">New Elo Rating:</span>
+            <span class="text-cyan-400 font-bold">1,863 (+18)</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Win Streak:</span>
+            <span class="text-emerald-400 font-bold">4 in a row 🔥</span>
+          </div>
+        </div>
+
+        <button onclick="closeMatchmakingModal()" class="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs tracking-wide">
+          Return to Leaderboard
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- Complete Embedded Leaderboard Logic & Peer Duel Engine -->
+  <!-- ========================================================================= -->
+  <script>
+    /**
+     * ClearMind Pro — Global Leaderboard & Peer Arena Engine
+     * Architecture:
+     * 1. Dynamic Mock Competitor Database (100 Top Global Scholars)
+     * 2. Search, Filter & Regional Partitioning Algorithms
+     * 3. 1v1 Synchronous Matchmaking Radar Simulator
+     * 4. Interactive Rapid Quiz Engine with Opponent Simulation
+     * 5. Elo Rating & XP Progression Updates
+     */
+
+    const COMPETITORS_DATABASE = [
+      { rank: 4, name: "Marcus Vance", school: "Stanford University", country: "US", flag: "🇺🇸", domain: "cs", xp: 21800, acc: 94.2, streak: 22, tier: "badge-diamond", tierName: "Diamond I" },
+      { rank: 5, name: "Ananya Deshmukh", school: "DPS R.K. Puram", country: "IN", flag: "🇮🇳", domain: "physics", xp: 20450, acc: 93.8, streak: 19, tier: "badge-diamond", tierName: "Diamond II" },
+      { rank: 6, name: "Lucas Müller", school: "ETH Zürich", country: "EU", flag: "🇨🇭", domain: "math", xp: 19900, acc: 92.5, streak: 15, tier: "badge-diamond", tierName: "Diamond II" },
+      { rank: 7, name: "Mei Lin", school: "Tsinghua University", country: "ASIA", flag: "🇨🇳", domain: "chemistry", xp: 19320, acc: 95.1, streak: 28, tier: "badge-diamond", tierName: "Diamond III" },
+      { rank: 8, name: "Oliver Smith", school: "Oxford University", country: "EU", flag: "🇬🇧", domain: "biology", xp: 18740, acc: 91.8, streak: 14, tier: "badge-platinum", tierName: "Platinum I" },
+      { rank: 9, name: "Priya Nair", school: "IIT Madras", country: "IN", flag: "🇮🇳", domain: "physics", xp: 18200, acc: 93.0, streak: 18, tier: "badge-platinum", tierName: "Platinum I" },
+      { rank: 10, name: "Elena Rostova", school: "Moscow State", country: "EU", flag: "🇷🇺", domain: "math", xp: 17850, acc: 90.9, streak: 12, tier: "badge-platinum", tierName: "Platinum II" },
+      { rank: 11, name: "Kenji Sato", school: "University of Tokyo", country: "ASIA", flag: "🇯🇵", domain: "cs", xp: 17400, acc: 92.4, streak: 11, tier: "badge-platinum", tierName: "Platinum II" },
+      { rank: 12, name: "Sofia Morales", school: "Tec de Monterrey", country: "US", flag: "🇲🇽", domain: "chemistry", xp: 16900, acc: 89.5, streak: 9, tier: "badge-platinum", tierName: "Platinum III" },
+      { rank: 13, name: "Aditya Verma", school: "BITS Pilani", country: "IN", flag: "🇮🇳", domain: "physics", xp: 16500, acc: 91.2, streak: 16, tier: "badge-platinum", tierName: "Platinum III" },
+      { rank: 14, name: "Chloe Dupont", school: "École Polytechnique", country: "EU", flag: "🇫🇷", domain: "math", xp: 16120, acc: 88.9, streak: 8, tier: "badge-platinum", tierName: "Platinum III" },
+      { rank: 15, name: "Rohan Gupta", school: "IIT Delhi", country: "IN", flag: "🇮🇳", domain: "cs", xp: 15800, acc: 94.0, streak: 21, tier: "badge-platinum", tierName: "Platinum III" },
+      { rank: 42, name: "Alex Rivera (You)", school: "ClearMind High Academy", country: "US", flag: "🇺🇸", domain: "physics", xp: 12450, acc: 89.2, streak: 14, tier: "badge-diamond", tierName: "Diamond III", isUser: true }
+    ];
+
+    let currentCompetitors = [...COMPETITORS_DATABASE];
+    let currentTimeframe = 'weekly';
+
+    function renderLeaderboardList() {
+      const container = document.getElementById('leaderboardListContainer');
+      if (!container) return;
+
+      if (currentCompetitors.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">No scholars found matching current filters.</div>`;
+        return;
+      }
+
+      container.innerHTML = currentCompetitors.map(c => `
+        <div class="glass-row rounded-xl p-3 flex items-center justify-between gap-3 text-xs ${c.isUser ? 'border-cyan-500/50 bg-cyan-950/20' : ''}">
+          <!-- Rank & Avatar -->
+          <div class="flex items-center gap-3">
+            <span class="w-7 font-mono font-black text-center text-sm ${c.rank <= 3 ? 'text-amber-400' : 'text-slate-400'}">
+              #${c.rank}
+            </span>
+            <div class="w-8 h-8 rounded-lg bg-obsidian-950 border border-white/10 overflow-hidden">
+              <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(c.name)}" alt="${c.name}" class="w-full h-full object-cover" />
+            </div>
+            <div>
+              <div class="font-bold text-white flex items-center gap-1.5">
+                <span>${c.name}</span>
+                <span class="text-xs" title="${c.country}">${c.flag}</span>
+                ${c.isUser ? '<span class="px-1.5 py-0.2 rounded bg-cyan-500 text-slate-950 font-black text-[9px]">YOU</span>' : ''}
+              </div>
+              <div class="text-[11px] font-mono text-slate-400">${c.school}</div>
+            </div>
+          </div>
+
+          <!-- Tier Badge & Stats -->
+          <div class="flex items-center gap-4 text-right">
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${c.tier}">
+              ${c.tierName}
+            </span>
+            <div class="font-mono">
+              <div class="font-bold text-white">${c.xp.toLocaleString()} XP</div>
+              <div class="text-[10px] text-emerald-400">${c.acc}% Acc • 🔥 ${c.streak}d</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setTimeframeFilter(timeframe) {
+      currentTimeframe = timeframe;
+      ['Today', 'Weekly', 'AllTime'].forEach(t => {
+        const btn = document.getElementById(`filterTime${t}`);
+        if (t.toLowerCase() === timeframe) {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all';
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all';
+        }
+      });
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const subject = document.getElementById('subjectFilterSelect').value;
+      const region = document.getElementById('regionFilterSelect').value;
+      const query = document.getElementById('userSearchInput').value.toLowerCase().trim();
+
+      currentCompetitors = COMPETITORS_DATABASE.filter(c => {
+        const matchesSubject = subject === 'all' || c.domain === subject;
+        const matchesRegion = region === 'global' || c.country.toLowerCase() === region.toLowerCase();
+        const matchesQuery = !query || c.name.toLowerCase().includes(query) || c.school.toLowerCase().includes(query);
+        return matchesSubject && matchesRegion && matchesQuery;
+      });
+
+      renderLeaderboardList();
+    }
+
+    function loadMoreRankings() {
+      // Simulate pagination by generating randomized ranked records
+      const startRank = currentCompetitors.length + 1;
+      const firstNames = ["Liam", "Sophia", "Noah", "Zara", "Aarav", "Emma", "Jin", "Fatima", "Matteo", "Chloe"];
+      const lastNames = ["Patel", "Kim", "Zhang", "Smith", "Rossi", "Al-Mansoor", "Novak", "Dubois"];
+      const schools = ["Harvard College", "Cambridge", "NUS Singapore", "IIT Kharagpur", "TUM Munich", "KAIST"];
+
+      for (let i = 0; i < 10; i++) {
+        const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+        currentCompetitors.push({
+          rank: startRank + i,
+          name: name,
+          school: schools[Math.floor(Math.random() * schools.length)],
+          country: "GLOBAL",
+          flag: "🌐",
+          domain: "physics",
+          xp: Math.max(8000, 15000 - (startRank + i) * 120),
+          acc: (85 + Math.random() * 10).toFixed(1),
+          streak: Math.floor(Math.random() * 20) + 1,
+          tier: "badge-platinum",
+          tierName: "Platinum III"
+        });
+      }
+      renderLeaderboardList();
+    }
+
+    // --- 1v1 Battle Matchmaking & Quiz Arena Engine ---
+    let radarTimer = null;
+    let duelQuestionTimer = null;
+    let currentQuestionIdx = 0;
+    let playerScore = 0;
+    let opponentScore = 0;
+    let currentRoundSeconds = 15;
+
+    const DUEL_QUESTIONS = [
+      {
+        domain: "Physics • Electromagnetism",
+        question: "What is the SI unit of magnetic flux, and what is its equivalence?",
+        options: [
+          { text: "Weber (Wb) = Tesla × meter²", correct: true },
+          { text: "Henry (H) = Volt / Ampere", correct: false },
+          { text: "Tesla (T) = Newton / Ampere", correct: false },
+          { text: "Gauss (G) = Weber / meter", correct: false }
+        ]
+      },
+      {
+        domain: "Mathematics • Calculus",
+        question: "What is the value of ∫ e^(2x) dx evaluated from 0 to 1?",
+        options: [
+          { text: "(e² - 1) / 2", correct: true },
+          { text: "e² - 1", correct: false },
+          { text: "2e²", correct: false },
+          { text: "e² / 2", correct: false }
+        ]
+      },
+      {
+        domain: "Chemistry • Organic Mechanisms",
+        question: "Which solvent favors an SN2 reaction mechanism the most?",
+        options: [
+          { text: "Polar Aprotic solvent (e.g. Acetone, DMSO)", correct: true },
+          { text: "Polar Protic solvent (e.g. Water, Ethanol)", correct: false },
+          { text: "Non-polar solvent (e.g. Hexane)", correct: false },
+          { text: "Concentrated sulfuric acid", correct: false }
+        ]
+      },
+      {
+        domain: "Computer Science • Algorithms",
+        question: "What is the amortized time complexity of inserting into a dynamic array (vector)?",
+        options: [
+          { text: "O(1) amortized", correct: true },
+          { text: "O(N) worst-case only", correct: false },
+          { text: "O(log N)", correct: false },
+          { text: "O(N²)", correct: false }
+        ]
+      },
+      {
+        domain: "Biology • Genetics",
+        question: "In a standard Mendelian dihybrid cross, what is the phenotypic ratio in the F2 generation?",
+        options: [
+          { text: "9 : 3 : 3 : 1", correct: true },
+          { text: "3 : 1", correct: false },
+          { text: "1 : 2 : 1", correct: false },
+          { text: "15 : 1", correct: false }
+        ]
+      }
+    ];
+
+    function openMatchmakingModal() {
+      document.getElementById('matchmakingModal').classList.remove('hidden');
+      document.getElementById('duelPhaseSearching').classList.remove('hidden');
+      document.getElementById('duelPhaseBattle').classList.add('hidden');
+      document.getElementById('duelPhaseResult').classList.add('hidden');
+
+      let seconds = 0;
+      radarTimer = setInterval(() => {
+        seconds++;
+        document.getElementById('radarElapsedSeconds').innerText = `0:${String(seconds).padStart(2, '0')}`;
+        if (seconds >= 3) {
+          clearInterval(radarTimer);
+          startDuelBattle();
+        }
+      }, 1000);
+    }
+
+    function cancelMatchmaking() {
+      clearInterval(radarTimer);
+      closeMatchmakingModal();
+    }
+
+    function closeMatchmakingModal() {
+      clearInterval(radarTimer);
+      clearInterval(duelQuestionTimer);
+      document.getElementById('matchmakingModal').classList.add('hidden');
+    }
+
+    function startDuelBattle() {
+      document.getElementById('duelPhaseSearching').classList.add('hidden');
+      document.getElementById('duelPhaseBattle').classList.remove('hidden');
+
+      currentQuestionIdx = 0;
+      playerScore = 0;
+      opponentScore = 0;
+      updateScores();
+      loadQuestion();
+    }
+
+    function updateScores() {
+      document.getElementById('playerScoreDisplay').innerText = `Score: ${playerScore} pts`;
+      document.getElementById('opponentScoreDisplay').innerText = `Score: ${opponentScore} pts`;
+    }
+
+    function loadQuestion() {
+      if (currentQuestionIdx >= DUEL_QUESTIONS.length) {
+        showDuelResult();
+        return;
+      }
+
+      const q = DUEL_QUESTIONS[currentQuestionIdx];
+      document.getElementById('duelRoundCounter').innerText = `Question ${currentQuestionIdx + 1} of ${DUEL_QUESTIONS.length}`;
+      document.getElementById('duelQuestionDomain').innerText = q.domain;
+      document.getElementById('duelQuestionText').innerText = q.question;
+
+      currentRoundSeconds = 15;
+      document.getElementById('duelTimerSeconds').innerText = `${currentRoundSeconds}s Left`;
+
+      const container = document.getElementById('duelOptionsContainer');
+      container.innerHTML = q.options.map((opt, i) => `
+        <button onclick="handleOptionSelect(${i})" class="w-full text-left p-3 rounded-xl bg-obsidian-950/80 border border-white/10 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all font-medium text-slate-200">
+          <span class="font-mono text-cyan-400 mr-2">${String.fromCharCode(65 + i)})</span> ${opt.text}
+        </button>
+      `).join('');
+
+      // Simulate opponent answering after 3-7 seconds
+      const oppDelay = 3000 + Math.random() * 4000;
+      setTimeout(() => {
+        const oppCorrect = Math.random() > 0.3;
+        if (oppCorrect) opponentScore += 100;
+        updateScores();
+        document.getElementById('opponentStatusIndicator').innerText = `Opponent answered!`;
+      }, oppDelay);
+
+      clearInterval(duelQuestionTimer);
+      duelQuestionTimer = setInterval(() => {
+        currentRoundSeconds--;
+        document.getElementById('duelTimerSeconds').innerText = `${currentRoundSeconds}s Left`;
+        if (currentRoundSeconds <= 0) {
+          clearInterval(duelQuestionTimer);
+          currentQuestionIdx++;
+          loadQuestion();
+        }
+      }, 1000);
+    }
+
+    function handleOptionSelect(chosenIdx) {
+      clearInterval(duelQuestionTimer);
+      const q = DUEL_QUESTIONS[currentQuestionIdx];
+      const isCorrect = q.options[chosenIdx].correct;
+
+      if (isCorrect) {
+        playerScore += 100 + currentRoundSeconds * 5; // Speed bonus
+      }
+
+      updateScores();
+      currentQuestionIdx++;
+      setTimeout(loadQuestion, 800);
+    }
+
+    function showDuelResult() {
+      document.getElementById('duelPhaseBattle').classList.add('hidden');
+      document.getElementById('duelPhaseResult').classList.remove('hidden');
+
+      const won = playerScore >= opponentScore;
+      document.getElementById('resultHeadline').innerText = won ? 'VICTORY!' : 'HARD-FOUGHT MATCH!';
+      document.getElementById('resultHeadline').className = won ? 'text-3xl font-black text-amber-400' : 'text-3xl font-black text-slate-300';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderLeaderboardList();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <title>ClearMind Pro — Parent & Guardian Oversight Portal</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#07080c" />
+
+  <!-- Google Fonts: Plus Jakarta Sans, Instrument Serif, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            obsidian: {
+              950: '#07080c',
+              900: '#0c0e17',
+              850: '#111422',
+              800: '#171b2d',
+              750: '#1e233a',
+              700: '#272e4b',
+              600: '#38426b'
+            },
+            electric: {
+              cyan: '#06b6d4',
+              violet: '#8b5cf6',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(12, 14, 23, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 66, 107, 0.6); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.8); }
+
+    /* Glass Panels */
+    .glass-card {
+      background: rgba(17, 20, 34, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+    }
+    .glass-input {
+      background: rgba(12, 14, 23, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s ease;
+    }
+    .glass-input:focus {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      outline: none;
+    }
+
+    /* Radial Background */
+    .bg-parent-radial {
+      background:
+        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+        #07080c;
+    }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      header, .no-print { display: none !important; }
+      .glass-card { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; color: #000 !important; }
+      .text-white { color: #000 !important; }
+      .text-slate-300, .text-slate-400 { color: #444 !important; }
+    }
+  </style>
+</head>
+
+<body class="bg-parent-radial text-slate-100 min-h-screen font-sans antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- ========================================================================= -->
+  <!-- Top Navigation Header -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-obsidian-950/85 border-b border-white/10 px-4 lg:px-8 py-3 no-print">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Brand & Hub Links -->
+      <div class="flex items-center gap-6">
+        <a href="/" class="flex items-center gap-2.5 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="leading-none">
+            <span class="text-lg font-extrabold tracking-tight text-white group-hover:text-emerald-300 transition-colors">ClearMind <span class="text-emerald-400 font-serif italic text-base">Pro</span></span>
+            <span class="block text-[10px] font-mono tracking-wider uppercase text-emerald-400/80">Parent & Guardian Hub</span>
+          </div>
+        </a>
+
+        <!-- Section Navigation -->
+        <nav class="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-obsidian-900/80 px-3 py-1.5 rounded-full border border-white/5">
+          <a href="/app" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Classroom</a>
+          <span class="text-slate-600">•</span>
+          <a href="/study-planner" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Study Planner</a>
+          <span class="text-slate-600">•</span>
+          <a href="/leaderboard" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Leaderboard</a>
+          <span class="text-slate-600">•</span>
+          <a href="/teacher" class="hover:text-cyan-400 px-2.5 py-1 rounded-md transition-colors">Teacher Portal</a>
+          <span class="text-slate-600">•</span>
+          <a href="/parent" class="text-emerald-400 font-semibold bg-white/5 px-2.5 py-1 rounded-md">Parent View</a>
+        </nav>
+      </div>
+
+      <!-- Right Controls: Student Selector & Print Report CTA -->
+      <div class="flex items-center gap-3">
+        <!-- Student Selector Dropdown -->
+        <select id="studentSelect" onchange="onStudentChange()" class="glass-input rounded-xl px-3 py-1.5 text-xs text-white">
+          <option value="alex">Alex Rivera (Grade 12 - STEM Prep)</option>
+          <option value="maya">Maya Rivera (Grade 9 - Foundations)</option>
+        </select>
+
+        <!-- Print Weekly PDF Report Button -->
+        <button onclick="window.print()" class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/10 flex items-center gap-1.5 transition-colors">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span>Print Weekly Report</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- Main Application Body -->
+  <!-- ========================================================================= -->
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-8">
+
+    <!-- Hero Card: AI Plain-Language Growth Digest -->
+    <section class="glass-card rounded-3xl p-6 lg:p-8 relative overflow-hidden border border-white/10 space-y-6">
+      
+      <!-- Header row -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-400 to-cyan-500 p-0.5">
+            <img src="https://api.dicebear.com/7.x/bottts/svg?seed=AlexRivera" alt="Student" class="w-full h-full rounded-2xl bg-obsidian-900 object-cover" />
+          </div>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+              <span>Weekly Academic Growth Digest</span>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Gemini 3.8 Intelligence</span>
+            </h1>
+            <p class="text-xs text-slate-400">Week of Oct 1 – Oct 7, 2026 • Alex Rivera</p>
+          </div>
+        </div>
+
+        <!-- Cheer CTA -->
+        <button onclick="sendEncouragementCheer()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs tracking-wide shadow-lg shadow-emerald-500/25 flex items-center gap-1.5 transition-all">
+          <span>💖 Send Instant Cheer</span>
+        </button>
+      </div>
+
+      <!-- Plain Language Executive Summary Box -->
+      <div class="p-5 rounded-2xl bg-obsidian-900/90 border border-emerald-500/30 space-y-3">
+        <div class="flex items-center gap-2 text-xs font-mono text-emerald-400 font-bold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          Executive Weekly Summary for Parents
+        </div>
+        <p class="text-sm text-slate-200 leading-relaxed font-sans" id="parentDigestText">
+          Alex had an exceptional week of academic dedication! They logged <strong>28.5 hours</strong> of high-yield study across Calculus and Physics, successfully defending a <strong>14-day daily revision streak</strong>. They achieved a <strong>91.4% accuracy</strong> rate on their problem sets, demonstrating mastery in differential equations. We noticed Alex studied past 11:30 PM on Tuesday; encouraging them to wind down 30 minutes earlier will ensure optimal sleep memory consolidation.
+        </p>
+      </div>
+
+      <!-- Key Metrics 4-Col Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center font-mono">
+        <div class="p-4 rounded-xl bg-obsidian-950/70 border border-white/5">
+          <span class="block text-2xl font-black text-emerald-400">28.5 hrs</span>
+          <span class="text-[10px] uppercase text-slate-400">Focus Study Time</span>
+        </div>
+        <div class="p-4 rounded-xl bg-obsidian-950/70 border border-white/5">
+          <span class="block text-2xl font-black text-amber-400">14 Days 🔥</span>
+          <span class="text-[10px] uppercase text-slate-400">Daily Streak</span>
+        </div>
+        <div class="p-4 rounded-xl bg-obsidian-950/70 border border-white/5">
+          <span class="block text-2xl font-black text-cyan-400">91.4%</span>
+          <span class="text-[10px] uppercase text-slate-400">Recall Accuracy</span>
+        </div>
+        <div class="p-4 rounded-xl bg-obsidian-950/70 border border-white/5">
+          <span class="block text-2xl font-black text-violet-400">Top 1.2%</span>
+          <span class="text-[10px] uppercase text-slate-400">Global Percentile</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- Two Column Layout: Study vs Screen Time Chart & Subject Mastery Breakdown -->
+    <!-- ========================================================================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left (Col 7): Focus Time vs Screen Time Analytics -->
+      <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-white/10 space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">Focus Time vs Screen Time Balance</h2>
+            <p class="text-xs text-slate-400">Track productive cognitive study vs passive screen usage through the week.</p>
+          </div>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-400"></span> Focused Study</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-600"></span> Passive Screen</span>
+          </div>
+        </div>
+
+        <!-- HTML5 Canvas Bar Visualizer -->
+        <div class="h-64 w-full relative">
+          <canvas id="balanceChartCanvas" class="w-full h-full"></canvas>
+        </div>
+
+        <!-- Dinner Table Conversation Starter Pill -->
+        <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+          <div class="text-[11px] font-mono text-emerald-400 font-bold uppercase">💡 Dinner Table Conversation Starter</div>
+          <p class="text-xs text-slate-300">
+            Ask Alex: <em>"How does electromagnetic braking work in electric vehicles without wearing out physical brake pads?"</em> (Alex recently aced this topic in Faraday's Law!)
+          </p>
+        </div>
+      </div>
+
+      <!-- Right (Col 5): Subject Mastery & Milestone Rewards -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Subject Mastery Sliders -->
+        <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+          <h3 class="text-base font-bold text-white">Subject Mastery Health</h3>
+
+          <div class="space-y-3 text-xs">
+            <!-- Math -->
+            <div class="space-y-1">
+              <div class="flex justify-between">
+                <span class="font-bold text-white">Mathematics (Calculus)</span>
+                <span class="font-mono text-emerald-400">94.0% Mastery</span>
+              </div>
+              <div class="w-full bg-obsidian-950 h-2 rounded-full overflow-hidden">
+                <div class="bg-emerald-400 h-full rounded-full" style="width: 94%"></div>
+              </div>
+            </div>
+
+            <!-- Physics -->
+            <div class="space-y-1">
+              <div class="flex justify-between">
+                <span class="font-bold text-white">Physics (Mechanics & E&M)</span>
+                <span class="font-mono text-cyan-400">88.5% Mastery</span>
+              </div>
+              <div class="w-full bg-obsidian-950 h-2 rounded-full overflow-hidden">
+                <div class="bg-cyan-400 h-full rounded-full" style="width: 88.5%"></div>
+              </div>
+            </div>
+
+            <!-- Chemistry -->
+            <div class="space-y-1">
+              <div class="flex justify-between">
+                <span class="font-bold text-white">Chemistry (Organic Reactions)</span>
+                <span class="font-mono text-amber-400">79.0% Mastery</span>
+              </div>
+              <div class="w-full bg-obsidian-950 h-2 rounded-full overflow-hidden">
+                <div class="bg-amber-400 h-full rounded-full" style="width: 79%"></div>
+              </div>
+            </div>
+
+            <!-- Computer Science -->
+            <div class="space-y-1">
+              <div class="flex justify-between">
+                <span class="font-bold text-white">Computer Science (Algorithms)</span>
+                <span class="font-mono text-violet-400">82.0% Mastery</span>
+              </div>
+              <div class="w-full bg-obsidian-950 h-2 rounded-full overflow-hidden">
+                <div class="bg-violet-400 h-full rounded-full" style="width: 82%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Family Milestone Reward Pledge Card -->
+        <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Milestone Reward Pledge</h3>
+            <span class="text-xs font-mono text-amber-400 font-bold">14 / 21 Days</span>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-obsidian-900 border border-white/5 space-y-2">
+            <div class="text-xs font-bold text-white flex items-center justify-between">
+              <span>Goal: 21-Day Revision Streak</span>
+              <span class="text-amber-400">7 days remaining</span>
+            </div>
+            <p class="text-xs text-slate-400">
+              Pledged Reward: <strong>Weekend Theme Park Trip & Wireless Headphones</strong>
+            </p>
+            <div class="w-full bg-obsidian-950 h-1.5 rounded-full overflow-hidden">
+              <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-full rounded-full" style="width: 66.6%"></div>
+            </div>
+          </div>
+
+          <button onclick="editPledgeReward()" class="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/10 transition-colors">
+            Edit Reward Pledge
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- Alert Preferences & Notifications -->
+    <!-- ========================================================================= -->
+    <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+      <h3 class="text-base font-bold text-white">Parental Notification & Alert Preferences</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <label class="flex items-center gap-3 p-3 rounded-xl bg-obsidian-900 border border-white/5 cursor-pointer">
+          <input type="checkbox" checked class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400" />
+          <span>Daily streak break risk alert (SMS by 8:00 PM)</span>
+        </label>
+        <label class="flex items-center gap-3 p-3 rounded-xl bg-obsidian-900 border border-white/5 cursor-pointer">
+          <input type="checkbox" checked class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400" />
+          <span>Weekly Sunday progress summary email</span>
+        </label>
+        <label class="flex items-center gap-3 p-3 rounded-xl bg-obsidian-900 border border-white/5 cursor-pointer">
+          <input type="checkbox" checked class="w-4 h-4 text-emerald-500 rounded focus:ring-emerald-400" />
+          <span>Critical mock exam milestone countdown (7 days prior)</span>
+        </label>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- Complete Embedded Parent Portal Logic & Chart Visualizer -->
+  <!-- ========================================================================= -->
+  <script>
+    /**
+     * ClearMind Pro — Parent & Guardian Oversight Engine
+     * Architecture:
+     * 1. Focus vs Screen Time HTML5 Canvas Visualizer
+     * 2. Instant Encouragement Dispatch Simulator
+     * 3. Milestone Reward Pledge Manager
+     */
+
+    function renderBalanceChart() {
+      const canvas = document.getElementById('balanceChartCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.parentElement.clientWidth;
+      const h = canvas.height = canvas.parentElement.clientHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const studyHours = [4.5, 4.0, 5.0, 3.5, 4.5, 4.0, 3.0];
+      const screenHours = [1.5, 2.0, 1.2, 2.5, 1.8, 2.2, 2.0];
+
+      const barWidth = 18;
+      const maxHour = 7.0;
+      const startX = 35;
+      const stepX = (w - 60) / days.length;
+
+      // Draw horizontal grid lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let yVal = 0; yVal <= maxHour; yVal += 2) {
+        const yPos = (h - 40) - (yVal / maxHour) * (h - 60);
+        ctx.beginPath();
+        ctx.moveTo(startX, yPos);
+        ctx.lineTo(w - 20, yPos);
+        ctx.stroke();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.fillText(`${yVal}h`, 10, yPos + 3);
+      }
+
+      // Draw Bars
+      days.forEach((day, i) => {
+        const xPos = startX + i * stepX + 15;
+
+        // Study bar (Emerald)
+        const sHeight = (studyHours[i] / maxHour) * (h - 60);
+        const sY = (h - 40) - sHeight;
+        ctx.fillStyle = '#10b981';
+        ctx.beginPath();
+        ctx.roundRect(xPos, sY, barWidth, sHeight, [4, 4, 0, 0]);
+        ctx.fill();
+
+        // Screen bar (Slate)
+        const scHeight = (screenHours[i] / maxHour) * (h - 60);
+        const scY = (h - 40) - scHeight;
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(xPos + barWidth + 4, scY, barWidth, scHeight, [4, 4, 0, 0]);
+        ctx.fill();
+
+        // Day label
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(day, xPos + barWidth, h - 15);
+      });
+    }
+
+    function sendEncouragementCheer() {
+      const msgs = [
+        "Alex received your cheer: 'So proud of your 14-day streak, keep shining!' ❤️",
+        "Encouraging voice note ping sent to Alex's study dashboard!",
+        "Cheer recorded: Alex will see your message on their next Pomodoro break!"
+      ];
+      alert(msgs[Math.floor(Math.random() * msgs.length)]);
+    }
+
+    function editPledgeReward() {
+      const reward = prompt("Enter reward pledge for Alex reaching the 21-day study streak milestone:", "Weekend Theme Park Trip & Wireless Headphones");
+      if (reward && reward.trim()) {
+        alert("Milestone reward updated! Alex has been notified of the pledged reward.");
+      }
+    }
+
+    function onStudentChange() {
+      renderBalanceChart();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderBalanceChart();
+      window.addEventListener('resize', renderBalanceChart);
+    });
+  </script>
+</body>
+</html>
