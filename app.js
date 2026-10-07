@@ -5589,18 +5589,29 @@
       }
     }
 
-    // Mandatory Auth Check: Guest access is temporarily disabled — require active Google or Email session
+    // Auth Check: Allow registered users, guests, or preview query
     const urlParams = new URLSearchParams(window.location.search);
-    const authUser = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
-    if ((!authUser || authUser.isGuest) && !urlParams.has("preview")) {
-      window.location.replace("/?login=1");
-      return;
+    let authUser = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
+    if (!authUser && !urlParams.has("preview")) {
+      // Auto-provision instant guest session so classroom is frictionless to access
+      const guestId = "CMP-GUEST-" + Math.floor(10000 + Math.random() * 90000);
+      authUser = {
+        user_id: guestId,
+        name: "Guest Scholar",
+        email: "guest@clearmind.local",
+        role: "guest",
+        session_token: "guest-session-" + Date.now(),
+        isGuest: true,
+        provider: "guest"
+      };
+      localStorage.setItem("clearmind_auth_user", JSON.stringify(authUser));
+      localStorage.setItem("clearmind_setup_completed", "true");
     }
 
-    // Mandatory Setup Check: If user has never completed setup or requested via URL
+    // Setup Check: Allow instant classroom access for guest sessions
     const hasCompletedSetup = localStorage.getItem("clearmind_setup_completed");
 
-    if (!hasCompletedSetup && !urlParams.has("preview")) {
+    if (!hasCompletedSetup && !urlParams.has("preview") && (!authUser || !authUser.isGuest)) {
       window.location.replace("/?onboard=1");
       return;
     }

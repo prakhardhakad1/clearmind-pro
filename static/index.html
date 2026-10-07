@@ -85,8 +85,8 @@
 
       <!-- Header CTAs -->
       <div class="hidden sm:flex items-center gap-2.5">
-        <button type="button" id="navGuestBtn" data-open-auth="signup" class="btn-guest text-xs font-semibold px-3.5 py-2.5 rounded-xl border border-white/10 hover:border-cyan-500/40 bg-white/5 hover:bg-white/10 text-gray-200 transition-all flex items-center gap-1.5 cursor-pointer">
-          <span>✨</span> <span>Create Account</span>
+        <button type="button" id="navGuestBtn" class="btn-guest text-xs font-bold px-3.5 py-2.5 rounded-xl border border-cyan-400/40 hover:border-cyan-400/70 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
+          <span>⚡</span> <span>Continue as Guest</span>
         </button>
         <button type="button" id="navAuthBtn" data-open-auth="signin" class="btn-primary text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/35 transition-all cursor-pointer">
           Sign In
@@ -118,9 +118,12 @@
       <a href="#faq" class="text-gray-300 hover:text-white transition">FAQ</a>
     </div>
 
-    <div class="mt-auto flex flex-col gap-3">
-      <button type="button" data-open-auth="signup" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 font-extrabold text-center text-slate-950 shadow-lg shadow-cyan-500/25 cursor-pointer">🚀 Calibrate Academic Profile</button>
-      <button type="button" data-open-auth="signin" class="w-full py-3 rounded-xl border border-white/15 bg-white/5 font-semibold text-center text-white cursor-pointer">Sign In / Register</button>
+    <div class="mt-auto flex flex-col gap-2.5">
+      <button type="button" id="mobileGuestBtn" class="w-full py-3.5 rounded-xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 hover:bg-cyan-500/30 font-bold text-center text-cyan-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+        <span>⚡</span> <span>Continue as Guest (Instant Access)</span>
+      </button>
+      <button type="button" data-open-auth="signup" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 font-extrabold text-center text-slate-950 shadow-md cursor-pointer">🚀 Calibrate Academic Profile</button>
+      <button type="button" data-open-auth="signin" class="w-full py-2.5 rounded-xl border border-white/15 bg-white/5 font-semibold text-center text-white cursor-pointer text-xs">Sign In / Register</button>
     </div>
   </div>
 
@@ -144,9 +147,12 @@
       </p>
 
       <!-- Primary Action Buttons (Calibration First) -->
-      <div class="flex items-center justify-center mb-16">
-        <button type="button" id="heroGetStartedBtn" data-open-auth="signup" class="w-full sm:w-auto px-10 py-4.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-base sm:text-lg shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-16">
+        <button type="button" id="heroGetStartedBtn" data-open-auth="signup" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-base shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
           <span>🚀</span> <span>Get Started Free — Calibrate Profile</span>
+        </button>
+        <button type="button" id="heroGuestBtn" class="w-full sm:w-auto px-7 py-4 rounded-2xl border border-cyan-400/40 bg-slate-900/80 hover:bg-cyan-950/40 hover:border-cyan-400/70 text-cyan-200 font-bold text-base shadow-xl backdrop-blur-md hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
+          <span>⚡</span> <span>Continue as Guest (Instant Access)</span>
         </button>
       </div>
 
@@ -406,9 +412,32 @@
         <p class="text-xs text-gray-400 mt-1">Sign in with Google or Email to start learning.</p>
       </div>
 
+      <!-- 0. Instant Guest Access Button -->
+      <button type="button" id="continueAsGuestBtn" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-violet-500/15 hover:from-cyan-500/25 hover:via-blue-500/25 hover:to-violet-500/25 border border-cyan-400/40 hover:border-cyan-400/70 text-white font-bold text-sm shadow-xl flex items-center justify-between gap-3 transition-all mb-4 active:scale-[0.98] cursor-pointer group">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-lg shadow-sm shadow-cyan-400/30 group-hover:scale-110 transition-transform">
+            ⚡
+          </div>
+          <div class="text-left">
+            <div class="leading-tight flex items-center gap-2">
+              <span class="font-extrabold text-white text-sm">Continue as Guest</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-cyan-400/25 text-cyan-300 font-mono font-bold border border-cyan-400/30">Instant Access</span>
+            </div>
+            <div class="text-[11px] text-slate-300 font-normal mt-0.5">Jump straight to Classroom Cockpit • No signup needed</div>
+          </div>
+        </div>
+        <span class="text-cyan-400 text-xs font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">Enter <span>→</span></span>
+      </button>
+
+      <div class="flex items-center gap-3 my-4">
+        <div class="flex-1 h-px bg-white/10"></div>
+        <span class="text-[10px] text-gray-400 uppercase tracking-widest font-mono">OR SIGN IN TO SAVE PROGRESS</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+
       <!-- 1. Continue with Google -->
       <div id="googleGsiBtnContainer" class="w-full flex justify-center mb-3 min-h-[44px]"></div>
-      <button type="button" id="googleAuthBtn" class="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-xl flex items-center justify-center gap-3 transition-all mb-4 active:scale-[0.98] cursor-pointer">
+      <button type="button" id="googleAuthBtn" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-xl flex items-center justify-center gap-3 transition-all mb-4 active:scale-[0.98] cursor-pointer">
         <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>

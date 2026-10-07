@@ -110,11 +110,7 @@ window.AuthEngine = {
     if (saved) {
       try {
         const user = JSON.parse(saved);
-        // Guest mode is temporarily disabled - purge legacy guest session
-        if (user && user.isGuest) {
-          localStorage.removeItem('clearmind_auth_user');
-          this.currentUser = null;
-        } else {
+        if (user) {
           this.currentUser = user;
         }
         this.updateNavUser();
@@ -281,8 +277,11 @@ window.AuthEngine = {
       this.triggerGoogleAuth();
     });
 
-    document.getElementById('continueAsGuestBtn')?.addEventListener('click', () => {
-      this.continueAsGuest();
+    document.querySelectorAll('#continueAsGuestBtn, #navGuestBtn, #heroGuestBtn, #mobileGuestBtn, [data-continue-guest]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.continueAsGuest();
+      });
     });
 
     document.getElementById('authForm')?.addEventListener('submit', (e) => {
@@ -349,9 +348,71 @@ window.AuthEngine = {
   },
 
   continueAsGuest() {
-    // Guest access is temporarily disabled
-    this.showError('Guest access is currently paused. Please sign in with Google or Email.');
-    this.openAuthModal('signup');
+    this.clearError();
+    
+    // Create an authentic guest session
+    let existingUser = null;
+    try {
+      existingUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
+    } catch (e) {
+      existingUser = null;
+    }
+
+    const guestId = (existingUser && existingUser.user_id && existingUser.isGuest) 
+      ? existingUser.user_id 
+      : 'CMP-GUEST-' + Math.floor(10000 + Math.random() * 90000);
+
+    const guestUser = {
+      user_id: guestId,
+      name: (existingUser && existingUser.name && existingUser.isGuest) ? existingUser.name : 'Guest Scholar',
+      email: 'guest@clearmind.local',
+      role: 'guest',
+      session_token: 'guest-session-' + Date.now(),
+      isGuest: true,
+      provider: 'guest'
+    };
+
+    this.currentUser = guestUser;
+    localStorage.setItem('clearmind_auth_user', JSON.stringify(guestUser));
+
+    // Ensure setup bypass is configured so student jumps directly into Classroom
+    localStorage.setItem('clearmind_setup_completed', 'true');
+
+    // Ensure calibrated default subjects exist if profile is empty
+    const existingProfile = localStorage.getItem('clearmind_profile');
+    if (!existingProfile) {
+      const defaultGuestProfile = {
+        name: 'Guest Scholar',
+        avatar: '⚡',
+        grade: '12th / University',
+        targetExam: 'Universal Concept Mastery',
+        persona: 'Adaptive Socratic Mentor',
+        subjects: [
+          { id: 'cs', name: 'Computer Science & AI' },
+          { id: 'math', name: 'Mathematics & Calculus' },
+          { id: 'physics', name: 'Modern Physics' }
+        ],
+        user: { name: 'Guest Scholar', isGuest: true }
+      };
+      localStorage.setItem('clearmind_profile', JSON.stringify(defaultGuestProfile));
+      if (!localStorage.getItem('clearmind_active_topic')) {
+        localStorage.setItem('clearmind_active_topic', 'Computer Science & AI');
+      }
+    }
+
+    this.updateNavUser();
+    this.closeAuthModal();
+
+    // Button feedback if present
+    const btn = document.getElementById('continueAsGuestBtn');
+    if (btn) {
+      btn.innerHTML = '<span class="inline-block animate-spin mr-2">⚡</span> Accessing Classroom...';
+    }
+
+    // Direct transition to the Classroom Cockpit
+    setTimeout(() => {
+      window.location.href = '/classroom';
+    }, 120);
   },
 
   simulateGoogleAuth() {
@@ -531,29 +592,61 @@ window.AuthEngine = {
   updateNavUser() {
     const navBtn = document.getElementById('navAuthBtn');
     const heroBtn = document.getElementById('heroGetStartedBtn');
+    const heroGuestBtn = document.getElementById('heroGuestBtn');
     const navGuestBtn = document.getElementById('navGuestBtn');
 
-    if (this.currentUser && !this.currentUser.isGuest) {
-      const userIdBadge = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${window.cmEscape(this.currentUser.user_id)}</span>` : '';
+    if (this.currentUser) {
+      const isGuest = !!this.currentUser.isGuest;
+      const userBadge = isGuest ? '⚡ Guest Scholar' : '👤 ' + window.cmEscape(this.currentUser.name);
+      const uid = this.currentUser.user_id ? ` • <span class="text-cyan-300 font-mono text-[10px]">${window.cmEscape(this.currentUser.user_id)}</span>` : '';
+
       if (navBtn) {
-        navBtn.innerHTML = `<span>👤 ${window.cmEscape(this.currentUser.name)}${userIdBadge}</span>`;
-        navBtn.className = 'btn-secondary text-xs flex items-center gap-1.5 cursor-pointer';
-        navBtn.title = `Logged in as ${this.currentUser.email} (${this.currentUser.user_id || ''})`;
+        navBtn.innerHTML = `<span>${userBadge}${uid}</span>`;
+        navBtn.className = isGuest
+          ? 'btn-secondary text-xs flex items-center gap-1.5 cursor-pointer border border-amber-400/40 bg-amber-500/10 text-amber-200'
+          : 'btn-secondary text-xs flex items-center gap-1.5 cursor-pointer';
+        navBtn.title = isGuest
+          ? `Guest Scholar Mode (${this.currentUser.user_id})`
+          : `Logged in as ${this.currentUser.email} (${this.currentUser.user_id || ''})`;
         navBtn.onclick = (e) => {
           e.preventDefault();
           this.showUserMenu(navBtn);
         };
       }
+
       if (heroBtn) {
         heroBtn.removeAttribute('data-open-auth');
-        heroBtn.innerHTML = `<span>🚀</span> <span>Enter Classroom Cockpit</span>`;
+        heroBtn.innerHTML = isGuest
+          ? `<span>🎓</span> <span>Enter Classroom Cockpit</span>`
+          : `<span>🚀</span> <span>Enter Classroom Cockpit</span>`;
         heroBtn.onclick = (e) => {
           e.preventDefault();
           window.location.href = '/classroom';
         };
       }
+
+      if (heroGuestBtn) {
+        if (isGuest) {
+          heroGuestBtn.innerHTML = `<span>✨</span> <span>Create Account to Save</span>`;
+          heroGuestBtn.onclick = (e) => {
+            e.preventDefault();
+            this.openAuthModal('signup');
+          };
+        } else {
+          heroGuestBtn.style.display = 'none';
+        }
+      }
+
       if (navGuestBtn) {
-        navGuestBtn.style.display = 'none';
+        if (isGuest) {
+          navGuestBtn.innerHTML = `<span>✨</span> <span>Save Progress</span>`;
+          navGuestBtn.onclick = (e) => {
+            e.preventDefault();
+            this.openAuthModal('signup');
+          };
+        } else {
+          navGuestBtn.style.display = 'none';
+        }
       }
     } else {
       if (navBtn) {
@@ -567,10 +660,26 @@ window.AuthEngine = {
       if (heroBtn) {
         heroBtn.setAttribute('data-open-auth', 'signup');
         heroBtn.innerHTML = `<span>🚀</span> <span>Get Started Free — Calibrate Profile</span>`;
-        heroBtn.onclick = null;
+        heroBtn.onclick = (e) => {
+          e.preventDefault();
+          this.openAuthModal('signup');
+        };
+      }
+      if (heroGuestBtn) {
+        heroGuestBtn.style.display = '';
+        heroGuestBtn.innerHTML = `<span>⚡</span> <span>Continue as Guest (Instant Access)</span>`;
+        heroGuestBtn.onclick = (e) => {
+          e.preventDefault();
+          this.continueAsGuest();
+        };
       }
       if (navGuestBtn) {
         navGuestBtn.style.display = '';
+        navGuestBtn.innerHTML = `<span>⚡</span> <span>Guest Access</span>`;
+        navGuestBtn.onclick = (e) => {
+          e.preventDefault();
+          this.continueAsGuest();
+        };
       }
     }
   },
@@ -590,9 +699,15 @@ window.AuthEngine = {
     menu.style.top = (rect.bottom + 8) + 'px';
     menu.style.right = (window.innerWidth - rect.right) + 'px';
 
+    const isGuest = !!this.currentUser?.isGuest;
+
     menu.innerHTML = `
       <div class="pb-2 border-b border-white/10">
-        <div class="font-bold text-white">${window.cmEscape(this.currentUser?.name || 'Student')}</div>
+        <div class="font-bold text-white flex items-center gap-1.5">
+          <span>${isGuest ? '⚡' : '👤'}</span>
+          <span>${window.cmEscape(this.currentUser?.name || 'Student')}</span>
+          ${isGuest ? '<span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold uppercase tracking-wider">Guest Mode</span>' : ''}
+        </div>
         <div class="text-[11px] text-slate-400 truncate">${window.cmEscape(this.currentUser?.email || '')}</div>
         <div class="mt-1 inline-block px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/80 text-[10px] font-mono font-bold text-cyan-300">
           ${window.cmEscape(this.currentUser?.user_id || 'CMP-STUDENT')}
@@ -601,8 +716,13 @@ window.AuthEngine = {
       <a href="/classroom" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/10 text-slate-200 transition font-medium">
         <span>🎓</span> <span>Classroom Cockpit</span>
       </a>
+      ${isGuest ? `
+      <button type="button" id="dropdownUpgradeBtn" class="w-full text-left flex items-center gap-2 p-1.5 rounded-xl hover:bg-cyan-500/20 text-cyan-300 transition font-medium cursor-pointer">
+        <span>✨</span> <span>Create Account (Save Progress)</span>
+      </button>
+      ` : ''}
       <button type="button" id="dropdownLogoutBtn" class="w-full text-left flex items-center gap-2 p-1.5 rounded-xl hover:bg-red-500/20 text-red-400 transition font-medium cursor-pointer">
-        <span>🚪</span> <span>Log Out (Wipe Session)</span>
+        <span>🚪</span> <span>${isGuest ? 'Exit Guest Mode' : 'Log Out (Wipe Session)'}</span>
       </button>
     `;
 
@@ -616,12 +736,19 @@ window.AuthEngine = {
     };
     setTimeout(() => document.addEventListener('click', closeHandler), 10);
 
+    document.getElementById('dropdownUpgradeBtn')?.addEventListener('click', () => {
+      menu.remove();
+      this.openAuthModal('signup');
+    });
+
     document.getElementById('dropdownLogoutBtn')?.addEventListener('click', () => {
       menu.remove();
       this.logout();
     });
   }
 };
+
+window.ClearMindAuth = window.AuthEngine;
 
 document.addEventListener('DOMContentLoaded', () => {
   window.AuthEngine.init();

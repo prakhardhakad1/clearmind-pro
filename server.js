@@ -466,6 +466,41 @@ Create between 10 to 18 realistic study sessions spread across the week with opt
           area_needing_encouragement: "Encourage 30 minutes earlier bedtime on Tuesday evenings for memory consolidation."
         }
       }));
+    } else if (pathname === '/api/auth/register') {
+      const studentName = payload.name || "Scholar";
+      const studentEmail = payload.email || "student@clearmind.local";
+      const uid = 'CMP-' + Math.floor(10000 + Math.random() * 90000);
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        user: {
+          user_id: uid,
+          name: studentName,
+          email: studentEmail,
+          role: 'student'
+        },
+        session_token: 'cmp_token_' + Date.now()
+      }));
+    } else if (pathname === '/api/auth/login') {
+      const email = payload.email || "student@clearmind.local";
+      const uid = 'CMP-' + Math.floor(10000 + Math.random() * 90000);
+      const namePart = email.split('@')[0] || "scholar";
+      const inferredName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        user: {
+          user_id: uid,
+          name: inferredName,
+          email: email,
+          role: 'student'
+        },
+        profile: {
+          persona: 'Adaptive Mentor',
+          subjects: ['Mathematics & Calculus', 'Quantum & Modern Physics', 'Computer Science & AI']
+        },
+        session_token: 'cmp_token_' + Date.now()
+      }));
     } else {
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, message: "ClearMind Pro API active", endpoint: pathname }));
