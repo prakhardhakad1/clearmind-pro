@@ -13,6 +13,22 @@
       "destination": "/static/app.html"
     },
     {
+      "source": "/(study-planner|study_planner|planner|study_planner.html)",
+      "destination": "/static/study_planner.html"
+    },
+    {
+      "source": "/(leaderboard|arena|leaderboard.html)",
+      "destination": "/static/leaderboard.html"
+    },
+    {
+      "source": "/(teacher|teacher-portal|teacher_portal|teacher_portal.html)",
+      "destination": "/static/teacher_portal.html"
+    },
+    {
+      "source": "/(parent|parent-dashboard|parent_dashboard|parent_dashboard.html)",
+      "destination": "/static/parent_dashboard.html"
+    },
+    {
       "source": "/(admin|admin.html)",
       "destination": "/static/admin.html"
     },
