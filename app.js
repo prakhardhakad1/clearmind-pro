@@ -745,6 +745,19 @@
   }
 
   window.cmOnSessionExpired = function () {
+    const user = JSON.parse(localStorage.getItem("clearmind_auth_user") || "null");
+    if (user && user.isGuest) {
+      // Seamless guest recovery: silently refresh guest token from backend without interrupting the student
+      fetch('/api/auth/guest', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.session_token) {
+            user.session_token = data.session_token;
+            localStorage.setItem("clearmind_auth_user", JSON.stringify(user));
+          }
+        }).catch(() => {});
+      return;
+    }
     if (window.__cmSessionExpiredFired) return;
     window.__cmSessionExpiredFired = true;
     try { localStorage.removeItem("clearmind_auth_user"); } catch (e) {}
@@ -5606,6 +5619,19 @@
       };
       localStorage.setItem("clearmind_auth_user", JSON.stringify(authUser));
       localStorage.setItem("clearmind_setup_completed", "true");
+    }
+
+    // Refresh guest token from backend if needed
+    if (authUser && authUser.isGuest && (!authUser.session_token || authUser.session_token.startsWith("guest-session-"))) {
+      fetch('/api/auth/guest', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.session_token) {
+            authUser.session_token = data.session_token;
+            if (data.user_id) authUser.user_id = data.user_id;
+            localStorage.setItem("clearmind_auth_user", JSON.stringify(authUser));
+          }
+        }).catch(() => {});
     }
 
     // Setup Check: Allow instant classroom access for guest sessions

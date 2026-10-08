@@ -347,10 +347,14 @@ window.AuthEngine = {
     if (errBanner) errBanner.style.display = 'none';
   },
 
-  continueAsGuest() {
+  async continueAsGuest() {
     this.clearError();
     
-    // Create an authentic guest session
+    const btn = document.getElementById('continueAsGuestBtn');
+    if (btn) {
+      btn.innerHTML = '<span class="inline-block animate-spin mr-2">⚡</span> Accessing Classroom...';
+    }
+
     let existingUser = null;
     try {
       existingUser = JSON.parse(localStorage.getItem('clearmind_auth_user') || 'null');
@@ -358,16 +362,28 @@ window.AuthEngine = {
       existingUser = null;
     }
 
-    const guestId = (existingUser && existingUser.user_id && existingUser.isGuest) 
+    let guestId = (existingUser && existingUser.user_id && existingUser.isGuest) 
       ? existingUser.user_id 
       : 'CMP-GUEST-' + Math.floor(10000 + Math.random() * 90000);
+    let sessionToken = 'guest-session-' + Date.now();
+
+    try {
+      const res = await fetch('/api/auth/guest', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.session_token) sessionToken = data.session_token;
+        if (data.user_id) guestId = data.user_id;
+      }
+    } catch (e) {
+      // offline fallback
+    }
 
     const guestUser = {
       user_id: guestId,
       name: (existingUser && existingUser.name && existingUser.isGuest) ? existingUser.name : 'Guest Scholar',
       email: 'guest@clearmind.local',
       role: 'guest',
-      session_token: 'guest-session-' + Date.now(),
+      session_token: sessionToken,
       isGuest: true,
       provider: 'guest'
     };
@@ -403,16 +419,10 @@ window.AuthEngine = {
     this.updateNavUser();
     this.closeAuthModal();
 
-    // Button feedback if present
-    const btn = document.getElementById('continueAsGuestBtn');
-    if (btn) {
-      btn.innerHTML = '<span class="inline-block animate-spin mr-2">⚡</span> Accessing Classroom...';
-    }
-
     // Direct transition to the Classroom Cockpit
     setTimeout(() => {
       window.location.href = '/classroom';
-    }, 120);
+    }, 100);
   },
 
   simulateGoogleAuth() {
