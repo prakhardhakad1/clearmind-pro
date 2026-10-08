@@ -16,7 +16,8 @@
 - **🔗 Live Production URL:** [https://clearmind-pro.vercel.app](https://clearmind-pro.vercel.app)
 - **💻 Classroom Workspace:** [https://clearmind-pro.vercel.app/classroom](https://clearmind-pro.vercel.app/classroom)
 - **📂 Public GitHub Repository:** [https://github.com/prakhardhakad1/clearmind-pro](https://github.com/prakhardhakad1/clearmind-pro)
-- **⚡ Zero-Barrier Instant Access:** Click **"Try Guest Demo"** or log in with one tap to explore all features immediately—no paywall or API key setup required.
+- **⚡ Zero-Barrier Instant Access:** Click **"Continue as Guest"** for 1-click frictionless entry to Classroom Cockpit—zero sign-up friction.
+- **🗓️ Multi-Modal Subsystems:** AI Study Planner, Blitz Arena, Global Leaderboard, Teacher Portal, and Parent Digest.
 
 ---
 
