@@ -247,6 +247,35 @@ body {
   flex-direction: column;
 }
 
+/* Auth Modal Universal Scroll Safeguard */
+#authModal.modal-backdrop {
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+#authModal .modal-card {
+  max-height: 90vh !important;
+  max-height: 90dvh !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#authModal .modal-card::-webkit-scrollbar {
+  width: 5px;
+}
+#authModal .modal-card::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+}
+#authModal .modal-card::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.4);
+  border-radius: 9999px;
+}
+#authModal .modal-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.7);
+}
+
 /* ========================================================================= */
 /* ANDROID MOBILE-SPECIFIC NATIVE OVERHAUL (< 640px)                         */
 /* ========================================================================= */

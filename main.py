@@ -60,7 +60,11 @@ if not ALLOWED_ORIGINS:
         "http://localhost:3000", "http://127.0.0.1:3000",
         "http://localhost:8000", "http://127.0.0.1:8000",
         "http://localhost:5500", "http://127.0.0.1:5500",
+        "https://clearmind-pro.vercel.app",
     ]
+    vercel_url = os.getenv("VERCEL_URL")
+    if vercel_url:
+        ALLOWED_ORIGINS.append(f"https://{vercel_url.strip().rstrip('/')}")
 
 app = FastAPI(title="ClearMind Pro", version="5.0.0")
 
@@ -102,9 +106,10 @@ app.add_middleware(VercelRouteMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Session-Token", "x-session-token", "x-gemini-key"],
 )
 
 @app.middleware("http")
@@ -400,7 +405,14 @@ def extract_roadmap_steps_from_text(text: str) -> List[Dict[str, Any]]:
     return steps[:6]
 
 def get_gemini_client(custom_key: Optional[str] = None):
-    api_key = custom_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = (
+        custom_key or
+        os.getenv("GEMINI_API_KEY") or
+        os.getenv("GOOGLE_API_KEY") or
+        os.getenv("GEMINI_KEY") or
+        os.getenv("GOOGLE_GEMINI_API_KEY") or
+        ""
+    ).strip()
     if not api_key:
         return None
     try:
@@ -429,12 +441,11 @@ async def execute_dual_ai_completion(
         if not client: return None
         loop = asyncio.get_running_loop()
         def _sync_gemini():
-            primary_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+            primary_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
             candidate_models = [primary_model]
-            if primary_model != "gemini-3.6-flash":
-                candidate_models.append("gemini-3.6-flash")
-            if "gemini-3.5-flash-lite" not in candidate_models:
-                candidate_models.append("gemini-3.5-flash-lite")
+            for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]:
+                if fallback not in candidate_models:
+                    candidate_models.append(fallback)
 
             cfg = genai_types.GenerateContentConfig(
                 system_instruction=sys_prompt,
@@ -463,12 +474,33 @@ async def execute_dual_ai_completion(
 
     async def _call_glm() -> Optional[str]:
         if has_image: return None
-        glm_key = os.getenv("GLM_API_KEY")
+        glm_key = (
+            os.getenv("FEATHERLESS_API_KEY") or
+            os.getenv("GLM_API_KEY") or
+            os.getenv("SECONDARY_AI_KEY") or
+            ""
+        ).strip()
         if not glm_key: return None
-        url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+
+        # Auto-detect whether Featherless AI or Zhipu BigModel is targeted
+        is_featherless = bool(
+            os.getenv("FEATHERLESS_API_KEY") or
+            os.getenv("SECONDARY_AI_PROVIDER", "").lower() == "featherless" or
+            "featherless" in os.getenv("GLM_API_URL", "").lower() or
+            glm_key.startswith("fl_") or
+            glm_key.startswith("fl-")
+        )
+
+        if is_featherless:
+            url = os.getenv("FEATHERLESS_API_URL") or os.getenv("GLM_API_URL") or "https://api.featherless.ai/v1/chat/completions"
+            model = os.getenv("FEATHERLESS_MODEL") or os.getenv("SECONDARY_MODEL") or "THUDM/glm-4-9b-chat"
+        else:
+            url = os.getenv("GLM_API_URL") or "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+            model = os.getenv("SECONDARY_MODEL") or "glm-4-flash"
+
         headers = {"Authorization": f"Bearer {glm_key}", "Content-Type": "application/json"}
         payload = {
-            "model": "glm-4-flash",
+            "model": model,
             "messages": [
                 {"role": "system", "content": sys_prompt + "\n\nCRITICAL: Return strictly a valid JSON object without markdown fences."},
                 {"role": "user", "content": user_prompt}
@@ -477,15 +509,15 @@ async def execute_dual_ai_completion(
             "max_tokens": max_tokens
         }
         try:
-            async with httpx.AsyncClient(timeout=6.5) as http_client:
+            async with httpx.AsyncClient(timeout=8.0) as http_client:
                 resp = await http_client.post(url, headers=headers, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
                     return data["choices"][0]["message"]["content"]
                 else:
-                    logger.info(f"GLM status error: {resp.status_code} {resp.text[:200]}")
+                    logger.info(f"Secondary AI ({'Featherless' if is_featherless else 'GLM'}) status error: {resp.status_code} {resp.text[:200]}")
         except Exception as e:
-            logger.info(f"GLM attempt failed: {e or type(e).__name__}")
+            logger.info(f"Secondary AI attempt failed: {e or type(e).__name__}")
         return None
 
     if has_image:
@@ -911,18 +943,72 @@ def init_db():
 # raise NameError at import time.
 
 # Turso Cloud (LibSQL) Cloud Resilience Tier (AWS AP South Mumbai)
-TURSO_DB_URL = os.getenv("TURSO_DB_URL", "https://clearmind-db-prakhardhakad1.aws-ap-south-1.turso.io")
+TURSO_DB_URL = (
+    os.getenv("TURSO_DB_URL") or
+    os.getenv("TURSO_DATABASE_URL") or
+    os.getenv("LIBSQL_URL") or
+    "https://clearmind-db-prakhardhakad1.aws-ap-south-1.turso.io"
+).strip()
 # SECURITY: a Turso auth token used to be hardcoded here as an os.getenv fallback.
 # It is committed in git history, so it must be treated as compromised:
 #   1. Rotate the token in the Turso dashboard.
-#   2. Put the new one in .env / Render as TURSO_AUTH_TOKEN.
-# Never re-add a credential literal to this file.
-TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+#   2. Put the new one in .env / Vercel as TURSO_AUTH_TOKEN.
+TURSO_AUTH_TOKEN = (
+    os.getenv("TURSO_AUTH_TOKEN") or
+    os.getenv("TURSO_TOKEN") or
+    os.getenv("TURSO_KEY") or
+    os.getenv("TURSO_API_KEY") or
+    os.getenv("LIBSQL_AUTH_TOKEN") or
+    ""
+).strip()
 if not TURSO_AUTH_TOKEN:
-    logger.error(
+    logger.warning(
         "TURSO_AUTH_TOKEN is not set - durable sync to Turso is DISABLED. "
-        "Accounts created now will be lost on restart."
+        "On Vercel, set TURSO_DB_URL and TURSO_AUTH_TOKEN in Project Settings > Environment Variables."
     )
+
+def init_turso_tables():
+    """Ensures users and user_profiles tables exist in Turso Cloud."""
+    if not TURSO_DB_URL or not TURSO_AUTH_TOKEN:
+        return
+    try:
+        logger.info("Verifying Turso cloud database tables...")
+        turso_sync_records([
+            {
+                "sql": """
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id TEXT UNIQUE NOT NULL,
+                        name TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        role TEXT DEFAULT 'student',
+                        created_at TEXT NOT NULL
+                    )
+                """,
+                "args": []
+            },
+            {
+                "sql": """
+                    CREATE TABLE IF NOT EXISTS user_profiles (
+                        user_id TEXT PRIMARY KEY,
+                        persona TEXT DEFAULT 'mentor',
+                        identity TEXT DEFAULT 'school',
+                        level TEXT DEFAULT 'Class 12',
+                        board TEXT DEFAULT 'CBSE',
+                        daily_rhythm TEXT DEFAULT '45 mins / day',
+                        target_goal TEXT DEFAULT 'Board & Entrance Exams',
+                        subjects TEXT DEFAULT '[]',
+                        sub_details TEXT DEFAULT '{}',
+                        learning_styles TEXT DEFAULT '[]',
+                        updated_at TEXT NOT NULL
+                    )
+                """,
+                "args": []
+            }
+        ])
+    except Exception as e:
+        logger.warning(f"Turso remote table initialization notice: {e}")
 
 def turso_sync_records(statements: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Background task to sync database records permanently to Turso Cloud in Mumbai."""
@@ -1176,13 +1262,19 @@ class AdminLoginRequest(BaseModel):
 
 ADMIN_SESSION_SECRET = os.getenv("ADMIN_SESSION_SECRET", "").strip()
 if not ADMIN_SESSION_SECRET:
-    # Fail closed. Never fall back to a publicly-known constant: a random
-    # per-process secret means old tokens simply stop validating on restart.
-    ADMIN_SESSION_SECRET = secrets.token_urlsafe(48)
-    logger.warning(
-        "ADMIN_SESSION_SECRET is not set - generated an ephemeral one. "
-        "Admin sessions will not survive a restart. Set it in .env / Render."
-    )
+    # On serverless platforms (Vercel), an ephemeral secret changes every cold start,
+    # causing user sessions to be invalidated across requests.
+    # Fall back to deployment identifiers if available to remain stable across instances.
+    stable_deployment_id = os.getenv("VERCEL_DEPLOYMENT_ID") or os.getenv("VERCEL_GIT_COMMIT_SHA")
+    if stable_deployment_id:
+        ADMIN_SESSION_SECRET = hashlib.sha256(f"clearmind-secret:{stable_deployment_id}".encode()).hexdigest()
+        logger.info("Using stable Vercel deployment identifier for session secret.")
+    else:
+        ADMIN_SESSION_SECRET = secrets.token_urlsafe(48)
+        logger.warning(
+            "ADMIN_SESSION_SECRET is not set - generated an ephemeral one. "
+            "Sessions will not survive a restart. Set STUDENT_SESSION_SECRET and ADMIN_SESSION_SECRET in Vercel."
+        )
 
 ADMIN_TOKEN_TTL_SECONDS = int(os.getenv("ADMIN_TOKEN_TTL_SECONDS", "28800"))  # 8 hours
 ADMIN_UIDS = ("CMP-ADMIN", "admin@clearmind.ai")
@@ -1326,11 +1418,26 @@ async def rate_limit(request: Request, key: str, limit: int, window: float = 60.
 @app.get("/api/status")
 @app.get("/status")
 async def get_status():
+    has_gemini = bool(
+        os.getenv("GEMINI_API_KEY") or
+        os.getenv("GOOGLE_API_KEY") or
+        os.getenv("GEMINI_KEY") or
+        os.getenv("GOOGLE_GEMINI_API_KEY")
+    )
+    has_secondary = bool(os.getenv("FEATHERLESS_API_KEY") or os.getenv("GLM_API_KEY") or os.getenv("SECONDARY_AI_KEY"))
+    is_featherless = bool(os.getenv("FEATHERLESS_API_KEY") or "featherless" in os.getenv("GLM_API_URL", "").lower())
+    has_turso_token = bool(TURSO_AUTH_TOKEN)
+    has_turso_url = bool(TURSO_DB_URL and not TURSO_DB_URL.startswith("libsql://localhost"))
     return {
         "status": "online",
-        "gemini_active": bool(os.getenv("GEMINI_API_KEY")),
-        "glm4_active": bool(os.getenv("GLM_API_KEY")),
-        "engine": "Dual-Engine (Gemini 3.5 Flash + GLM-4 Flash Fast Race)",
+        "gemini_active": has_gemini,
+        "glm4_active": has_secondary,
+        "secondary_engine_active": has_secondary,
+        "secondary_provider": "Featherless AI" if is_featherless else "Zhipu AI (GLM-4)" if has_secondary else "None",
+        "turso_active": bool(has_turso_token and has_turso_url),
+        "turso_token_set": has_turso_token,
+        "session_secret_set": bool(os.getenv("STUDENT_SESSION_SECRET") or os.getenv("ADMIN_SESSION_SECRET")),
+        "engine": "Dual-Engine (Gemini Flash + " + ("Featherless AI" if is_featherless else "GLM-4") + ")" if has_secondary else "Single-Engine (Google Gemini Flash)",
         "voice": "Microsoft Edge Neural Voice"
     }
 
@@ -2903,5 +3010,6 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static_dir")
 # Create tables and seed the admin account. Runs last because it needs the
 # password-hashing helpers defined above.
 init_db()
+init_turso_tables()
 
 

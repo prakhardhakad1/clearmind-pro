@@ -399,23 +399,23 @@
   <!-- ========================================================================= -->
   <!-- MODAL: FAST ACCESS & AUTHENTICATION (Clean Guest & Quick Sign In) -->
   <!-- ========================================================================= -->
-  <div id="authModal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="modal-card w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/95 p-6 sm:p-8 backdrop-blur-2xl shadow-2xl relative">
+  <div id="authModal" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="modal-card w-full max-w-md rounded-3xl border border-white/15 bg-slate-900/95 p-5 sm:p-6 backdrop-blur-2xl shadow-2xl relative my-auto max-h-[92vh] max-h-[92dvh] overflow-y-auto">
       <!-- Close button -->
-      <button type="button" id="closeAuthModalBtn" class="absolute top-5 right-5 text-gray-400 hover:text-white text-xl p-1">✕</button>
+      <button type="button" id="closeAuthModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl p-1 z-10">✕</button>
 
-      <div class="text-center mb-6">
-        <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-cyan-500/20">
+      <div class="text-center mb-4">
+        <div class="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl mx-auto mb-2 shadow-lg shadow-cyan-500/20">
           ⚡
         </div>
-        <h3 class="text-2xl font-black text-white tracking-tight">Access ClearMind Pro</h3>
-        <p class="text-xs text-gray-400 mt-1">Sign in with Google or Email to start learning.</p>
+        <h3 class="text-xl sm:text-2xl font-black text-white tracking-tight">Access ClearMind Pro</h3>
+        <p class="text-xs text-gray-400 mt-0.5">Sign in with Google or Email to start learning.</p>
       </div>
 
       <!-- 0. Instant Guest Access Button -->
-      <button type="button" id="continueAsGuestBtn" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-violet-500/15 hover:from-cyan-500/25 hover:via-blue-500/25 hover:to-violet-500/25 border border-cyan-400/40 hover:border-cyan-400/70 text-white font-bold text-sm shadow-xl flex items-center justify-between gap-3 transition-all mb-4 active:scale-[0.98] cursor-pointer group">
+      <button type="button" id="continueAsGuestBtn" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-violet-500/15 hover:from-cyan-500/25 hover:via-blue-500/25 hover:to-violet-500/25 border border-cyan-400/40 hover:border-cyan-400/70 text-white font-bold text-sm shadow-xl flex items-center justify-between gap-3 transition-all mb-3 active:scale-[0.98] cursor-pointer group">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-lg shadow-sm shadow-cyan-400/30 group-hover:scale-110 transition-transform">
+          <div class="w-8 h-8 rounded-xl bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-base shadow-sm shadow-cyan-400/30 group-hover:scale-110 transition-transform">
             ⚡
           </div>
           <div class="text-left">
@@ -429,15 +429,15 @@
         <span class="text-cyan-400 text-xs font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">Enter <span>→</span></span>
       </button>
 
-      <div class="flex items-center gap-3 my-4">
+      <div class="flex items-center gap-3 my-3">
         <div class="flex-1 h-px bg-white/10"></div>
         <span class="text-[10px] text-gray-400 uppercase tracking-widest font-mono">OR SIGN IN TO SAVE PROGRESS</span>
         <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
       <!-- 1. Continue with Google -->
-      <div id="googleGsiBtnContainer" class="w-full flex justify-center mb-3 min-h-[44px]"></div>
-      <button type="button" id="googleAuthBtn" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-xl flex items-center justify-center gap-3 transition-all mb-4 active:scale-[0.98] cursor-pointer">
+      <div id="googleGsiBtnContainer" class="w-full flex justify-center mb-2 min-h-[44px]"></div>
+      <button type="button" id="googleAuthBtn" class="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-sm shadow-xl flex items-center justify-center gap-3 transition-all mb-3 active:scale-[0.98] cursor-pointer">
         <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -447,20 +447,20 @@
         <span>Continue with Google</span>
       </button>
 
-      <div class="flex items-center gap-3 my-4">
+      <div class="flex items-center gap-3 my-3">
         <div class="flex-1 h-px bg-white/10"></div>
         <span class="text-[10px] text-gray-400 uppercase tracking-widest font-mono">OR CONTINUE WITH EMAIL</span>
         <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
       <!-- Tab Switcher -->
-      <div class="flex p-1 bg-black/40 rounded-xl border border-white/10 mb-4 text-xs font-semibold">
+      <div class="flex p-1 bg-black/40 rounded-xl border border-white/10 mb-3 text-xs font-semibold">
         <button type="button" id="tabAuthSignUp" class="flex-1 py-2 rounded-lg text-center transition-all active bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">Sign Up</button>
         <button type="button" id="tabAuthSignIn" class="flex-1 py-2 rounded-lg text-center text-gray-400 hover:text-white transition-all">Sign In</button>
       </div>
 
       <!-- Email / Password Form -->
-      <form id="authForm" class="space-y-3">
+      <form id="authForm" class="space-y-2.5">
         <div id="authNameGroup">
           <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1">Your Name</label>
           <input type="text" id="authNameInput" placeholder="Your full name" class="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500" />

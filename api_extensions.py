@@ -30,13 +30,20 @@ if not logger.handlers:
 # Router instance to mount in main.py
 api_router = APIRouter()
 
-# Local SQLite DB for extended modules
-DB_PATH = os.path.join(os.path.dirname(__file__), "clearmind_v5.db")
+# Local SQLite DB for extended modules (use /tmp on Vercel/Lambda for read-only filesystem compatibility)
+def get_extensions_db_path() -> str:
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        return "/tmp/clearmind_v5.db"
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "clearmind_v5.db")
+
+DB_PATH = get_extensions_db_path()
 
 def init_extensions_db():
     """Initializes tables for study plans, leaderboards, matches, and assignments."""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        db_path = get_extensions_db_path()
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+        conn = sqlite3.connect(db_path)
         c = conn.cursor()
         
         # Study plans table
@@ -193,14 +200,25 @@ async def query_ai_engine(system_prompt: str, user_prompt: str, max_tokens: int 
     Direct asynchronous invocation using Google GenAI SDK (Gemini 3.6/3.8 Flash).
     Falls back gracefully to high-yield algorithmic synthesis if API keys are not present.
     """
-    api_key = custom_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = (
+        custom_key or
+        os.getenv("GEMINI_API_KEY") or
+        os.getenv("GOOGLE_API_KEY") or
+        os.getenv("GEMINI_KEY") or
+        os.getenv("GOOGLE_GEMINI_API_KEY") or
+        ""
+    ).strip()
     if api_key and api_key != "your_gemini_api_key_here":
         try:
             from google import genai
             from google.genai import types as genai_types
             
             client = genai.Client(api_key=api_key)
-            model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+            primary_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+            candidate_models = [primary_model]
+            for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+                if fallback not in candidate_models:
+                    candidate_models.append(fallback)
             
             cfg = genai_types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -212,11 +230,18 @@ async def query_ai_engine(system_prompt: str, user_prompt: str, max_tokens: int 
             
             loop = asyncio.get_running_loop()
             def _call():
-                return client.models.generate_content(
-                    model=model_name,
-                    contents=user_prompt,
-                    config=cfg
-                )
+                for m in candidate_models:
+                    try:
+                        r = client.models.generate_content(
+                            model=m,
+                            contents=user_prompt,
+                            config=cfg
+                        )
+                        if r and r.text and r.text.strip():
+                            return r
+                    except Exception:
+                        continue
+                return None
             
             result = await asyncio.wait_for(loop.run_in_executor(None, _call), timeout=8.0)
             if result and result.text:
