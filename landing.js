@@ -102,6 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // so it asks the server for a short-lived anonymous guest session.
       const guestToken = (typeof window.cmGetGuestToken === 'function')
         ? await window.cmGetGuestToken() : '';
+      // Auto language: Devanagari script -> hinglish, otherwise English
+      // (the landing page is English-first; English questions must get English answers).
+      const teaserLang = /[\u0900-\u097F]/.test(rawQuery) ? 'hinglish' : 'en';
       const res = await fetch('/api/chat-teach', {
         method: 'POST',
         headers: Object.assign(
@@ -114,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
           topic: rawQuery,
           level: 'College / University',
           persona: 'mentor',
-          language: 'hinglish',
+          language: teaserLang,
           mode: 'direct'
         })
       });
@@ -141,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       teaserResponse.innerHTML = `
         <div class="space-y-1.5">
           <div class="flex items-center justify-between text-[10px] text-cyan-400/80 border-b border-cyan-500/20 pb-1">
-            <span class="font-bold flex items-center gap-1"><span>🌸</span> Luna AI (Dual Gemini 3.5 &amp; GLM-4 Flash)</span>
+            <span class="font-bold flex items-center gap-1"><span>🌸</span> Luna AI (Dual Gemini &amp; GLM-4 Flash)</span>
             <span class="text-emerald-400">⚡ Live Latency: &lt; 350ms</span>
           </div>
           <div class="text-gray-200 text-xs sm:text-sm leading-relaxed">${formatted}</div>
