@@ -135,9 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<div class="mt-2 text-[11px] text-amber-300 font-sans">💡 <strong>${esc(data.analogy_card.title)}:</strong> ${esc(data.analogy_card.description || '')}</div>`
         : '';
 
-      // Format markdown-like bold and line breaks (reply is already escaped)
+      // Format markdown-like headings, bold, code and line breaks (reply is already escaped)
       const formatted = esc(reply)
+        .replace(/^### (.*)$/gm, '<strong>$1</strong>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.*?)`/g, '<code class="px-1 rounded bg-white/10 text-cyan-200 font-mono text-[11px]">$1</code>')
         .replace(/\n\n/g, '<br/><br/>')
         .replace(/\n/g, '<br/>');
 
