@@ -6,7 +6,7 @@
 [![Tests Passing](https://img.shields.io/badge/Tests-41%2F41_Passing-success?style=for-the-badge&logo=pytest)](https://github.com/prakhardhakad1/clearmind-pro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-> **🚀 Official Submission for ML Empowerment Build Challenge 3.0 ($80,000 Prize Pool)**  
+> **🚀 Official Submission for ML Empowerment Build Challenge 3.0 ($400,000 Prize Pool)**  
 > *Empowering the next generation of students with applied Artificial Intelligence: A production-grade, multimodal AI Socratic tutor featuring real-time neural voice streaming, KaTeX mathematical step diagnostics, 3D memory retention galaxies, and multilingual Hinglish support.*
 
 ---
