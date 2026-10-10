@@ -1337,11 +1337,11 @@ class SyncProfileRequest(BaseModel):
 class GoogleAuthSyncRequest(BaseModel):
     # `credential` is the Google ID token. It is REQUIRED: identity is taken from
     # the verified token, never from these client-supplied fields.
-    credential: Optional[str] = Field(None, max_length=4096)
-    name: str = Field(..., max_length=80)
-    email: str = Field(..., max_length=254)
-    avatar: Optional[str] = Field("", max_length=500)
-    sub: Optional[str] = Field("", max_length=100)
+    credential: Optional[str] = Field(None, max_length=16384)
+    name: Optional[str] = Field("Learner", max_length=150)
+    email: Optional[str] = Field("", max_length=254)
+    avatar: Optional[str] = Field("", max_length=2048)
+    sub: Optional[str] = Field("", max_length=256)
 
 # ---------------------------------------------------------------------------
 # Session tokens & rate limiting
@@ -1616,7 +1616,8 @@ def _auth_login_sync(req: UserLoginRequest):
         "profile": profile_data
     }
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+DEFAULT_GOOGLE_CLIENT_ID = "61854617680-nvv67578jejp9qo1kcaeshb5f31o3p69.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", DEFAULT_GOOGLE_CLIENT_ID).strip() or DEFAULT_GOOGLE_CLIENT_ID
 
 async def verify_google_id_token(credential: Optional[str]) -> Dict[str, Any]:
     """Verify a Google ID token server-side.
@@ -1624,26 +1625,32 @@ async def verify_google_id_token(credential: Optional[str]) -> Dict[str, Any]:
     Without this, /api/auth/google trusts a client-supplied email and hands out
     a session for ANY account - a complete authentication bypass.
     """
-    if not GOOGLE_CLIENT_ID:
-        raise HTTPException(
-            status_code=503,
-            detail="Google sign-in is not configured on this server (GOOGLE_CLIENT_ID missing).",
-        )
     if not credential:
         raise HTTPException(status_code=401, detail="Missing Google credential.")
+
+    valid_client_ids = {
+        DEFAULT_GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_ID
+    }
+    valid_client_ids = {cid for cid in valid_client_ids if cid}
+
     try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 "https://oauth2.googleapis.com/tokeninfo",
                 params={"id_token": credential},
             )
     except Exception as e:
         logger.warning(f"Google token verification request failed: {e}")
-        raise HTTPException(status_code=503, detail="Could not verify Google credential.")
+        raise HTTPException(status_code=503, detail="Could not contact Google to verify credential.")
     if resp.status_code != 200:
+        logger.warning(f"Google token rejected ({resp.status_code}): {resp.text}")
         raise HTTPException(status_code=401, detail="Invalid Google credential.")
     claims = resp.json()
-    if claims.get("aud") != GOOGLE_CLIENT_ID:
+    token_aud = str(claims.get("aud", "")).strip()
+    token_azp = str(claims.get("azp", "")).strip()
+    if token_aud not in valid_client_ids and token_azp not in valid_client_ids:
+        logger.warning(f"Google credential audience mismatch: aud={token_aud}, azp={token_azp}, valid={valid_client_ids}")
         raise HTTPException(status_code=401, detail="Google credential audience mismatch.")
     if str(claims.get("email_verified", "false")).lower() not in ("true", "1"):
         raise HTTPException(status_code=401, detail="Google email is not verified.")
@@ -1673,6 +1680,7 @@ def _auth_google_sync(req: GoogleAuthSyncRequest, claims: Dict[str, Any]):
     """, (email_clean,))
     user_row = cursor.fetchone()
     
+    turso_data = None
     # Cold-start resilience: if not in local /tmp SQLite, check Turso Cloud (Mumbai)
     if not user_row:
         turso_data = fetch_user_from_turso(email_clean)
@@ -1725,6 +1733,9 @@ def _auth_google_sync(req: GoogleAuthSyncRequest, claims: Dict[str, Any]):
     """, (user_id,))
     prof_row = cursor.fetchone()
     conn.close()
+
+    if not prof_row and turso_data and turso_data.get("profile"):
+        prof_row = tuple(turso_data["profile"])
     
     profile_data = {
         "persona": prof_row[0] if prof_row else "mentor",
